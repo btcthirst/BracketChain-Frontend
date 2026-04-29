@@ -23,7 +23,7 @@ jobs:
 
       - run: npm run build
 
-  auto-merge:
+  enable-auto-merge:
       needs: check
       runs-on: ubuntu-latest
       if: github.ref == 'refs/heads/develop'
