@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [develop]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run build
+
+  enable-auto-merge:
+      needs: check
+      runs-on: ubuntu-latest
+      if: github.ref == 'refs/heads/develop'
+      steps:
+        - uses: actions/checkout@v4
+        - run: gh pr merge develop --merge --auto
+          env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
