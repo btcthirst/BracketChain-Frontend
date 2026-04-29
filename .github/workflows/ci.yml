@@ -22,13 +22,3 @@ jobs:
       - run: npm run lint
 
       - run: npm run build
-
-  enable-auto-merge:
-    needs: check
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
-    steps:
-      - uses: actions/checkout@v5
-      - run: gh pr merge develop --merge --auto
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
