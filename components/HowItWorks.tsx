@@ -1,5 +1,5 @@
 import { Trophy, Gamepad2, Wallet } from "lucide-react";
-import { MotionDiv } from "ui/motion-wraper";
+import { MotionDiv } from "@/components/ui/motion-wraper";
 
 const steps = [
     {

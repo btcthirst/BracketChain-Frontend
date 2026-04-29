@@ -1,5 +1,5 @@
 import { ArrowRight } from "lucide-react";
-import { MotionDiv, MotionPath } from "ui/motion-wraper";
+import { MotionDiv, MotionPath } from "@/components/ui/motion-wraper";
 
 export function Hero() {
     return (

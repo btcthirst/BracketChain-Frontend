@@ -1,5 +1,5 @@
 import { Users, Clock, Trophy } from "lucide-react";
-import { MotionDiv } from "ui/motion-wraper"
+import { MotionDiv } from "@/components/ui/motion-wraper"
 
 interface Tournament {
     id: string;
