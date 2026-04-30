@@ -1,4 +1,5 @@
-import { Link } from "lucide-react";
+import { ROUTES } from "@/constants/links";
+import Link from "next/link";
 
 export default function ComingSoonPage() {
     return (
@@ -6,7 +7,7 @@ export default function ComingSoonPage() {
                     justify-center bg-[#0a1929] text-white gap-4">
             <h1 className="text-3xl font-bold">Coming Soon</h1>
             <p className="text-gray-400">This page is under construction.</p>
-            <Link href="/" className="text-blue-400 hover:underline">
+            <Link href={ROUTES.home} className="text-blue-400 hover:underline">
                 ← Back to Home
             </Link>
         </div>
