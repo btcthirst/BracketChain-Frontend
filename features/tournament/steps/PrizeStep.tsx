@@ -3,7 +3,8 @@ import { inputCls, totalPool } from "../utils/utils";
 import { PROTOCOL_FEE, PAYOUT_PRESETS } from "../utils/constants";
 import { DetailsData, PayoutPreset, PrizeData, Token } from "../utils/types";
 import { FieldGroup } from "./FieldGroup";
-
+import { BalanceWarning } from "./BalanceWarning";
+import { useWalletBalance } from "@/hooks/useWalletBalance";
 
 export function PrizeStep({
     data,
@@ -21,6 +22,13 @@ export function PrizeStep({
     const pool = totalPool(data.deposit, detailsData.entryFee, detailsData.maxParticipants, detailsData.freeEntry);
     const afterFee = pool * (1 - PROTOCOL_FEE);
     const pctSum = data.payoutEntries.reduce((a, e) => a + e.pct, 0);
+
+    // ── Balance ──────────────────────────────────────────────────────────────
+    const { sol, usdc, loading: balanceLoading, refresh: refreshBalance } = useWalletBalance();
+
+    // Required = organizer deposit only (entry fees come from participants)
+    const requiredDeposit = parseFloat(data.deposit) || 0;
+    const availableBalance = data.token === "SOL" ? sol : data.token === "USDC" ? usdc : null;
 
     function handlePreset(preset: PayoutPreset) {
         onChange({ payoutPreset: preset, payoutEntries: [...PAYOUT_PRESETS[preset].entries] });
@@ -103,9 +111,30 @@ export function PrizeStep({
                             value={data.deposit}
                             onChange={e => onChange({ deposit: e.target.value })}
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-500">{data.token}</span>
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-500">
+                            {data.token}
+                        </span>
                     </div>
+
+                    {/* Wallet balance display */}
+                    {connected && availableBalance !== null && (
+                        <p className="text-xs text-gray-500 mt-1">
+                            Wallet balance:{" "}
+                            <span className="font-mono font-medium text-gray-700">
+                                {availableBalance.toFixed(2)} {data.token === "custom" ? "tokens" : data.token}
+                            </span>
+                        </p>
+                    )}
                 </FieldGroup>
+
+                {/* ── Balance warning ── */}
+                <BalanceWarning
+                    token={data.token}
+                    required={requiredDeposit}
+                    available={availableBalance}
+                    loading={balanceLoading}
+                    onRefresh={refreshBalance}
+                />
 
                 <div className="flex flex-col gap-3">
                     <span className="text-sm font-semibold text-gray-800">Payout Structure</span>
