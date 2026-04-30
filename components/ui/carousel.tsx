@@ -9,6 +9,10 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { cn } from "./utils";
 import { Button } from "./button";
 
+/* =========================
+   Types
+========================= */
+
 type CarouselApi = UseEmblaCarouselType[1];
 type UseCarouselParameters = Parameters<typeof useEmblaCarousel>;
 type CarouselOptions = UseCarouselParameters[0];
@@ -21,9 +25,63 @@ type CarouselProps = {
     setApi?: (api: CarouselApi) => void;
 };
 
+/* =========================
+   External Store (Embla)
+========================= */
+
+type CarouselSnapshot = {
+    canScrollPrev: boolean;
+    canScrollNext: boolean;
+};
+
+function subscribe(api: CarouselApi | undefined, cb: () => void) {
+    if (!api) return () => { };
+
+    api.on("select", cb);
+    api.on("reInit", cb);
+
+    return () => {
+        api.off("select", cb);
+        api.off("reInit", cb);
+    };
+}
+
+function getSnapshot(api: CarouselApi | undefined): CarouselSnapshot {
+    if (!api) {
+        return {
+            canScrollPrev: false,
+            canScrollNext: false,
+        };
+    }
+
+    return {
+        canScrollPrev: api.canScrollPrev(),
+        canScrollNext: api.canScrollNext(),
+    };
+}
+
+function getServerSnapshot(): CarouselSnapshot {
+    return {
+        canScrollPrev: false,
+        canScrollNext: false,
+    };
+}
+
+function useCarouselState(api: CarouselApi | undefined) {
+    return React.useSyncExternalStore(
+        (cb) => subscribe(api, cb),
+        () => getSnapshot(api),
+        getServerSnapshot
+    );
+}
+
+/* =========================
+   Context
+========================= */
+
 type CarouselContextProps = {
     carouselRef: ReturnType<typeof useEmblaCarousel>[0];
-    api: ReturnType<typeof useEmblaCarousel>[1];
+    api: CarouselApi;
     scrollPrev: () => void;
     scrollNext: () => void;
     canScrollPrev: boolean;
@@ -42,6 +100,10 @@ function useCarousel() {
     return context;
 }
 
+/* =========================
+   Root Component
+========================= */
+
 function Carousel({
     orientation = "horizontal",
     opts,
@@ -56,16 +118,11 @@ function Carousel({
             ...opts,
             axis: orientation === "horizontal" ? "x" : "y",
         },
-        plugins,
+        plugins
     );
-    const [canScrollPrev, setCanScrollPrev] = React.useState(false);
-    const [canScrollNext, setCanScrollNext] = React.useState(false);
 
-    const onSelect = React.useCallback((api: CarouselApi) => {
-        if (!api) return;
-        setCanScrollPrev(api.canScrollPrev());
-        setCanScrollNext(api.canScrollNext());
-    }, []);
+    // ✅ External store state
+    const { canScrollPrev, canScrollNext } = useCarouselState(api);
 
     const scrollPrev = React.useCallback(() => {
         api?.scrollPrev();
@@ -85,24 +142,14 @@ function Carousel({
                 scrollNext();
             }
         },
-        [scrollPrev, scrollNext],
+        [scrollPrev, scrollNext]
     );
 
+    // expose api (safe)
     React.useEffect(() => {
         if (!api || !setApi) return;
         setApi(api);
     }, [api, setApi]);
-
-    React.useEffect(() => {
-        if (!api) return;
-        onSelect(api);
-        api.on("reInit", onSelect);
-        api.on("select", onSelect);
-
-        return () => {
-            api?.off("select", onSelect);
-        };
-    }, [api, onSelect]);
 
     return (
         <CarouselContext.Provider
@@ -132,7 +179,14 @@ function Carousel({
     );
 }
 
-function CarouselContent({ className, ...props }: React.ComponentProps<"div">) {
+/* =========================
+   Subcomponents
+========================= */
+
+function CarouselContent({
+    className,
+    ...props
+}: React.ComponentProps<"div">) {
     const { carouselRef, orientation } = useCarousel();
 
     return (
@@ -145,7 +199,7 @@ function CarouselContent({ className, ...props }: React.ComponentProps<"div">) {
                 className={cn(
                     "flex",
                     orientation === "horizontal" ? "-ml-4" : "-mt-4 flex-col",
-                    className,
+                    className
                 )}
                 {...props}
             />
@@ -153,7 +207,10 @@ function CarouselContent({ className, ...props }: React.ComponentProps<"div">) {
     );
 }
 
-function CarouselItem({ className, ...props }: React.ComponentProps<"div">) {
+function CarouselItem({
+    className,
+    ...props
+}: React.ComponentProps<"div">) {
     const { orientation } = useCarousel();
 
     return (
@@ -164,7 +221,7 @@ function CarouselItem({ className, ...props }: React.ComponentProps<"div">) {
             className={cn(
                 "min-w-0 shrink-0 grow-0 basis-full",
                 orientation === "horizontal" ? "pl-4" : "pt-4",
-                className,
+                className
             )}
             {...props}
         />
@@ -189,7 +246,7 @@ function CarouselPrevious({
                 orientation === "horizontal"
                     ? "top-1/2 -left-12 -translate-y-1/2"
                     : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
-                className,
+                className
             )}
             disabled={!canScrollPrev}
             onClick={scrollPrev}
@@ -219,7 +276,7 @@ function CarouselNext({
                 orientation === "horizontal"
                     ? "top-1/2 -right-12 -translate-y-1/2"
                     : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
-                className,
+                className
             )}
             disabled={!canScrollNext}
             onClick={scrollNext}
@@ -230,6 +287,10 @@ function CarouselNext({
         </Button>
     );
 }
+
+/* =========================
+   Exports
+========================= */
 
 export {
     type CarouselApi,
