@@ -15,7 +15,6 @@ import { ConfirmStep } from "../steps/ConfirmStep";
 import { Stepper } from "../steps/Stepper";
 import { DetailsData, PrizeData, TxState } from "../utils/types";
 
-
 export function CreateTournament() {
     const router = useRouter();
     const { connected } = useWallet();
@@ -59,12 +58,9 @@ export function CreateTournament() {
     const handleConfirm = useCallback(async () => {
         setTxError("");
         setTxState("signing");
-        // Simulate wallet signing delay
         await new Promise(r => setTimeout(r, 1500));
         setTxState("pending");
-        // Simulate on-chain confirmation
         await new Promise(r => setTimeout(r, 2000));
-        // Simulate random failure for demo (20% chance)
         if (Math.random() < 0.2) {
             setTxError("Transaction simulation failed: insufficient lamports for fee payment.");
             setTxState("error");
@@ -73,12 +69,21 @@ export function CreateTournament() {
         setTxState("success");
     }, []);
 
+    // Reset tx state so user can try again cleanly
+    const handleRetry = useCallback(() => {
+        setTxState("idle");
+        setTxError("");
+    }, []);
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
             <div className="bg-white border-b border-gray-200">
                 <div className="container mx-auto px-6 py-4 flex items-center gap-4">
-                    <a href={ROUTES.home} className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors text-sm">
+                    <a
+                        href={ROUTES.home}
+                        className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors text-sm"
+                    >
                         <ChevronLeft className="w-4 h-4" />
                         Back
                     </a>
@@ -117,6 +122,7 @@ export function CreateTournament() {
                             detailsData={detailsData}
                             prizeData={prizeData}
                             onConfirm={handleConfirm}
+                            onRetry={handleRetry}
                             txState={txState}
                             txError={txError}
                         />
@@ -128,7 +134,8 @@ export function CreateTournament() {
                     <div className="flex justify-between mt-10 pt-6 border-t border-gray-200">
                         <button
                             onClick={step === 0 ? () => router.push("/") : handleBack}
-                            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                            disabled={txState === "signing" || txState === "pending"}
+                            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                             <ChevronLeft className="w-4 h-4" />
                             {step === 0 ? "Cancel" : "Back"}

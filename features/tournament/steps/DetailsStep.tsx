@@ -2,9 +2,17 @@ import { FORMAT_INFO } from "../utils/constants";
 import { inputCls } from "../utils/utils";
 import { DetailsData, Format } from "../utils/types";
 import { FieldGroup } from "./FieldGroup";
+import { DuplicateNameWarning } from "./DuplicateNameWarning";
 
-
-export function DetailsStep({ data, onChange, errors }: { data: DetailsData; onChange: (d: Partial<DetailsData>) => void; errors: Partial<Record<keyof DetailsData, string>> }) {
+export function DetailsStep({
+    data,
+    onChange,
+    errors,
+}: {
+    data: DetailsData;
+    onChange: (d: Partial<DetailsData>) => void;
+    errors: Partial<Record<keyof DetailsData, string>>;
+}) {
     const today = new Date().toISOString().split("T")[0];
 
     return (
@@ -22,8 +30,12 @@ export function DetailsStep({ data, onChange, errors }: { data: DetailsData; onC
                         value={data.name}
                         onChange={e => onChange({ name: e.target.value })}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">{data.name.length}/64</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                        {data.name.length}/64
+                    </span>
                 </div>
+                {/* Duplicate name warning — shows only when no validation error */}
+                {!errors.name && <DuplicateNameWarning name={data.name} />}
             </FieldGroup>
 
             <FieldGroup
