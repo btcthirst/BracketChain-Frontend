@@ -1,4 +1,4 @@
-import { CreateTournament } from "@/components/CreateTournament";
+import { CreateTournament } from "@/features/tournament/create/CreateTournament";
 
 export const metadata = {
     title: "Create Tournament — BracketChain",
