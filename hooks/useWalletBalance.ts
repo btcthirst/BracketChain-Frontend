@@ -2,7 +2,7 @@
 
 import { useEffect, useReducer, useCallback } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
-import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3-compat";
+import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js"; // ask about @solana/web3-compat
 import { getAssociatedTokenAddress } from "@solana/spl-token";
 
 const USDC_MINT = new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
