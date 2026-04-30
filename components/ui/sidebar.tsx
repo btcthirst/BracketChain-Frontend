@@ -599,17 +599,30 @@ function SidebarMenuBadge({
     );
 }
 
+const SKELETON_WIDTHS = ["60%", "70%", "80%", "55%", "75%"];
+
 function SidebarMenuSkeleton({
     className,
     showIcon = false,
+    index = 0,
+    width: widthProp,
     ...props
 }: React.ComponentProps<"div"> & {
     showIcon?: boolean;
+    index?: number; // для deterministic варіації
+    width?: string; // override (production control)
 }) {
-    // Random width between 50 to 90%.
-    const width = React.useMemo(() => {
-        return `${Math.floor(Math.random() * 40) + 50}%`;
-    }, []);
+    /**
+     * DESIGN:
+     * - no randomness
+     * - deterministic output
+     * - SSR-safe
+     * - React-pure
+     */
+
+    const width =
+        widthProp ??
+        SKELETON_WIDTHS[index % SKELETON_WIDTHS.length];
 
     return (
         <div
@@ -624,12 +637,14 @@ function SidebarMenuSkeleton({
                     data-sidebar="menu-skeleton-icon"
                 />
             )}
+
             <Skeleton
-                className="h-4 max-w-(--skeleton-width) flex-1"
+                className="h-4 flex-1"
                 data-sidebar="menu-skeleton-text"
                 style={
                     {
                         "--skeleton-width": width,
+                        maxWidth: "var(--skeleton-width)",
                     } as React.CSSProperties
                 }
             />
