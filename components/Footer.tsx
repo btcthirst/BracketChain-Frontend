@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { X, MessageCircle, FileText } from "lucide-react";
-import GitHubIcon from '@mui/icons-material/GitHub';
+import GitHubIcon from "@mui/icons-material/GitHub";
+import { ROUTES, EXTERNAL_LINKS } from "@/constants/links";
 
 export function Footer() {
     return (
@@ -7,12 +9,12 @@ export function Footer() {
             <div className="container mx-auto px-6">
                 <div className="grid md:grid-cols-2 gap-8 mb-8">
                     <div>
-                        <div className="flex items-center gap-2 mb-4">
+                        <Link href={ROUTES.home} className="flex items-center gap-2 mb-4">
                             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                                 <span className="text-white font-bold">BC</span>
                             </div>
                             <span className="text-xl font-bold text-white">BracketChain</span>
-                        </div>
+                        </Link>
                         <p className="text-gray-400 mb-4">
                             Trustless tournament infrastructure powered by Solana.
                         </p>
@@ -33,13 +35,13 @@ export function Footer() {
                             <h3 className="font-semibold text-white mb-3">Resources</h3>
                             <ul className="space-y-2">
                                 <li>
-                                    <a href="#" className="hover:text-white transition-colors flex items-center gap-2">
+                                    <a href={EXTERNAL_LINKS.docs} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-2">
                                         <FileText className="w-4 h-4" />
                                         Docs
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" className="hover:text-white transition-colors flex items-center gap-2">
+                                    <a href={EXTERNAL_LINKS.blog} className="hover:text-white transition-colors flex items-center gap-2">
                                         <FileText className="w-4 h-4" />
                                         Blog
                                     </a>
@@ -51,19 +53,19 @@ export function Footer() {
                             <h3 className="font-semibold text-white mb-3">Community</h3>
                             <ul className="space-y-2">
                                 <li>
-                                    <a href="#" className="hover:text-white transition-colors flex items-center gap-2">
+                                    <a href={EXTERNAL_LINKS.github} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-2">
                                         <GitHubIcon className="w-4 h-4" />
                                         GitHub
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" className="hover:text-white transition-colors flex items-center gap-2">
+                                    <a href={EXTERNAL_LINKS.twitter} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-2">
                                         <X className="w-4 h-4" />
                                         Twitter
                                     </a>
                                 </li>
                                 <li>
-                                    <a href="#" className="hover:text-white transition-colors flex items-center gap-2">
+                                    <a href={EXTERNAL_LINKS.discord} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-2">
                                         <MessageCircle className="w-4 h-4" />
                                         Discord
                                     </a>
