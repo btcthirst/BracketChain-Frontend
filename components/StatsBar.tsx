@@ -1,75 +1,101 @@
 "use client";
 
+import { useRef } from "react";
 import { motion, useInView } from "motion/react";
-import { useRef, useEffect, useState } from "react";
+import { RefreshCw } from "lucide-react";
+import { useStats } from "@/hooks/useStats";
+import type { StatsData } from "@/hooks/useStats";
+import { AnimatedCounter } from "./AnimatedCounter";
 
-interface Stat {
+interface StatConfig {
     label: string;
-    value: number;
+    key: keyof StatsData;
     prefix?: string;
     suffix?: string;
 }
 
-const stats: Stat[] = [
-    { label: "Tournaments Created", value: 1247 },
-    { label: "Total Prize Volume", value: 892500, prefix: "$" },
-    { label: "Games Integrated", value: 12 },
-    { label: "Avg Payout Time", value: 8, suffix: "s" },
+const STAT_CONFIG: StatConfig[] = [
+    { label: "Tournaments Created", key: "tournamentsCreated" },
+    { label: "Total Prize Volume", key: "totalPrizeVolume", prefix: "$" },
+    { label: "Games Integrated", key: "gamesIntegrated" },
+    { label: "Avg Payout Time", key: "avgPayoutSeconds", suffix: "s" },
 ];
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+function StatSkeleton() {
+    return (
+        <div className="text-center flex flex-col items-center gap-2">
+            <div className="h-10 w-28 bg-gray-200 rounded-lg animate-pulse" />
+            <div className="h-4 w-36 bg-gray-200 rounded animate-pulse" />
+        </div>
+    );
+}
+
+// ── Error fallback ────────────────────────────────────────────────────────────
+
+function StatsError({ onRetry }: { onRetry: () => void }) {
+    return (
+        <div className="col-span-2 lg:col-span-4 flex flex-col items-center gap-3 py-2">
+            <p className="text-gray-500 text-sm">Unable to load stats.</p>
+            <button
+                onClick={onRetry}
+                className="flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+            >
+                <RefreshCw className="w-4 h-4" />
+                Try again
+            </button>
+        </div>
+    );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 export function StatsBar() {
     const ref = useRef(null);
     const isInView = useInView(ref, { once: true, amount: 0.5 });
+    const { state, refresh } = useStats();
 
     return (
         <section ref={ref} className="bg-gray-100 py-12">
             <div className="container mx-auto px-6">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-                    {stats.map((stat, index) => (
-                        <motion.div
-                            key={stat.label}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-                            transition={{ duration: 0.5, delay: index * 0.1 }}
-                            className="text-center"
-                        >
-                            <div className="text-4xl font-bold text-gray-900 mb-2">
-                                {stat.prefix}
-                                <AnimatedCounter value={stat.value} isInView={isInView} />
-                                {stat.suffix}
-                            </div>
-                            <div className="text-gray-600 font-medium">{stat.label}</div>
-                        </motion.div>
-                    ))}
+
+                    {/* Loading */}
+                    {state.status === "loading" && (
+                        STAT_CONFIG.map(s => <StatSkeleton key={s.key} />)
+                    )}
+
+                    {/* Error */}
+                    {state.status === "error" && (
+                        <StatsError onRetry={refresh} />
+                    )}
+
+                    {/* Success */}
+                    {state.status === "success" && (
+                        STAT_CONFIG.map((stat, index) => (
+                            <motion.div
+                                key={stat.key}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={isInView ? { opacity: 1, y: 0 } : {}}
+                                transition={{ duration: 0.5, delay: index * 0.1 }}
+                                className="text-center"
+                            >
+                                <div className="text-4xl font-bold text-gray-900 mb-2">
+                                    {stat.prefix}
+                                    <AnimatedCounter
+                                        value={state.data[stat.key]}
+                                        isInView={isInView}
+                                    />
+                                    {stat.suffix}
+                                </div>
+                                <div className="text-gray-600 font-medium">{stat.label}</div>
+                            </motion.div>
+                        ))
+                    )}
+
                 </div>
             </div>
         </section>
     );
-}
-
-function AnimatedCounter({ value, isInView }: { value: number; isInView: boolean }) {
-    const [count, setCount] = useState(0);
-
-    useEffect(() => {
-        if (!isInView) return;
-
-        const duration = 2000;
-        const steps = 60;
-        const increment = value / steps;
-        let current = 0;
-
-        const timer = setInterval(() => {
-            current += increment;
-            if (current >= value) {
-                setCount(value);
-                clearInterval(timer);
-            } else {
-                setCount(Math.floor(current));
-            }
-        }, duration / steps);
-
-        return () => clearInterval(timer);
-    }, [value, isInView]);
-
-    return <span>{count.toLocaleString()}</span>;
 }

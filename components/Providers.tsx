@@ -16,7 +16,7 @@ interface Props {
 
 const WalletContextProvider: FC<Props> = ({ children }) => {
     const endpoint =
-        process.env.NEXT_PUBLIC_RPC_URL ?? "https://api.mainnet-beta.solana.com";
+        process.env.NEXT_PUBLIC_RPC_URL ?? "https://api.devnet.solana.com";
 
 
     return (

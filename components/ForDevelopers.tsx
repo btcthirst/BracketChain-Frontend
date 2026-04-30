@@ -3,6 +3,7 @@
 import { Copy, Check, Shield } from "lucide-react";
 import { useState } from "react";
 import { MotionDiv } from "./ui/motion-wraper";
+import {EXTERNAL_LINKS} from "@/constants/links";
 
 export function ForDevelopers() {
     const [copied, setCopied] = useState(false);
@@ -37,19 +38,20 @@ export function ForDevelopers() {
                                     className="flex-shrink-0 p-2 hover:bg-gray-700 rounded transition-colors"
                                     aria-label="Copy command"
                                 >
-                                    {copied ? (
-                                        <Check className="w-5 h-5 text-green-400" />
-                                    ) : (
-                                        <Copy className="w-5 h-5 text-gray-400" />
-                                    )}
+                                    {copied ? <Check className="w-5 h-5 text-green-400" /> : <Copy className="w-5 h-5 text-gray-400" />}
                                 </button>
                             </div>
                         </div>
 
                         <div className="flex flex-wrap gap-4 items-center">
-                            <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-colors">
+                            <a
+                                href={EXTERNAL_LINKS.docs}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-colors"
+                            >
                                 Read the Docs
-                            </button>
+                            </a>
                             <div className="flex items-center gap-2 text-gray-300">
                                 <Shield className="w-5 h-5 text-green-400" />
                                 <span>Audited by Certik</span>
@@ -64,17 +66,15 @@ export function ForDevelopers() {
                         transition={{ duration: 0.6 }}
                         className="bg-[#1e293b] rounded-lg p-6 overflow-hidden"
                     >
-                        <pre className="text-sm text-gray-300 overflow-x-auto">
-                            <code>{`import { BracketChain } from '@bracketchain/sdk';
+                        <pre className="text-sm text-gray-300 overflow-x-auto leading-relaxed"><code>{`import { BracketChain } from '@bracketchain/sdk';
 
-                                const tournament = await BracketChain.create({
-                                name: 'My Tournament',
-                                prizePool: 1000,
-                                maxPlayers: 16
-                                });
+const tournament = await BracketChain.create({
+  name: 'My Tournament',
+  prizePool: 1000,
+  maxPlayers: 16,
+});
 
-                                await tournament.start();`}</code>
-                        </pre>
+await tournament.start();`}</code></pre>
                     </MotionDiv>
                 </div>
             </div>
