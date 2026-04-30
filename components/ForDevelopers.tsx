@@ -1,8 +1,8 @@
 "use client";
 
-import { motion } from "motion/react";
 import { Copy, Check, Shield } from "lucide-react";
 import { useState } from "react";
+import { MotionDiv } from "./ui/motion-wraper";
 
 export function ForDevelopers() {
     const [copied, setCopied] = useState(false);
@@ -17,7 +17,7 @@ export function ForDevelopers() {
         <section className="bg-[#0a1929] py-20">
             <div className="container mx-auto px-6">
                 <div className="grid lg:grid-cols-2 gap-12 items-center">
-                    <motion.div
+                    <MotionDiv
                         initial={{ opacity: 0, x: -30 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
@@ -29,7 +29,7 @@ export function ForDevelopers() {
                         </p>
 
                         <div className="bg-[#1e293b] rounded-lg p-6 mb-6 font-mono text-sm">
-                            <div className="text-gray-400 mb-2">// Install the SDK</div>
+                            <div className="text-gray-400 mb-2">Install the SDK</div>
                             <div className="flex items-center justify-between gap-4">
                                 <code className="text-green-400">npm install @bracketchain/sdk</code>
                                 <button
@@ -55,9 +55,9 @@ export function ForDevelopers() {
                                 <span>Audited by Certik</span>
                             </div>
                         </div>
-                    </motion.div>
+                    </MotionDiv>
 
-                    <motion.div
+                    <MotionDiv
                         initial={{ opacity: 0, x: 30 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
@@ -67,15 +67,15 @@ export function ForDevelopers() {
                         <pre className="text-sm text-gray-300 overflow-x-auto">
                             <code>{`import { BracketChain } from '@bracketchain/sdk';
 
-const tournament = await BracketChain.create({
-  name: 'My Tournament',
-  prizePool: 1000,
-  maxPlayers: 16
-});
+                                const tournament = await BracketChain.create({
+                                name: 'My Tournament',
+                                prizePool: 1000,
+                                maxPlayers: 16
+                                });
 
-await tournament.start();`}</code>
+                                await tournament.start();`}</code>
                         </pre>
-                    </motion.div>
+                    </MotionDiv>
                 </div>
             </div>
         </section>
