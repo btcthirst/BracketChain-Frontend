@@ -1,4 +1,4 @@
-import { DetailsData } from "../utils/types";
+import { DetailsData } from "@/types/tournament";
 
 export function validateStep1(d: DetailsData): Partial<Record<keyof DetailsData, string>> {
     const errs: Partial<Record<keyof DetailsData, string>> = {};

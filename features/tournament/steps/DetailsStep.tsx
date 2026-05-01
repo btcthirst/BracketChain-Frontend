@@ -1,6 +1,6 @@
-import { FORMAT_INFO } from "../utils/constants";
+import { FORMAT_INFO } from "@/constants/tournament";
 import { inputCls } from "../utils/utils";
-import { DetailsData, Format } from "../utils/types";
+import { DetailsData, TournamentFormat } from "@/types/tournament";
 import { FieldGroup } from "./FieldGroup";
 import { DuplicateNameWarning } from "./DuplicateNameWarning";
 
@@ -46,9 +46,9 @@ export function DetailsStep({
                 <select
                     className={inputCls(errors.format)}
                     value={data.format}
-                    onChange={e => onChange({ format: e.target.value as Format })}
+                    onChange={e => onChange({ format: e.target.value as TournamentFormat })}
                 >
-                    {(Object.entries(FORMAT_INFO) as [Format, { label: string }][]).map(([key, { label }]) => (
+                    {(Object.entries(FORMAT_INFO) as [TournamentFormat, { label: string }][]).map(([key, { label }]) => (
                         <option key={key} value={key}>{label}</option>
                     ))}
                 </select>
