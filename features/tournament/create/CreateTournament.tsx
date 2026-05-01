@@ -7,13 +7,13 @@ import { useRouter } from "next/navigation";
 import { ROUTES } from "@/constants/links";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { MotionDiv } from "@/components/ui/motion-wraper";
-import { PAYOUT_PRESETS } from "../utils/constants";
+import { PAYOUT_PRESETS } from "@/constants/tournament";
 import { validateStep1 } from "../steps/ValidateState";
 import { DetailsStep } from "../steps/DetailsStep";
 import { PrizeStep } from "../steps/PrizeStep";
 import { ConfirmStep } from "../steps/ConfirmStep";
 import { Stepper } from "../steps/Stepper";
-import { DetailsData, PrizeData, TxState } from "../utils/types";
+import { DetailsData, PrizeData, TxState } from "@/types/tournament";
 
 export function CreateTournament() {
     const router = useRouter();

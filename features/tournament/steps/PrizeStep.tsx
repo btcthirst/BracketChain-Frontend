@@ -1,7 +1,7 @@
 import { Trophy } from "lucide-react";
 import { inputCls, totalPool } from "../utils/utils";
-import { PROTOCOL_FEE, PAYOUT_PRESETS } from "../utils/constants";
-import { DetailsData, PayoutPreset, PrizeData, Token } from "../utils/types";
+import { PROTOCOL_FEE, PAYOUT_PRESETS } from "@/constants/tournament";
+import { DetailsData, PayoutPreset, PrizeData, Token } from "@/types/tournament";
 import { FieldGroup } from "./FieldGroup";
 import { BalanceWarning } from "./BalanceWarning";
 import { useWalletBalance } from "@/hooks/useWalletBalance";

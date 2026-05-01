@@ -1,6 +1,6 @@
 import { AlertTriangle, ExternalLink, RefreshCw } from "lucide-react";
 import { EXTERNAL_LINKS } from "@/constants/links";
-import { Token } from "../utils/types";
+import { Token } from "@/types/tournament";
 
 interface Props {
     token: Token;
