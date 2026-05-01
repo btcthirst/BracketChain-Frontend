@@ -1,20 +1,26 @@
-import { Format, PayoutEntry, PayoutPreset } from "./types";
+import type { TournamentFormat, PayoutEntry, PayoutPreset } from "@/types/tournament";
+
+// ── Protocol ──────────────────────────────────────────────────────────────────
 
 export const PROTOCOL_FEE = 0.035;
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ── Format descriptions ───────────────────────────────────────────────────────
 
-export const FORMAT_INFO: Record<Format, { label: string; desc: string }> = {
+export const FORMAT_INFO: Record<TournamentFormat, { label: string; desc: string }> = {
     SE: { label: "Single Elimination", desc: "One loss and you're out. Fast-paced, great for large fields." },
     DE: { label: "Double Elimination", desc: "Players get a second chance via the losers bracket. Fairer outcome." },
     Swiss: { label: "Swiss System", desc: "All players play every round; matched by record. No eliminations." },
     RR: { label: "Round Robin", desc: "Everyone plays everyone. Best overall record wins. Ideal for small groups." },
 };
 
+// ── Payout presets ────────────────────────────────────────────────────────────
+
 export const PAYOUT_PRESETS: Record<PayoutPreset, { label: string; entries: PayoutEntry[] }> = {
     wta: {
         label: "Winner Takes All",
-        entries: [{ place: 1, label: "1st", pct: 100 }],
+        entries: [
+            { place: 1, label: "1st", pct: 100 },
+        ],
     },
     standard: {
         label: "Standard 60/25/15",
@@ -44,4 +50,3 @@ export const PAYOUT_PRESETS: Record<PayoutPreset, { label: string; entries: Payo
         ],
     },
 };
-
