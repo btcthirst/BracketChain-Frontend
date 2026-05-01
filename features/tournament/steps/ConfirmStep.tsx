@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { MotionDiv } from "@/components/ui/motion-wraper";
 import { AlertCircle, Check, CheckCircle2, Copy, Loader2, RefreshCw } from "lucide-react";
 import { ROUTES } from "@/constants/links";
-import { DetailsData, PrizeData, TxState } from "../utils/types";
-import { totalPool } from "../utils/utils";
-import { FORMAT_INFO, PAYOUT_PRESETS } from "../utils/constants";
+import { DetailsData, PrizeData, TxState } from "@/types/tournament";
+import { totalPool } from "@/features/tournament/utils/utils";
+import { FORMAT_INFO, PAYOUT_PRESETS } from "@/constants/tournament";
 import { useConfetti } from "@/hooks/useConfetti";
 
 export function ConfirmStep({

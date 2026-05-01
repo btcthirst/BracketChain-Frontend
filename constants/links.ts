@@ -1,4 +1,6 @@
-// ─── Internal routes ─────────────────────────────────────────────────────────
+// constants/links.ts
+
+// ─── Internal routes ──────────────────────────────────────────────────────────
 
 export const ROUTES = {
     home: "/",
@@ -17,4 +19,13 @@ export const EXTERNAL_LINKS = {
     twitter: "https://twitter.com/bracketchain",
     discord: "https://discord.gg/bracketchain",
     onRamp: "https://bracketchain.io/buy",
+} as const;
+
+// ─── Solana ───────────────────────────────────────────────────────────────────
+
+export const SOLANA = {
+    explorer: "https://explorer.solana.com",
+    cluster: "devnet",
+    explorerTx: (sig: string) => `https://explorer.solana.com/tx/${sig}?cluster=devnet`,
+    explorerAddr: (addr: string) => `https://explorer.solana.com/address/${addr}?cluster=devnet`,
 } as const;
