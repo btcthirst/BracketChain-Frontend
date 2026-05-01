@@ -3,7 +3,7 @@
 import { Copy, Check, Shield } from "lucide-react";
 import { useState } from "react";
 import { MotionDiv } from "./ui/motion-wraper";
-import { EXTERNAL_LINKS } from "@/constants/links";
+import {EXTERNAL_LINKS} from "@/constants/links";
 
 export function ForDevelopers() {
     const [copied, setCopied] = useState(false);
