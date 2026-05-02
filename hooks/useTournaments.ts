@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useReducer, useCallback } from "react";
+import { listIndexerTournaments, type IndexerTournament } from "@/lib/indexer";
 
 export interface Tournament {
     id: string;
@@ -36,22 +37,43 @@ function reducer(_: State, action: Action): State {
     }
 }
 
-// TODO: replace with real endpoint — GET /api/tournaments?status=live&limit=4
-async function fetchLiveTournaments(): Promise<Tournament[]> {
-    await new Promise(r => setTimeout(r, 1000));
+const USDC_DECIMALS = 1_000_000;
 
-    // Simulate occasional API failure (10% chance) for demo
-    if (Math.random() < 0.1) throw new Error("API unavailable");
+function formatStartsIn(deadlineIso: string): string {
+    const deadline = new Date(deadlineIso).getTime();
+    const ms = deadline - Date.now();
+    if (ms <= 0) return "Registration closed";
+    const totalMin = Math.floor(ms / 60_000);
+    if (totalMin < 60) return `${totalMin}m`;
+    const hours = Math.floor(totalMin / 60);
+    const mins = totalMin % 60;
+    if (hours < 24) return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    const days = Math.floor(hours / 24);
+    const hoursLeft = hours % 24;
+    return hoursLeft > 0 ? `${days}d ${hoursLeft}h` : `${days}d`;
+}
 
-    // Return empty array to test empty state:
-    // return [];
+function toUiTournament(t: IndexerTournament): Tournament {
+    // Prize pool estimate at registration time: entry_fee × max_participants.
+    // Once Completed, indexer carries grossPool — prefer that.
+    const entryFeeMicro = BigInt(t.entryFee);
+    const grossMicro = t.grossPool != null ? BigInt(t.grossPool) : entryFeeMicro * BigInt(t.maxParticipants);
+    const prizePool = Number(grossMicro) / USDC_DECIMALS;
 
-    return [
-        { id: "spring-champ-2025", name: "Spring Championship", game: "Valorant", format: "SE", prizePool: 5000, participants: 28, maxParticipants: 32, startsIn: "2h 15m" },
-        { id: "weekend-warriors-lol", name: "Weekend Warriors", game: "League of Legends", format: "DE", prizePool: 2500, participants: 12, maxParticipants: 16, startsIn: "45m" },
-        { id: "pro-circuit-finals-cs2", name: "Pro Circuit Finals", game: "CS2", format: "Swiss", prizePool: 10000, participants: 16, maxParticipants: 16, startsIn: "Starting soon" },
-        { id: "rookie-rumble-rl", name: "Rookie Rumble", game: "Rocket League", format: "RR", prizePool: 1000, participants: 6, maxParticipants: 8, startsIn: "4h 30m" },
-    ];
+    return {
+        id: t.address,
+        name: t.name,
+        // Indexer doesn't track game tag — placeholder until Tournament gains a `game` column (V1).
+        game: "On-chain",
+        // MVP is single-elim only.
+        format: "SE",
+        prizePool,
+        // Indexer doesn't expose live participant count yet (Tournament account does, but the GET endpoint
+        // doesn't surface it). Show 0 until indexer is extended; max still informative.
+        participants: 0,
+        maxParticipants: t.maxParticipants,
+        startsIn: formatStartsIn(t.registrationDeadline),
+    };
 }
 
 export function useTournaments() {
@@ -61,19 +83,21 @@ export function useTournaments() {
     const refresh = useCallback(() => retry(), []);
 
     useEffect(() => {
-        let active = true;
-
+        const ac = new AbortController();
         dispatch({ type: "FETCH_START" });
 
-        fetchLiveTournaments()
-            .then(data => {
-                if (active) dispatch({ type: "FETCH_SUCCESS", data });
+        listIndexerTournaments({ status: "Registration", limit: 4, signal: ac.signal })
+            .then(rows => {
+                if (ac.signal.aborted) return;
+                dispatch({ type: "FETCH_SUCCESS", data: rows.map(toUiTournament) });
             })
-            .catch(() => {
-                if (active) dispatch({ type: "FETCH_ERROR" });
+            .catch(err => {
+                if (ac.signal.aborted) return;
+                if (err instanceof Error && err.name === "AbortError") return;
+                dispatch({ type: "FETCH_ERROR" });
             });
 
-        return () => { active = false; };
+        return () => ac.abort();
     }, [tick]);
 
     return { state, refresh };
