@@ -1,6 +1,7 @@
 import { ExternalLink, Share2, Check } from "lucide-react";
 import { useState } from "react";
 import type { TournamentView, TournamentStatus, TournamentFormat } from "@/types/tournament";
+import { CountdownTimer } from "@/components/ui/CountdownTimer";
 
 const STATUS_CONFIG: Record<TournamentStatus, { label: string; className: string }> = {
     registration: { label: "Registration Open", className: "bg-green-100 text-green-700 border-green-200" },
@@ -76,14 +77,20 @@ export function TournamentHeader({ tournament }: { tournament: TournamentView })
                     <InfoMetric label="Prize Pool" value={`$${tournament.prizePool.toLocaleString()} ${tournament.token}`} />
                     <InfoMetric label="Participants" value={`${tournament.participants.length}/${tournament.maxParticipants}`} />
                     <InfoMetric label="Entry Fee" value={tournament.entryFee === 0 ? "Free" : `$${tournament.entryFee} ${tournament.token}`} />
-                    <InfoMetric label="Started" value={new Date(tournament.startTime).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} />
+                    <InfoMetric 
+                        label={tournament.status === "registration" ? "Starts in" : "Started"} 
+                        value={tournament.status === "registration" 
+                            ? <CountdownTimer deadline={tournament.registrationDeadline} />
+                            : new Date(tournament.startTime).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                        } 
+                    />
                 </div>
             </div>
         </div>
     );
 }
 
-function InfoMetric({ label, value }: { label: string; value: string }) {
+function InfoMetric({ label, value }: { label: string; value: string | React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1">
             <span className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</span>

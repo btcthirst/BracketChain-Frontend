@@ -2,8 +2,14 @@
 
 import { useState } from "react";
 import { ExternalLink, CheckCircle2, Loader2 } from "lucide-react";
+import { PublicKey } from "@solana/web3.js";
+import { joinTournament, startTournament, mapError } from "@bracketchain/sdk";
+import { toast } from "sonner";
 import type { TournamentView, Player } from "@/types/tournament";
 import { SOLANA } from "@/constants/links";
+import { useBracketChainClient } from "@/lib/sdk";
+import { useConfetti } from "@/hooks/useConfetti";
+import { useWalletBalance } from "@/hooks/useWalletBalance";
 
 // ── Participant list ───────────────────────────────────────────────────────────
 
@@ -63,8 +69,8 @@ function ParticipantList({
                 ))}
 
                 {/* Empty slots */}
-                {Array.from({ length: maxParticipants - participants.length }).map((_, i) => (
-                    <div key={`empty-${i}`} className="px-3 py-2 rounded-lg bg-gray-50 border border-dashed border-gray-200">
+                {Array.from({ length: Math.max(0, maxParticipants - participants.length) }).map((_, i) => (
+                    <div key={`empty-${i}`} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-dashed border-gray-200 opacity-50">
                         <span className="text-xs text-gray-300 italic">Open slot</span>
                     </div>
                 ))}
@@ -177,18 +183,84 @@ function ActionArea({
     isOrganizer: boolean;
 }) {
     const [joining, setJoining] = useState(false);
+    const [starting, setStarting] = useState(false);
     const [joined, setJoined] = useState(false);
+
+    const sdk = useBracketChainClient();
+    const { fire } = useConfetti();
+    const { usdc: walletUsdc, refresh: refreshBalance } = useWalletBalance();
 
     const isParticipant = tournament.participants.some(
         p => p.address === currentAddress
     );
 
+    const hasEnough = walletUsdc !== null && walletUsdc >= tournament.entryFee;
+
     async function handleJoin() {
+        if (!sdk) {
+            toast.error("Connect your wallet to join");
+            return;
+        }
+
         setJoining(true);
-        // TODO: real Solana tx — call program joinTournament instruction
-        await new Promise(r => setTimeout(r, 1800));
-        setJoining(false);
-        setJoined(true);
+        try {
+            await joinTournament(sdk, {
+                tournamentPda: new PublicKey(tournament.id),
+            });
+
+            toast.success("Joined tournament successfully!");
+            setJoined(true);
+            fire();
+            refreshBalance(); // Update local balance after spend
+        } catch (err: unknown) {
+            // Handle wallet rejection (not an error to show as "Failure")
+            const error = err as Error;
+            if (error.message?.toLowerCase().includes("rejected")) {
+                toast.info("Request cancelled");
+                return;
+            }
+
+            const sdkErr = mapError(err);
+
+            // Special handling for insufficient balance on devnet
+            if (sdkErr.message.includes("balance") || sdkErr.constructor.name === "InsufficientBalanceError") {
+                toast.error(
+                    <div className="flex flex-col gap-1">
+                        <span className="font-semibold">Insufficient Balance</span>
+                        <span className="text-xs opacity-90">{sdkErr.message}</span>
+                        <a
+                            href="https://spl-token-faucet.com"
+                            target="_blank"
+                            className="mt-1 text-[10px] font-bold uppercase tracking-wider text-blue-200 hover:text-white underline"
+                        >
+                            Get Devnet USDC →
+                        </a>
+                    </div>
+                );
+            } else {
+                toast.error(sdkErr.message);
+            }
+            console.error("Join failed:", err);
+        } finally {
+            setJoining(false);
+        }
+    }
+
+    async function handleStart() {
+        if (!sdk) return;
+        setStarting(true);
+        try {
+            await startTournament(sdk, {
+                tournamentPda: new PublicKey(tournament.id),
+            });
+            toast.success("Tournament started! Bracket is being initialized.");
+        } catch (err) {
+            const sdkErr = mapError(err);
+            toast.error(sdkErr.message);
+            console.error("Start failed:", err);
+        } finally {
+            setStarting(false);
+        }
     }
 
     if (tournament.status === "cancelled") return null;
@@ -207,6 +279,27 @@ function ActionArea({
     }
 
     if (isOrganizer) {
+        if (tournament.status === "registration") {
+            const isFull = tournament.participants.length >= tournament.maxParticipants;
+            const canStart = tournament.participants.length >= 2;
+
+            return (
+                <button
+                    onClick={handleStart}
+                    disabled={starting || !canStart}
+                    className={`w-full py-3 rounded-xl font-bold text-sm transition-colors ${isFull
+                            ? "bg-green-600 hover:bg-green-700 text-white"
+                            : "bg-purple-600 hover:bg-purple-700 text-white"
+                        } disabled:bg-gray-100 disabled:text-gray-400`}
+                >
+                    {starting
+                        ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Initializing...</>
+                        : isFull ? "Start Tournament" : "Start Early (Lock Bracket)"
+                    }
+                </button>
+            );
+        }
+
         return (
             <button className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-sm transition-colors">
                 Report Result
@@ -218,24 +311,43 @@ function ActionArea({
 
     if (isParticipant || joined) {
         return (
-            <button disabled className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 font-semibold text-sm cursor-default">
-                <CheckCircle2 className="w-4 h-4" />
-                Registered
-            </button>
+            <div className="flex flex-col gap-3">
+                <button disabled className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 font-semibold text-sm cursor-default">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Registered
+                </button>
+                {tournament.participants.length >= tournament.maxParticipants && (
+                    <p className="text-[11px] text-center text-gray-500 italic">
+                        Tournament is full! Waiting for organizer to start...
+                    </p>
+                )}
+            </div>
         );
     }
 
     return (
-        <button
-            onClick={handleJoin}
-            disabled={joining}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold text-sm transition-colors"
-        >
-            {joining
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Awaiting wallet…</>
-                : <>Join Tournament {tournament.entryFee > 0 ? `— ${tournament.entryFee} ${tournament.token}` : "— Free"}</>
-            }
-        </button>
+        <div className="flex flex-col gap-3">
+            {!hasEnough && currentAddress && !joining && (
+                <div className="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-700">
+                    <span className="font-bold">Low balance:</span> Your wallet has {walletUsdc?.toFixed(2) ?? "0"} USDC.
+                </div>
+            )}
+            <button
+                id="join-btn"
+                onClick={handleJoin}
+                disabled={joining || !hasEnough || tournament.participants.length >= tournament.maxParticipants}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold text-sm transition-colors"
+            >
+                {joining
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Awaiting wallet…</>
+                    : tournament.participants.length >= tournament.maxParticipants
+                        ? "Tournament Full"
+                        : !hasEnough && currentAddress
+                            ? "Insufficient Balance"
+                            : <>Join Tournament {tournament.entryFee > 0 ? `— ${tournament.entryFee} ${tournament.token}` : "— Free"}</>
+                }
+            </button>
+        </div>
     );
 }
 

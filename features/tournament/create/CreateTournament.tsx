@@ -39,7 +39,7 @@ function buildPayoutPresetVariant(preset: PayoutPreset): PayoutPresetVariant {
 
 function microUsdcFromUsd(amount: string): bigint {
     const n = parseFloat(amount);
-    if (!Number.isFinite(n) || n < 0) return 0n;
+    if (!Number.isFinite(n) || n < 0) return BigInt(0);
     return BigInt(Math.round(n * USDC_DECIMALS));
 }
 
@@ -126,7 +126,7 @@ export function CreateTournament() {
             return;
         }
 
-        const entryFeeMicro = detailsData.freeEntry ? 0n : microUsdcFromUsd(detailsData.entryFee);
+        const entryFeeMicro = detailsData.freeEntry ? BigInt(0) : microUsdcFromUsd(detailsData.entryFee);
         const deadlineSec = unixSecondsFromForm(detailsData.startDate, detailsData.startTime);
 
         setTxState("signing");
