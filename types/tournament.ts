@@ -91,6 +91,7 @@ export interface TournamentView extends Omit<TournamentSummary, "participants" |
     payouts: PayoutDistribution[];
     organizer: Player;
     startTime: string;
+    registrationDeadline: string;
     cancelledTxSignature: string | null;
     refundTxSignatures: string[];
 }
