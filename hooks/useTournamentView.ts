@@ -166,15 +166,21 @@ function buildView(
 ): TournamentView {
     const t = state.tournament as Tournament;
     const organizerAddress = t.organizer.toBase58();
+    const address = state.address.toBase58();
 
     // Defensive: clamp on-chain values into known-safe ranges before using them.
     // Treat on-chain data as untrusted (account could be malformed in adversarial setups).
-    const maxParticipants = Math.max(
+    let maxParticipants = Math.max(
         MIN_PARTICIPANTS,
         Math.min(MAX_PARTICIPANTS, Number(t.maxParticipants) || MIN_PARTICIPANTS),
     );
 
     const status = STATUS_MAP[getEnumKind(t.status as never) as TournamentStatusKind];
+
+    // DEBUG OVERRIDE: Shorten specific tournament for testing (only during registration)
+    if (address === "DRVqTngSGUsrmZQZvbw1xQ2fkxcx2hEq9uXt7pvu4yHg" && status === "registration") {
+        maxParticipants = 2;
+    }
     const presetKind = getEnumKind(t.payoutPreset as never) as keyof typeof PAYOUT_PRESETS;
 
     const entryFeeUsdc = Number(t.entryFee.toString()) / USDC_DECIMALS;
@@ -217,6 +223,7 @@ function buildView(
         ),
         organizer: makePlayer(organizerAddress, organizerAddress),
         startTime: new Date(Number(t.createdAt.toString()) * 1000).toISOString(),
+        registrationDeadline: new Date(Number(t.registrationDeadline.toString()) * 1000).toISOString(),
         cancelledTxSignature: null, // Lean indexer doesn't track cancel tx — V1.
         refundTxSignatures,
     };
