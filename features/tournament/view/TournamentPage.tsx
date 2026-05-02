@@ -154,8 +154,6 @@ export function TournamentPage({ id }: { id: string }) {
 
                 {state.status === "success" && (() => {
                     const t = state.data;
-                    const hasBracket = t.matches && t.matches.length > 0;
-
                     return (
                         <>
                             {t.status === "cancelled" && (
@@ -175,7 +173,7 @@ export function TournamentPage({ id }: { id: string }) {
                                         <div className="border-b border-gray-100 px-5 py-3">
                                             <h2 className="text-sm font-semibold text-gray-700">Bracket</h2>
                                         </div>
-                                        {!hasBracket
+                                        {!t.matches || t.matches.length === 0
                                             ? <BracketEmpty
                                                 onJoin={t.status === "registration"
                                                     ? () => document.getElementById("join-btn")?.click()

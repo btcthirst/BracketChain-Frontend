@@ -4,6 +4,11 @@ import { useState } from "react";
 import { ExternalLink, X } from "lucide-react";
 import type { Match, Player } from "@/types/tournament";
 import { SOLANA } from "@/constants/links";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // ── Match node ────────────────────────────────────────────────────────────────
 
@@ -41,18 +46,51 @@ function MatchNode({
     const isPulsing = match.status === "in_progress";
 
     return (
-        <button
-            onClick={() => onClick(match)}
-            className={`relative w-44 border-2 rounded-lg overflow-hidden bg-white transition-all ${statusRing} ${isPulsing ? "animate-pulse-border" : ""}`}
-        >
-            {isPulsing && (
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500 animate-ping" />
-            )}
-            <div className="divide-y divide-gray-100">
-                <PlayerSlot player={match.playerA} isWinner={match.winner?.address === match.playerA?.address} />
-                <PlayerSlot player={match.playerB} isWinner={match.winner?.address === match.playerB?.address} />
-            </div>
-        </button>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <button
+                    onClick={() => onClick(match)}
+                    className={`relative w-44 border-2 rounded-lg overflow-hidden bg-white transition-all ${statusRing} ${isPulsing ? "animate-pulse-border" : ""}`}
+                >
+                    {isPulsing && (
+                        <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+                    )}
+                    <div className="divide-y divide-gray-100">
+                        <PlayerSlot player={match.playerA} isWinner={match.winner?.address === match.playerA?.address} />
+                        <PlayerSlot player={match.playerB} isWinner={match.winner?.address === match.playerB?.address} />
+                    </div>
+                </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="p-3 min-w-48 bg-white border border-gray-200 shadow-xl text-gray-900">
+                <div className="flex flex-col gap-2">
+                    <div className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
+                        Round {match.round} • Match {match.position + 1}
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        {[match.playerA, match.playerB].map((p, i) => (
+                            <div key={i} className="flex items-center justify-between gap-4">
+                                <span className={`text-xs font-mono ${match.winner?.address === p?.address ? "text-blue-600 font-bold" : "text-gray-600"}`}>
+                                    {p?.display ?? "TBD"}
+                                </span>
+                                {match.result && (
+                                    <span className="text-xs font-bold">
+                                        {i === 0 ? match.result.scoreA : match.result.scoreB}
+                                    </span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mt-1 pt-1 border-t border-gray-100 flex items-center justify-between">
+                        <span className="text-[10px] text-gray-400 uppercase">Status</span>
+                        <span className={`text-[10px] font-bold uppercase ${match.status === "in_progress" ? "text-blue-500" :
+                            match.status === "completed" ? "text-green-500" : "text-gray-400"
+                            }`}>
+                            {match.status.replace("_", " ")}
+                        </span>
+                    </div>
+                </div>
+            </TooltipContent>
+        </Tooltip>
     );
 }
 

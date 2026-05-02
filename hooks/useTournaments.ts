@@ -1,9 +1,10 @@
 "use client";
 
-import { useConnection } from "@solana/wallet-adapter-react";
-import { PublicKey } from "@solana/web3.js";
+import { useBracketChainClient } from "@/lib/sdk";
 import { listIndexerTournaments } from "@/lib/indexer";
 import { toUiTournament, type Tournament } from "@/lib/tournament";
+import { getTournament } from "@bracketchain/sdk";
+import { PublicKey } from "@solana/web3.js";
 import { useCallback, useEffect, useReducer } from "react";
 
 export type { Tournament };
@@ -41,16 +42,12 @@ function reducer(state: State, action: Action): State {
     }
 }
 
-/** Offset to `participantCount: u16` in Tournament account data (8 discriminator + 84 fields) */
-const PARTICIPANT_COUNT_OFFSET = 92;
-
 export function useTournaments() {
-    const { connection } = useConnection();
+    const client = useBracketChainClient();
     const [state, dispatch] = useReducer(reducer, { status: "loading" });
     const [tick, retry] = useReducer((n: number) => n + 1, 0);
 
     const refresh = useCallback(() => retry(), []);
-
     useEffect(() => {
         const ac = new AbortController();
         dispatch({ type: "FETCH_START" });
@@ -61,31 +58,29 @@ export function useTournaments() {
                 const tournaments = rows.map(r => toUiTournament(r));
                 dispatch({ type: "FETCH_SUCCESS", data: tournaments });
 
-                // Enrich with live blockchain data for participant counts
-                if (tournaments.length > 0) {
+                // Enrich with live blockchain data for participant counts using SDK
+                if (tournaments.length > 0 && client) {
                     try {
-                        const keys = tournaments.map(t => {
-                            try {
-                                return t.id && t.id.length >= 32 ? new PublicKey(t.id) : null;
-                            } catch {
-                                return null;
-                            }
-                        })
-                            .filter((key): key is PublicKey => key !== null)
-                        const infos = await connection.getMultipleAccountsInfo(keys);
                         const counts: Record<string, number> = {};
 
-                        infos.forEach((info, i) => {
-                            if (info && info.data.length >= PARTICIPANT_COUNT_OFFSET + 2) {
-                                // Read u16 Little Endian
-                                const count = info.data.readUInt16LE(PARTICIPANT_COUNT_OFFSET);
-                                counts[tournaments[i].id] = count;
+                        await Promise.all(tournaments.map(async (t) => {
+                            if (!t.id || t.id.startsWith("TestPDA") || t.id.length < 32) return;
+                            try {
+                                const pubkey = new PublicKey(t.id);
+                                const data = await getTournament(client, pubkey);
+                                if (data) {
+                                    counts[t.id] = data.participantCount;
+                                }
+                            } catch (e) {
+                                console.warn(`Failed to fetch count for ${t.id}:`, e);
                             }
-                        });
+                        }));
 
-                        dispatch({ type: "UPDATE_PARTICIPANTS", counts });
+                        if (!ac.signal.aborted) {
+                            dispatch({ type: "UPDATE_PARTICIPANTS", counts });
+                        }
                     } catch (err) {
-                        console.warn("Failed to enrich participant counts from blockchain:", err);
+                        console.warn("Failed to enrich participant counts:", err);
                     }
                 }
             })
@@ -96,7 +91,7 @@ export function useTournaments() {
             });
 
         return () => ac.abort();
-    }, [tick, connection]);
+    }, [tick, client]);
 
     return { state, refresh };
 }
