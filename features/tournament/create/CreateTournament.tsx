@@ -13,14 +13,55 @@ import { DetailsStep } from "../steps/DetailsStep";
 import { PrizeStep } from "../steps/PrizeStep";
 import { ConfirmStep } from "../steps/ConfirmStep";
 import { Stepper } from "../steps/Stepper";
-import { DetailsData, PrizeData, TxState } from "@/types/tournament";
+import { DetailsData, PayoutPreset, PrizeData, TxState } from "@/types/tournament";
+import { useBracketChainClient } from "@/lib/sdk";
+import {
+    BracketChainSDKError,
+    createTournament,
+    payoutPreset,
+    type PayoutPresetVariant,
+} from "@bracketchain/sdk";
+
+const USDC_DECIMALS = 1_000_000;
+
+const PAYOUT_PRESET_MAP: Record<Exclude<PayoutPreset, "custom">, Parameters<typeof payoutPreset>[0]> = {
+    wta: "winnerTakesAll",
+    standard: "standard",
+    deep: "deep",
+};
+
+function buildPayoutPresetVariant(preset: PayoutPreset): PayoutPresetVariant {
+    if (preset === "custom") {
+        throw new Error("Custom payout presets are not supported in MVP. Choose WTA, Standard, or Deep.");
+    }
+    return payoutPreset(PAYOUT_PRESET_MAP[preset]);
+}
+
+function microUsdcFromUsd(amount: string): bigint {
+    const n = parseFloat(amount);
+    if (!Number.isFinite(n) || n < 0) return 0n;
+    return BigInt(Math.round(n * USDC_DECIMALS));
+}
+
+function unixSecondsFromForm(date: string, time: string): number {
+    return Math.floor(new Date(`${date}T${time}:00Z`).getTime() / 1000);
+}
+
+function describeError(err: unknown): string {
+    if (err instanceof BracketChainSDKError) return err.message;
+    if (err instanceof Error) return err.message;
+    return String(err);
+}
 
 export function CreateTournament() {
     const router = useRouter();
     const { connected } = useWallet();
     const { setVisible } = useWalletModal();
+    const client = useBracketChainClient();
 
     const [step, setStep] = useState(0);
+    const [tournamentAddress, setTournamentAddress] = useState<string | null>(null);
+    const [txSignature, setTxSignature] = useState<string | null>(null);
     const [detailsData, setDetailsData] = useState<DetailsData>({
         name: "",
         format: "SE",
@@ -57,22 +98,62 @@ export function CreateTournament() {
 
     const handleConfirm = useCallback(async () => {
         setTxError("");
-        setTxState("signing");
-        await new Promise(r => setTimeout(r, 1500));
-        setTxState("pending");
-        await new Promise(r => setTimeout(r, 2000));
-        if (Math.random() < 0.2) {
-            setTxError("Transaction simulation failed: insufficient lamports for fee payment.");
+
+        if (!client) {
+            setTxError("Connect your wallet first.");
             setTxState("error");
             return;
         }
-        setTxState("success");
-    }, []);
+
+        // MVP scope guards — UI still exposes options the program rejects.
+        if (detailsData.format !== "SE") {
+            setTxError("Only Single Elimination is supported in MVP.");
+            setTxState("error");
+            return;
+        }
+        if (prizeData.token !== "USDC") {
+            setTxError("Only USDC is supported in MVP.");
+            setTxState("error");
+            return;
+        }
+
+        let presetVariant: PayoutPresetVariant;
+        try {
+            presetVariant = buildPayoutPresetVariant(prizeData.payoutPreset);
+        } catch (err) {
+            setTxError(describeError(err));
+            setTxState("error");
+            return;
+        }
+
+        const entryFeeMicro = detailsData.freeEntry ? 0n : microUsdcFromUsd(detailsData.entryFee);
+        const deadlineSec = unixSecondsFromForm(detailsData.startDate, detailsData.startTime);
+
+        setTxState("signing");
+        try {
+            const result = await createTournament(client, {
+                name: detailsData.name.trim(),
+                entryFee: entryFeeMicro,
+                maxParticipants: detailsData.maxParticipants,
+                payoutPreset: presetVariant,
+                registrationDeadline: deadlineSec,
+            });
+
+            setTournamentAddress(result.tournamentPda.toBase58());
+            setTxSignature(result.txSignature);
+            setTxState("success");
+        } catch (err) {
+            setTxError(describeError(err));
+            setTxState("error");
+        }
+    }, [client, detailsData, prizeData]);
 
     // Reset tx state so user can try again cleanly
     const handleRetry = useCallback(() => {
         setTxState("idle");
         setTxError("");
+        setTournamentAddress(null);
+        setTxSignature(null);
     }, []);
 
     return (
@@ -125,6 +206,8 @@ export function CreateTournament() {
                             onRetry={handleRetry}
                             txState={txState}
                             txError={txError}
+                            tournamentAddress={tournamentAddress}
+                            txSignature={txSignature}
                         />
                     )}
                 </MotionDiv>
