@@ -143,7 +143,6 @@ export function TournamentPage({ id }: { id: string }) {
     const { state, refresh } = useTournamentView(id);
     const { publicKey } = useWallet();
     const currentAddress = publicKey?.toBase58() ?? null;
-
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             <Navbar />
@@ -155,7 +154,7 @@ export function TournamentPage({ id }: { id: string }) {
 
                 {state.status === "success" && (() => {
                     const t = state.data;
-                    const hasParticipants = t.participants.length > 0;
+                    const hasBracket = t.matches && t.matches.length > 0;
 
                     return (
                         <>
@@ -176,7 +175,7 @@ export function TournamentPage({ id }: { id: string }) {
                                         <div className="border-b border-gray-100 px-5 py-3">
                                             <h2 className="text-sm font-semibold text-gray-700">Bracket</h2>
                                         </div>
-                                        {!hasParticipants
+                                        {!hasBracket
                                             ? <BracketEmpty
                                                 onJoin={t.status === "registration"
                                                     ? () => document.getElementById("join-btn")?.click()
