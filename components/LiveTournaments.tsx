@@ -6,6 +6,7 @@ import { MotionDiv } from "@/components/ui/motion-wraper";
 import { ROUTES } from "@/constants/links";
 import { useTournaments } from "@/hooks/useTournaments";
 import type { Tournament } from "@/hooks/useTournaments";
+import { memo } from "react";
 
 // ── Skeleton card ─────────────────────────────────────────────────────────────
 
@@ -150,9 +151,9 @@ function TournamentCard({ tournament, index }: { tournament: Tournament; index: 
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-export function LiveTournaments() {
+function LiveTournamentsComponent() {
     const { state, refresh } = useTournaments();
-
+    console.log("state: ", state);
     return (
         <section className="bg-gray-50 py-20">
             <div className="container mx-auto px-6">
@@ -212,3 +213,7 @@ export function LiveTournaments() {
         </section>
     );
 }
+
+export const LiveTournaments = memo(() => <LiveTournamentsComponent />);
+
+LiveTournaments.displayName = "LiveTournaments";
