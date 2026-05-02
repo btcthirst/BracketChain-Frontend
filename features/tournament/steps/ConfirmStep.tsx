@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { MotionDiv } from "@/components/ui/motion-wraper";
-import { AlertCircle, Check, CheckCircle2, Copy, Loader2, RefreshCw } from "lucide-react";
-import { ROUTES } from "@/constants/links";
+import { AlertCircle, Check, CheckCircle2, Copy, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { ROUTES, SOLANA } from "@/constants/links";
 import { DetailsData, PrizeData, TxState } from "@/types/tournament";
 import { totalPool } from "@/features/tournament/utils/utils";
 import { FORMAT_INFO, PAYOUT_PRESETS } from "@/constants/tournament";
@@ -14,6 +14,8 @@ export function ConfirmStep({
     onRetry,
     txState,
     txError,
+    tournamentAddress,
+    txSignature,
 }: {
     detailsData: DetailsData;
     prizeData: PrizeData;
@@ -21,33 +23,42 @@ export function ConfirmStep({
     onRetry: () => void;
     txState: TxState;
     txError: string;
+    tournamentAddress: string | null;
+    txSignature: string | null;
 }) {
     const pool = totalPool(prizeData.deposit, detailsData.entryFee, detailsData.maxParticipants, detailsData.freeEntry);
     const cost = (parseFloat(prizeData.deposit) || 0) + 0.001;
     const [copied, setCopied] = useState(false);
     const { fire: fireConfetti } = useConfetti();
 
-    // Fire confetti once on success
+    // Fire confetti once on success — defer to next tick so React finishes its commit
+    // before canvas-confetti mutates document.body. Without the deferral, React 19 +
+    // motion's unmount path can race with confetti's DOM appends and throw
+    // `removeChild` NotFoundError in dev mode.
     useEffect(() => {
-        if (txState === "success") {
-            fireConfetti();
-        }
+        if (txState !== "success") return;
+        const t = setTimeout(() => { fireConfetti(); }, 0);
+        return () => clearTimeout(t);
     }, [txState, fireConfetti]);
 
-    function copyId() {
-        navigator.clipboard.writeText("demo-tournament-id-123");
+    const shareId = tournamentAddress ?? "";
+    const shareUrl = shareId
+        ? `${typeof window !== "undefined" ? window.location.origin : "app.bracketchain.io"}${ROUTES.tournament(shareId)}`
+        : "";
+
+    function copyShareUrl() {
+        if (!shareUrl) return;
+        navigator.clipboard.writeText(shareUrl);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     }
 
     // ── Success screen ────────────────────────────────────────────────────────
+    // Plain div (no MotionDiv) — motion's unmount race with canvas-confetti causes
+    // `removeChild` NotFoundError in React 19 dev mode. CSS fade-in is enough.
     if (txState === "success") {
         return (
-            <MotionDiv
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex flex-col items-center gap-5 py-12 text-center"
-            >
+            <div className="flex flex-col items-center gap-5 py-12 text-center animate-in fade-in zoom-in-95 duration-200">
                 <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
                     <CheckCircle2 className="w-10 h-10 text-green-600" />
                 </div>
@@ -55,22 +66,37 @@ export function ConfirmStep({
                 <p className="text-gray-500 max-w-sm">
                     Your tournament is now live on Solana. Share the link with participants.
                 </p>
-                <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-4 py-2 font-mono text-sm text-gray-700">
-                    app.bracketchain.io/t/demo-tournament-id-123
-                    <button onClick={copyId} className="text-gray-400 hover:text-gray-700">
-                        {copied
-                            ? <Check className="w-4 h-4 text-green-500" />
-                            : <Copy className="w-4 h-4" />
-                        }
-                    </button>
-                </div>
-                <a
-                    href={ROUTES.tournament("demo-tournament-id-123")}
-                    className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
-                >
-                    View Tournament →
-                </a>
-            </MotionDiv>
+                {shareUrl && (
+                    <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-4 py-2 font-mono text-xs text-gray-700 max-w-full overflow-hidden">
+                        <span className="truncate">{shareUrl}</span>
+                        <button onClick={copyShareUrl} className="text-gray-400 hover:text-gray-700 shrink-0">
+                            {copied
+                                ? <Check className="w-4 h-4 text-green-500" />
+                                : <Copy className="w-4 h-4" />
+                            }
+                        </button>
+                    </div>
+                )}
+                {txSignature && (
+                    <a
+                        href={SOLANA.explorerTx(txSignature)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700"
+                    >
+                        View transaction on Solana Explorer
+                        <ExternalLink className="w-3 h-3" />
+                    </a>
+                )}
+                {tournamentAddress && (
+                    <a
+                        href={ROUTES.tournament(tournamentAddress)}
+                        className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
+                    >
+                        View Tournament →
+                    </a>
+                )}
+            </div>
         );
     }
 
