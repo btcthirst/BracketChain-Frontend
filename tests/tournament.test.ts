@@ -31,8 +31,9 @@ describe("Tournament Utilities", () => {
             address: "addr123",
             organizer: "org123",
             name: "Test Tournament",
-            usdcMint: "usdc123",
+            tokenMint: "usdc123",
             entryFee: "1000000", // 1 USDC
+            organizerDeposit: "0",
             maxParticipants: 16,
             payoutPreset: "Standard",
             registrationDeadline: "2026-05-02T15:00:00Z",
