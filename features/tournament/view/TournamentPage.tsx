@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { RefreshCw, AlertTriangle, ExternalLink } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -10,6 +11,8 @@ import { useTournamentView } from "../../../hooks/useTournamentView";
 import { TournamentHeader } from "./TournamentHeader";
 import { BracketView, BracketSkeleton, BracketEmpty } from "./BracketView";
 import { TournamentSidebar, SidebarSkeleton } from "./TournamentSidebar";
+import { ReportResultModal } from "./ReportResultModal";
+import type { Match } from "@/types/tournament";
 
 // ── Edge state: not found ─────────────────────────────────────────────────────
 
@@ -143,6 +146,12 @@ export function TournamentPage({ id }: { id: string }) {
     const { state, refresh } = useTournamentView(id);
     const { publicKey } = useWallet();
     const currentAddress = publicKey?.toBase58() ?? null;
+    const [reportingMatch, setReportingMatch] = useState<Match | null>(null);
+
+    const isOrganizer =
+        state.status === "success" &&
+        state.data.organizer.address === currentAddress;
+
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             <Navbar />
@@ -187,7 +196,11 @@ export function TournamentPage({ id }: { id: string }) {
                                                     p => p.address === currentAddress
                                                 )}
                                             />
-                                            : <BracketView matches={t.matches} />
+                                            : <BracketView
+                                                matches={t.matches}
+                                                isOrganizer={isOrganizer && t.status === "in_progress" && t.bracketReady}
+                                                onReport={setReportingMatch}
+                                            />
                                         }
                                     </div>
 
@@ -200,6 +213,15 @@ export function TournamentPage({ id }: { id: string }) {
                                     />
                                 </div>
                             </div>
+
+                            {reportingMatch && (
+                                <ReportResultModal
+                                    match={reportingMatch}
+                                    tournament={t}
+                                    onClose={() => setReportingMatch(null)}
+                                    onSuccess={refresh}
+                                />
+                            )}
                         </>
                     );
                 })()}
