@@ -207,6 +207,18 @@ function buildView(
         .filter((p) => p.kind === "Refund")
         .map((p) => p.txSignature);
 
+    // Bracket-init progress. On-chain `matches_initialized` ramps up across
+    // start_tournament chunks; report_result requires status === Active, which
+    // only fires once the last chunk lands. Surface explicitly so UI can gate
+    // the report flow even though the status pill says "in_progress" already.
+    const matchesInitialized = Number(t.matchesInitialized) || 0;
+    const totalMatches = Number(t.totalMatches) || 0;
+    const onChainStatusKind = getEnumKind(t.status as never) as TournamentStatusKind;
+    const bracketReady =
+        onChainStatusKind === "active" ||
+        onChainStatusKind === "completed" ||
+        (totalMatches > 0 && matchesInitialized >= totalMatches);
+
     return {
         id: state.address.toBase58(),
         name: t.name,
@@ -234,6 +246,9 @@ function buildView(
         registrationDeadline: new Date(Number(t.registrationDeadline.toString()) * 1000).toISOString(),
         cancelledTxSignature: null, // Lean indexer doesn't track cancel tx — V1.
         refundTxSignatures,
+        matchesInitialized,
+        totalMatches,
+        bracketReady,
     };
 }
 
