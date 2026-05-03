@@ -27,7 +27,7 @@ function PlayerSlot({ player, isWinner }: { player: Player | null; isWinner: boo
 
 // ── Hover tooltip ─────────────────────────────────────────────────────────────
 
-function MatchTooltip({ match }: { match: Match }) {
+function MatchTooltip({ match, organizerHint }: { match: Match; organizerHint: boolean }) {
     const statusLabel = {
         completed: "Completed",
         in_progress: "In Progress",
@@ -89,7 +89,9 @@ function MatchTooltip({ match }: { match: Match }) {
                 </div>
             )}
 
-            <p className="text-gray-500 mt-2 text-[10px]">Click for full details</p>
+            <p className="text-gray-500 mt-2 text-[10px]">
+                {organizerHint ? "Click to report winner" : "Click for full details"}
+            </p>
         </div>
     );
 }
@@ -99,16 +101,20 @@ function MatchTooltip({ match }: { match: Match }) {
 function MatchNode({
     match,
     onClick,
+    organizerActionable,
 }: {
     match: Match;
     onClick: (m: Match) => void;
+    organizerActionable: boolean;
 }) {
     const [hovered, setHovered] = useState(false);
     const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const statusRing = {
         completed: "border-green-300 hover:border-green-400",
-        in_progress: "border-blue-400 hover:border-blue-500 shadow-blue-100 shadow-md",
+        in_progress: organizerActionable
+            ? "border-purple-400 hover:border-purple-500 shadow-purple-100 shadow-md"
+            : "border-blue-400 hover:border-blue-500 shadow-blue-100 shadow-md",
         pending: "border-gray-200 hover:border-gray-300",
     }[match.status];
 
@@ -125,7 +131,7 @@ function MatchNode({
 
     return (
         <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-            {hovered && <MatchTooltip match={match} />}
+            {hovered && <MatchTooltip match={match} organizerHint={organizerActionable} />}
             <button
                 onClick={() => onClick(match)}
                 className={`relative w-44 border-2 rounded-lg overflow-hidden bg-white transition-all ${statusRing} ${isPulsing ? "animate-pulse-border" : ""}`}
@@ -288,8 +294,25 @@ export function BracketEmpty({
 
 // ── Main bracket ──────────────────────────────────────────────────────────────
 
-export function BracketView({ matches }: { matches: Match[] }) {
+export function BracketView({
+    matches,
+    isOrganizer = false,
+    onReport,
+}: {
+    matches: Match[];
+    isOrganizer?: boolean;
+    onReport?: (m: Match) => void;
+}) {
     const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+
+    const handleMatchClick = (m: Match) => {
+        // Organizer + active match → fire report flow; otherwise read-only modal.
+        if (isOrganizer && m.status === "in_progress" && onReport) {
+            onReport(m);
+            return;
+        }
+        setSelectedMatch(m);
+    };
 
     const rounds = Array.from(new Set(matches.map(m => m.round))).sort();
 
@@ -314,7 +337,8 @@ export function BracketView({ matches }: { matches: Match[] }) {
                                         <MatchNode
                                             key={match.id}
                                             match={match}
-                                            onClick={setSelectedMatch}
+                                            onClick={handleMatchClick}
+                                            organizerActionable={isOrganizer && match.status === "in_progress"}
                                         />
                                     ))}
                                 </div>
