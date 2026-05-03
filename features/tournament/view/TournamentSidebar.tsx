@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ExternalLink, CheckCircle2, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { PublicKey } from "@solana/web3.js";
 import { joinTournament, startTournament, mapError } from "@bracketchain/sdk";
@@ -81,10 +81,17 @@ function ParticipantList({
 
 // ── Escrow / payout panel ─────────────────────────────────────────────────────
 
-function EscrowPanel({ tournament }: { tournament: TournamentView }) {
-    // "View Payouts" expander — only relevant when completed
-    const [payoutsExpanded, setPayoutsExpanded] = useState(false);
-
+function EscrowPanel({
+    tournament,
+    payoutsExpanded,
+    setPayoutsExpanded,
+    payoutsRef,
+}: {
+    tournament: TournamentView;
+    payoutsExpanded: boolean;
+    setPayoutsExpanded: (v: boolean) => void;
+    payoutsRef: React.RefObject<HTMLDivElement | null>;
+}) {
     const total = tournament.prizePool;
     const afterFee = total * 0.965;
 
@@ -127,9 +134,9 @@ function EscrowPanel({ tournament }: { tournament: TournamentView }) {
 
             {/* Completed payouts — inline expander */}
             {tournament.status === "completed" && (
-                <div id="payouts-section" className="flex flex-col gap-1.5">
+                <div ref={payoutsRef} className="flex flex-col gap-1.5">
                     <button
-                        onClick={() => setPayoutsExpanded(v => !v)}
+                        onClick={() => setPayoutsExpanded(!payoutsExpanded)}
                         className="flex items-center justify-between w-full text-xs font-semibold text-gray-600 uppercase tracking-wide hover:text-gray-800 transition-colors"
                     >
                         <span>Payout Transactions</span>
@@ -201,11 +208,13 @@ function ActionArea({
     currentAddress,
     isOrganizer,
     onJoinSuccess,
+    onViewPayouts,
 }: {
     tournament: TournamentView;
     currentAddress: string | null;
     isOrganizer: boolean;
     onJoinSuccess: () => void;
+    onViewPayouts: () => void;
 }) {
     const [joining, setJoining] = useState(false);
     const [starting, setStarting] = useState(false);
@@ -292,16 +301,12 @@ function ActionArea({
 
     if (tournament.status === "cancelled") return null;
 
-    // ── Completed: View Payouts button scrolls to inline expander ────────────
+    // ── Completed: View Payouts button expands inline list + scrolls to it ──
     if (tournament.status === "completed") {
         return (
             <button
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-                onClick={() => {
-                    document.getElementById("payouts-section")?.scrollIntoView({ behavior: "smooth" });
-                    // Also expand automatically
-                    document.getElementById("payouts-toggle")?.click();
-                }}
+                onClick={onViewPayouts}
             >
                 View Payouts →
             </button>
@@ -333,10 +338,55 @@ function ActionArea({
             );
         }
 
+        // PendingBracketInit — start_tournament is chunked; when init didn't
+        // finish in one tx (large brackets, RPC hiccups), tournament is stuck
+        // here. SDK is idempotent — calling startTournament again resumes from
+        // matchesInitialized. Without this branch the organizer is stranded:
+        // Start button is gone (status no longer Registration), report flow
+        // fails on-chain (TournamentNotActive).
+        if (!tournament.bracketReady) {
+            const pct = tournament.totalMatches > 0
+                ? Math.round((tournament.matchesInitialized / tournament.totalMatches) * 100)
+                : 0;
+            return (
+                <div className="flex flex-col gap-3">
+                    <div className="px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 leading-relaxed">
+                        <p className="font-semibold mb-1">Bracket initializing</p>
+                        <p className="mb-2">
+                            {tournament.matchesInitialized} / {tournament.totalMatches} matches written on-chain.
+                            Large brackets need multiple transactions.
+                        </p>
+                        <div className="w-full h-1.5 bg-amber-100 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                                style={{ width: `${pct}%` }}
+                            />
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleStart}
+                        disabled={starting}
+                        className="w-full py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                    >
+                        {starting
+                            ? <span className="flex items-center justify-center gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin" /> Continuing…
+                            </span>
+                            : "Continue Bracket Init"
+                        }
+                    </button>
+                </div>
+            );
+        }
+
+        // Bracket fully initialized — reporting happens by clicking matches
+        // in the bracket. Sidebar shows an info hint instead of a button to
+        // keep one canonical entry point.
         return (
-            <button className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-sm transition-colors">
-                Report Result
-            </button>
+            <div className="px-4 py-3 rounded-xl bg-purple-50 border border-purple-200 text-xs text-purple-800 leading-relaxed">
+                <p className="font-semibold mb-1">Reporting results</p>
+                <p>Click an <span className="font-semibold">active match</span> (purple, pulsing) in the bracket to pick its winner. Final match auto-distributes the prize pool.</p>
+            </div>
         );
     }
 
@@ -412,6 +462,19 @@ export function TournamentSidebar({
     onJoinSuccess: () => void;
 }) {
     const isOrganizer = tournament.organizer.address === currentAddress;
+    // Lifted from EscrowPanel so the "View Payouts" CTA in ActionArea can both
+    // expand the list and scroll to it without DOM-id juggling.
+    const [payoutsExpanded, setPayoutsExpanded] = useState(false);
+    const payoutsRef = useRef<HTMLDivElement | null>(null);
+
+    function handleViewPayouts() {
+        setPayoutsExpanded(true);
+        // rAF — scroll after React commits the expanded list, otherwise the
+        // target's height changes mid-scroll and we land short.
+        requestAnimationFrame(() => {
+            payoutsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+    }
 
     return (
         <aside className="flex flex-col gap-6 p-5 bg-white border border-gray-200 rounded-2xl h-fit">
@@ -420,13 +483,19 @@ export function TournamentSidebar({
                 currentAddress={currentAddress}
                 maxParticipants={tournament.maxParticipants}
             />
-            <EscrowPanel tournament={tournament} />
+            <EscrowPanel
+                tournament={tournament}
+                payoutsExpanded={payoutsExpanded}
+                setPayoutsExpanded={setPayoutsExpanded}
+                payoutsRef={payoutsRef}
+            />
             <OrganizerPanel organizer={tournament.organizer} />
             <ActionArea
                 tournament={tournament}
                 currentAddress={currentAddress}
                 isOrganizer={isOrganizer}
                 onJoinSuccess={onJoinSuccess}
+                onViewPayouts={handleViewPayouts}
             />
         </aside>
     );
