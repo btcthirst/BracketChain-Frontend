@@ -143,7 +143,6 @@ export function TournamentPage({ id }: { id: string }) {
     const { state, refresh } = useTournamentView(id);
     const { publicKey } = useWallet();
     const currentAddress = publicKey?.toBase58() ?? null;
-
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             <Navbar />
