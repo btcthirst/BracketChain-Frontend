@@ -9,7 +9,9 @@ export type IndexerTournamentStatus =
 
 export type IndexerPayoutPreset = "WinnerTakesAll" | "Standard" | "Deep";
 
-export type IndexerPayoutKind = "Prize" | "Refund" | "Fee";
+// `OrganizerRefund` (added 2026-05-03 in Phase 2.5) is the deposit returned to
+// the organizer on cancel; distinct from per-participant `Refund`.
+export type IndexerPayoutKind = "Prize" | "Refund" | "Fee" | "OrganizerRefund";
 
 // BigInt fields are serialized as decimal strings by the indexer.
 // See bracket-chain-indexer/src/tournaments/tournaments.controller.ts.
@@ -17,8 +19,12 @@ export interface IndexerTournament {
     address: string;
     organizer: string;
     name: string;
-    usdcMint: string;
+    /// SPL Token mint for entries + prizes. Renamed from `usdcMint` 2026-05-03 —
+    /// the program is mint-agnostic; UI defaults to USDC for MVP demo.
+    tokenMint: string;
     entryFee: string;
+    /// Phase 2.5: optional organizer top-up to the prize pool. "0" when not set.
+    organizerDeposit: string;
     maxParticipants: number;
     payoutPreset: IndexerPayoutPreset;
     registrationDeadline: string;

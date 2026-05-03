@@ -77,12 +77,15 @@ export function TournamentHeader({ tournament }: { tournament: TournamentView })
                     <InfoMetric label="Prize Pool" value={`$${tournament.prizePool.toLocaleString()} ${tournament.token}`} />
                     <InfoMetric label="Participants" value={`${tournament.participants.length}/${tournament.maxParticipants}`} />
                     <InfoMetric label="Entry Fee" value={tournament.entryFee === 0 ? "Free" : `$${tournament.entryFee} ${tournament.token}`} />
-                    <InfoMetric 
-                        label={tournament.status === "registration" ? "Starts in" : "Started"} 
-                        value={tournament.status === "registration" 
+                    <InfoMetric
+                        // Counts down to `registration_deadline`, NOT to a tournament
+                        // start time — start is organizer-triggered (or "Start Early")
+                        // and there is no on-chain auto-start.
+                        label={tournament.status === "registration" ? "Registration closes in" : "Started"}
+                        value={tournament.status === "registration"
                             ? <CountdownTimer deadline={tournament.registrationDeadline} />
                             : new Date(tournament.startTime).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
-                        } 
+                        }
                     />
                 </div>
             </div>
