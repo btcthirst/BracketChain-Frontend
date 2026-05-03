@@ -3,9 +3,11 @@
 import { useRef } from "react";
 import { motion, useInView } from "motion/react";
 import { RefreshCw } from "lucide-react";
+import Link from "next/link";
 import { useStats } from "@/hooks/useStats";
 import type { StatsData } from "@/hooks/useStats";
 import { AnimatedCounter } from "./AnimatedCounter";
+import { ROUTES } from "@/constants/links";
 
 interface StatConfig {
     label: string;
@@ -49,12 +51,35 @@ function StatsError({ onRetry }: { onRetry: () => void }) {
     );
 }
 
+// ── Zero-state CTA (shows when all metrics are 0 — pre-launch) ───────────────
+
+function ZeroStateCta() {
+    return (
+        <div className="col-span-2 lg:col-span-4 flex flex-col items-center gap-2 pt-4">
+            <p className="text-sm text-gray-500">
+                No tournaments yet —{" "}
+                <Link
+                    href={ROUTES.create}
+                    className="text-blue-600 hover:text-blue-700 font-semibold hover:underline"
+                >
+                    be the first to create one
+                </Link>
+            </p>
+        </div>
+    );
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function StatsBar() {
     const ref = useRef(null);
     const isInView = useInView(ref, { once: true, amount: 0.5 });
     const { state, refresh } = useStats();
+
+    // All metrics are zero → show pre-launch helper text
+    const isAllZero =
+        state.status === "success" &&
+        STAT_CONFIG.every(s => state.data[s.key] === 0);
 
     return (
         <section ref={ref} className="bg-gray-100 py-12">
@@ -71,7 +96,7 @@ export function StatsBar() {
                         <StatsError onRetry={refresh} />
                     )}
 
-                    {/* Success */}
+                    {/* Success — show metrics regardless of value */}
                     {state.status === "success" && (
                         STAT_CONFIG.map((stat, index) => (
                             <motion.div
@@ -95,6 +120,9 @@ export function StatsBar() {
                     )}
 
                 </div>
+
+                {/* Zero-state CTA — rendered below the metrics row */}
+                {isAllZero && <ZeroStateCta />}
             </div>
         </section>
     );

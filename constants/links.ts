@@ -15,7 +15,7 @@ export const ROUTES = {
 export const EXTERNAL_LINKS = {
     docs: "https://docs.bracketchain.io",
     blog: "https://bracketchain.io/blog",
-    github: "https://github.com/bracketchain",
+    github: "https://github.com/VitalikCholan/BracketChain-Main",
     twitter: "https://twitter.com/bracketchain",
     discord: "https://discord.gg/bracketchain",
     onRamp: "https://bracketchain.io/buy",

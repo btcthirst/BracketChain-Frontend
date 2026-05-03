@@ -143,6 +143,7 @@ export function TournamentPage({ id }: { id: string }) {
     const { state, refresh } = useTournamentView(id);
     const { publicKey } = useWallet();
     const currentAddress = publicKey?.toBase58() ?? null;
+
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             <Navbar />
@@ -154,6 +155,8 @@ export function TournamentPage({ id }: { id: string }) {
 
                 {state.status === "success" && (() => {
                     const t = state.data;
+                    const hasBracket = t.matches && t.matches.length > 0;
+
                     return (
                         <>
                             {t.status === "cancelled" && (
@@ -173,21 +176,28 @@ export function TournamentPage({ id }: { id: string }) {
                                         <div className="border-b border-gray-100 px-5 py-3">
                                             <h2 className="text-sm font-semibold text-gray-700">Bracket</h2>
                                         </div>
-                                        {!t.matches || t.matches.length === 0
+                                        {!hasBracket
                                             ? <BracketEmpty
                                                 onJoin={t.status === "registration"
                                                     ? () => document.getElementById("join-btn")?.click()
                                                     : undefined
                                                 }
+                                                // Pass whether current user is already a participant
+                                                // so the empty state can show a more relevant message
+                                                isRegistered={t.participants.some(
+                                                    p => p.address === currentAddress
+                                                )}
                                             />
                                             : <BracketView matches={t.matches} />
                                         }
                                     </div>
 
-                                    {/* Sidebar */}
+                                    {/* Sidebar — receives refresh so it can trigger
+                                        a data reload after a successful join */}
                                     <TournamentSidebar
                                         tournament={t}
                                         currentAddress={currentAddress}
+                                        onJoinSuccess={refresh}
                                     />
                                 </div>
                             </div>
