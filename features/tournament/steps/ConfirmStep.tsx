@@ -105,7 +105,7 @@ export function ConfirmStep({
         ["Name", detailsData.name || "—"],
         ["Format", FORMAT_INFO[detailsData.format].label],
         ["Max Participants", `${detailsData.maxParticipants} players`],
-        ["Start", detailsData.startDate && detailsData.startTime
+        ["Registration Closes", detailsData.startDate && detailsData.startTime
             ? `${detailsData.startDate} at ${detailsData.startTime} UTC`
             : "—"],
         ["Entry Fee", detailsData.freeEntry ? "Free" : `${detailsData.entryFee} ${prizeData.token}`],

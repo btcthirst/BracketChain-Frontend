@@ -1,6 +1,7 @@
+import { useEffect } from "react";
 import { Trophy } from "lucide-react";
 import { inputCls, totalPool } from "../utils/utils";
-import { PROTOCOL_FEE, PAYOUT_PRESETS } from "@/constants/tournament";
+import { PROTOCOL_FEE, PAYOUT_PRESETS, TOKEN_INFO } from "@/constants/tournament";
 import { DetailsData, PayoutPreset, PrizeData, Token } from "@/types/tournament";
 import { FieldGroup } from "./FieldGroup";
 import { BalanceWarning } from "./BalanceWarning";
@@ -33,6 +34,16 @@ export function PrizeStep({
     function handlePreset(preset: PayoutPreset) {
         onChange({ payoutPreset: preset, payoutEntries: [...PAYOUT_PRESETS[preset].entries] });
     }
+
+    // Snap to WTA if current preset's min_participants exceeds maxParticipants
+    // (e.g. user picked Standard then dropped to 2 players). Mirrors the
+    // program-side check in `create_tournament.rs` — without this snap the user
+    // only sees `PresetExceedsParticipants` after signing.
+    useEffect(() => {
+        if (PAYOUT_PRESETS[data.payoutPreset].minParticipants > detailsData.maxParticipants) {
+            onChange({ payoutPreset: "wta", payoutEntries: [...PAYOUT_PRESETS.wta.entries] });
+        }
+    }, [detailsData.maxParticipants, data.payoutPreset, onChange]);
 
     function handlePctChange(idx: number, val: string) {
         const entries = data.payoutEntries.map((e, i) =>
@@ -83,9 +94,14 @@ export function PrizeStep({
                         value={data.token}
                         onChange={e => onChange({ token: e.target.value as Token })}
                     >
-                        <option value="USDC">USDC</option>
-                        <option value="SOL">SOL</option>
-                        <option value="custom">Custom SPL token</option>
+                        {(Object.entries(TOKEN_INFO) as [
+                            Token,
+                            { label: string; available: boolean }
+                        ][]).map(([key, { label, available }]) => (
+                            <option key={key} value={key} disabled={!available}>
+                                {label}
+                            </option>
+                        ))}
                     </select>
                     {data.token === "custom" && (
                         <input
@@ -139,18 +155,37 @@ export function PrizeStep({
                 <div className="flex flex-col gap-3">
                     <span className="text-sm font-semibold text-gray-800">Payout Structure</span>
                     <div className="flex flex-wrap gap-2">
-                        {(Object.entries(PAYOUT_PRESETS) as [PayoutPreset, { label: string }][]).map(([key, { label }]) => (
-                            <button
-                                key={key}
-                                onClick={() => handlePreset(key)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${data.payoutPreset === key
-                                    ? "bg-blue-600 border-blue-600 text-white"
-                                    : "bg-white border-gray-300 text-gray-600 hover:border-blue-400"
-                                    }`}
-                            >
-                                {label}
-                            </button>
-                        ))}
+                        {(Object.entries(PAYOUT_PRESETS) as [
+                            PayoutPreset,
+                            { label: string; available: boolean; minParticipants: number }
+                        ][]).map(([key, { label, available, minParticipants }]) => {
+                            const isSelected = data.payoutPreset === key;
+                            const tooFewPlayers = minParticipants > detailsData.maxParticipants;
+                            const enabled = available && !tooFewPlayers;
+                            const baseCls =
+                                "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all";
+                            const cls = !enabled
+                                ? `${baseCls} bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed`
+                                : isSelected
+                                ? `${baseCls} bg-blue-600 border-blue-600 text-white`
+                                : `${baseCls} bg-white border-gray-300 text-gray-600 hover:border-blue-400`;
+                            const title = !available
+                                ? "Coming in V2"
+                                : tooFewPlayers
+                                ? `Requires ≥${minParticipants} players (currently ${detailsData.maxParticipants})`
+                                : undefined;
+                            return (
+                                <button
+                                    key={key}
+                                    onClick={() => enabled && handlePreset(key)}
+                                    disabled={!enabled}
+                                    title={title}
+                                    className={cls}
+                                >
+                                    {label}
+                                </button>
+                            );
+                        })}
                     </div>
 
                     <div className="flex flex-col gap-2 mt-1">

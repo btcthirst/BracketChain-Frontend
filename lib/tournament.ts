@@ -33,12 +33,22 @@ export function formatStartsIn(deadlineIso: string, now: number = Date.now()): s
 
 export function toUiTournament(t: IndexerTournament, now: number = Date.now()): Tournament {
     const entryFeeMicro = BigInt(t.entryFee);
-    const grossMicro = t.grossPool != null ? BigInt(t.grossPool) : entryFeeMicro * BigInt(t.maxParticipants);
+    const organizerDepositMicro = BigInt(t.organizerDeposit);
+
+    // Variant B (plan 2026-05-03): organizer_deposit is part of the prize pool.
+    // - Completed: indexer's `grossPool` is the on-chain `vault.amount` at
+    //   completion (= entry fees + deposit). Use it directly.
+    // - Registration / Active: `grossPool` is null; fallback shows the MAX
+    //   potential pool = entryFee × maxParticipants + deposit.
+    const grossMicro = t.grossPool != null
+        ? BigInt(t.grossPool)
+        : entryFeeMicro * BigInt(t.maxParticipants) + organizerDepositMicro;
     const prizePool = Number(grossMicro) / USDC_DECIMALS;
 
-    // Estimate participants from grossPool if available, otherwise 0
-    const participants = entryFeeMicro > 0n && t.grossPool != null 
-        ? Number(BigInt(t.grossPool) / entryFeeMicro)
+    // Estimate participants from grossPool by subtracting the deposit first
+    // (grossPool includes it under Variant B).
+    const participants = entryFeeMicro > 0n && t.grossPool != null
+        ? Number((BigInt(t.grossPool) - organizerDepositMicro) / entryFeeMicro)
         : 0;
 
     return {
