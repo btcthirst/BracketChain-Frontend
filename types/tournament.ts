@@ -13,7 +13,7 @@ export type TxState = "idle" | "signing" | "pending" | "success" | "error";
 export interface DetailsData {
     name: string;
     format: TournamentFormat;
-    maxParticipants: 4 | 8 | 16 | 32 | 64 | 128;
+    maxParticipants: 2 | 4 | 8 | 16 | 32 | 64 | 128;
     startDate: string;
     startTime: string;
     freeEntry: boolean;
