@@ -13,7 +13,7 @@ export type TxState = "idle" | "signing" | "pending" | "success" | "error";
 export interface DetailsData {
     name: string;
     format: TournamentFormat;
-    maxParticipants: 4 | 8 | 16 | 32 | 64 | 128;
+    maxParticipants: 2 | 4 | 8 | 16 | 32 | 64 | 128;
     startDate: string;
     startTime: string;
     freeEntry: boolean;
@@ -94,4 +94,10 @@ export interface TournamentView extends Omit<TournamentSummary, "participants" |
     registrationDeadline: string;
     cancelledTxSignature: string | null;
     refundTxSignatures: string[];
+    // On-chain bracket-init progress. UI status `in_progress` covers both
+    // PendingBracketInit and Active — `bracketReady` distinguishes them so the
+    // organizer can't try to report results before all match PDAs exist.
+    matchesInitialized: number;
+    totalMatches: number;
+    bracketReady: boolean;
 }

@@ -6,6 +6,7 @@ import { MotionDiv } from "@/components/ui/motion-wraper";
 import { ROUTES } from "@/constants/links";
 import { useTournaments } from "@/hooks/useTournaments";
 import type { Tournament } from "@/hooks/useTournaments";
+import { memo } from "react";
 
 // ── Skeleton card ─────────────────────────────────────────────────────────────
 
@@ -37,7 +38,6 @@ function TournamentCardSkeleton() {
 function EmptyState() {
     return (
         <div className="col-span-2 flex flex-col items-center gap-5 py-16 text-center">
-            {/* Simple bracket illustration */}
             <svg viewBox="0 0 120 80" className="w-32 h-20 text-gray-300" fill="none">
                 <rect x="4" y="16" width="24" height="12" rx="3" stroke="currentColor" strokeWidth="2" />
                 <rect x="4" y="52" width="24" height="12" rx="3" stroke="currentColor" strokeWidth="2" />
@@ -131,7 +131,7 @@ function TournamentCard({ tournament, index }: { tournament: Tournament; index: 
                     <div className="flex items-center gap-2">
                         <Clock className="w-5 h-5 text-green-500" />
                         <div>
-                            <div className="text-sm text-gray-500">Starts In</div>
+                            <div className="text-sm text-gray-500">Closes In</div>
                             <div className="font-bold text-gray-900">{tournament.startsIn}</div>
                         </div>
                     </div>
@@ -150,8 +150,12 @@ function TournamentCard({ tournament, index }: { tournament: Tournament; index: 
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-export function LiveTournaments() {
+function LiveTournamentsComponent() {
     const { state, refresh } = useTournaments();
+
+    // "View All" is shown whenever we have data OR when empty —
+    // only hidden on loading / error states where it's not actionable.
+    const showViewAll = state.status === "success" || state.status === "empty";
 
     return (
         <section className="bg-gray-50 py-20">
@@ -197,8 +201,8 @@ export function LiveTournaments() {
 
                 </div>
 
-                {/* "View All" only when we have data */}
-                {state.status === "success" && (
+                {/* "View All" — visible for both success and empty states */}
+                {showViewAll && (
                     <div className="text-center">
                         <Link
                             href={ROUTES.explore}
@@ -212,3 +216,6 @@ export function LiveTournaments() {
         </section>
     );
 }
+
+export const LiveTournaments = memo(() => <LiveTournamentsComponent />);
+LiveTournaments.displayName = "LiveTournaments";

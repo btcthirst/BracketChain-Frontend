@@ -185,7 +185,15 @@ function buildView(
 
     const entryFeeUsdc = Number(t.entryFee.toString()) / USDC_DECIMALS;
     const participantCount = state.participants.length;
-    const grossPoolUsdc = entryFeeUsdc * participantCount;
+    // Variant B (plan 2026-05-03 decision): organizer_deposit goes INTO the
+    // prize pool and is distributed via the preset on completion. It's only
+    // refunded on cancel, so subtract it back out once the cancel handler has
+    // marked it refunded.
+    const depositRefunded = status === "cancelled" && Boolean(t.organizerDepositRefunded);
+    const organizerDepositUsdc = depositRefunded
+        ? 0
+        : Number(t.organizerDeposit.toString()) / USDC_DECIMALS;
+    const grossPoolUsdc = entryFeeUsdc * participantCount + organizerDepositUsdc;
 
     const players: Player[] = state.participants.map((p) =>
         makePlayer(p.account.wallet.toBase58(), organizerAddress),
@@ -198,6 +206,18 @@ function buildView(
     const refundTxSignatures = payouts
         .filter((p) => p.kind === "Refund")
         .map((p) => p.txSignature);
+
+    // Bracket-init progress. On-chain `matches_initialized` ramps up across
+    // start_tournament chunks; report_result requires status === Active, which
+    // only fires once the last chunk lands. Surface explicitly so UI can gate
+    // the report flow even though the status pill says "in_progress" already.
+    const matchesInitialized = Number(t.matchesInitialized) || 0;
+    const totalMatches = Number(t.totalMatches) || 0;
+    const onChainStatusKind = getEnumKind(t.status as never) as TournamentStatusKind;
+    const bracketReady =
+        onChainStatusKind === "active" ||
+        onChainStatusKind === "completed" ||
+        (totalMatches > 0 && matchesInitialized >= totalMatches);
 
     return {
         id: state.address.toBase58(),
@@ -226,6 +246,9 @@ function buildView(
         registrationDeadline: new Date(Number(t.registrationDeadline.toString()) * 1000).toISOString(),
         cancelledTxSignature: null, // Lean indexer doesn't track cancel tx — V1.
         refundTxSignatures,
+        matchesInitialized,
+        totalMatches,
+        bracketReady,
     };
 }
 
@@ -300,8 +323,37 @@ export function useTournamentView(id: string) {
         const pda = new PublicKey(id);
         const ac = new AbortController();
         let unsubscribe: (() => void) | null = null;
+        let inactivityTimer: ReturnType<typeof setTimeout> | null = null;
 
         dispatch({ type: "FETCH_START" });
+
+        // Refetch helper used by both WS callback and inactivity safety net.
+        const refetch = () => {
+            loadView(client, pda, ac.signal)
+                .then((v) => {
+                    if (ac.signal.aborted || !v) return;
+                    dispatch({ type: "FETCH_SUCCESS", data: v });
+                })
+                .catch(() => {
+                    // Silent — already-rendered state stays valid.
+                });
+        };
+
+        // Inactivity-triggered reconciliation. Production Solana clients
+        // (Drift v2, kit examples) treat WS notifications as fast-path and
+        // fall back to a one-shot RPC fetch when WS is silent past a
+        // threshold — covers WS drops, mobile-tab throttling, RPC failover.
+        // 30s gives a tight upper bound on UI staleness without burning the
+        // free-tier RPC budget.
+        const INACTIVITY_MS = 30_000;
+        const resetInactivityTimer = () => {
+            if (inactivityTimer) clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(() => {
+                if (ac.signal.aborted) return;
+                refetch();
+                resetInactivityTimer();
+            }, INACTIVITY_MS);
+        };
 
         loadView(client, pda, ac.signal)
             .then((view) => {
@@ -313,20 +365,16 @@ export function useTournamentView(id: string) {
                 dispatch({ type: "FETCH_SUCCESS", data: view });
 
                 // Live updates: subscribe to the Tournament account. Every
-                // report_result CPI bumps `matchesReported` on the Tournament
-                // PDA, which fires this callback — so we don't need to also
-                // subscribe to individual match accounts to catch updates.
-                // Refetch the composite read on each fire (cheap on devnet).
+                // report_result / join CPI bumps a counter on the Tournament
+                // PDA, so this fires for every state-change we care about
+                // without needing per-match subscriptions.
                 unsubscribe = subscribe(client, pda, () => {
-                    loadView(client, pda, ac.signal)
-                        .then((v) => {
-                            if (ac.signal.aborted || !v) return;
-                            dispatch({ type: "FETCH_SUCCESS", data: v });
-                        })
-                        .catch(() => {
-                            // Silent — already-rendered state stays valid.
-                        });
+                    refetch();
+                    resetInactivityTimer();  // WS is alive — push timer back
                 });
+
+                // Arm the safety net after first successful subscribe.
+                resetInactivityTimer();
             })
             .catch((err) => {
                 if (ac.signal.aborted) return;
@@ -337,6 +385,7 @@ export function useTournamentView(id: string) {
         return () => {
             ac.abort();
             if (unsubscribe) unsubscribe();
+            if (inactivityTimer) clearTimeout(inactivityTimer);
         };
     }, [client, id, tick]);
 
