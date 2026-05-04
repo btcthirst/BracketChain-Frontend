@@ -9,6 +9,7 @@ export const ROUTES = {
     dashboard: "/dashboard",
     tournament: (id: string) => `/t/${id}`,
     about: "/about",
+    player: (wallet: string) => `/player/${wallet}`,
 } as const;
 
 // ─── External links ───────────────────────────────────────────────────────────

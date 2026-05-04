@@ -80,3 +80,17 @@ export async function getIndexerPayouts(
     }
     return res.json() as Promise<IndexerPayout[]>;
 }
+
+export async function getPlayerPayouts(
+    recipient: string,
+    opts: { signal?: AbortSignal } = {},
+): Promise<IndexerPayout[]> {
+    const url = `${INDEXER_URL}/payouts?recipient=${recipient}`;
+    const res = await fetch(url, { signal: opts.signal });
+    if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`Indexer ${res.status}: ${body || res.statusText}`);
+    }
+    return res.json() as Promise<IndexerPayout[]>;
+}
+
