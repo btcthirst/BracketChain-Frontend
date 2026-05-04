@@ -3,6 +3,17 @@
 import { useEffect, useReducer, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { listIndexerTournaments, type IndexerTournament, type IndexerTournamentStatus } from "@/lib/indexer";
+import { useBracketChainClient } from "@/lib/sdk";
+import { getTournament, getEnumKind } from "@bracketchain/sdk";
+import { PublicKey } from "@solana/web3.js";
+
+const ANCHOR_TO_INDEXER_STATUS: Record<string, IndexerTournamentStatus> = {
+    registration: "Registration",
+    pendingBracketInit: "PendingBracketInit",
+    active: "Active",
+    completed: "Completed",
+    cancelled: "Cancelled",
+};
 
 export type DashboardFilter = "all" | "active" | "completed" | "cancelled";
 
@@ -58,6 +69,7 @@ function toEntry(t: IndexerTournament): DashboardTournament {
 
 export function useDashboard(filter: DashboardFilter) {
     const { publicKey, connected } = useWallet();
+    const client = useBracketChainClient();
     const [state, dispatch] = useReducer(reducer, { status: "idle" });
     const [tick, retry] = useReducer((n: number) => n + 1, 0);
 
@@ -74,12 +86,45 @@ export function useDashboard(filter: DashboardFilter) {
 
         // Fetch all pages the organizer might have — indexer supports
         // organizer filter via query param in future; for MVP fetch all + filter client-side.
-        listIndexerTournaments({ status: STATUS_MAP[filter], limit: 100, signal: ac.signal })
-            .then(rows => {
+        // We do NOT pass `status` to the indexer so we can override stale indexer statuses with fresh on-chain ones.
+        listIndexerTournaments({ limit: 100, signal: ac.signal })
+            .then(async (rows) => {
                 if (ac.signal.aborted) return;
-                const mine = rows
+                let mine = rows
                     .filter(r => r.organizer === publicKey.toBase58())
                     .map(toEntry);
+
+                // Enrich with fresh on-chain data to fix indexer lag
+                if (mine.length > 0 && client) {
+                    try {
+                        await Promise.all(mine.map(async (t) => {
+                            if (!t.address || t.address.length < 32) return;
+                            try {
+                                const data = await getTournament(client, new PublicKey(t.address));
+                                if (data) {
+                                    const kind = getEnumKind(data.status as never);
+                                    t.status = ANCHOR_TO_INDEXER_STATUS[kind] || t.status;
+                                }
+                            } catch (e) {
+                                console.warn(`Failed to fetch on-chain status for ${t.address}:`, e);
+                            }
+                        }));
+                    } catch (e) {
+                        console.warn("Failed to enrich tournament statuses:", e);
+                    }
+                }
+
+                // Apply the dashboard filter AFTER enriching
+                const targetStatus = STATUS_MAP[filter];
+                if (targetStatus) {
+                    mine = mine.filter(t => {
+                        if (targetStatus === "Active") {
+                            return t.status === "PendingBracketInit" || t.status === "Active";
+                        }
+                        return t.status === targetStatus;
+                    });
+                }
+
                 if (mine.length === 0) {
                     dispatch({ type: "FETCH_EMPTY" });
                 } else {
@@ -93,7 +138,7 @@ export function useDashboard(filter: DashboardFilter) {
             });
 
         return () => ac.abort();
-    }, [connected, publicKey, filter, tick]);
+    }, [connected, publicKey, filter, tick, client]);
 
     return { state, refresh };
 }

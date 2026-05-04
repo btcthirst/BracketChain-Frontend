@@ -148,6 +148,7 @@ export function CreateTournament() {
             setTxSignature(result.txSignature);
             setTxState("success");
         } catch (err) {
+            console.log(err);
             setTxError(describeError(err));
             setTxState("error");
         }
