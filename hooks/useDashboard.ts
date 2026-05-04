@@ -58,11 +58,19 @@ const STATUS_MAP: Record<DashboardFilter, IndexerTournamentStatus | undefined> =
 
 function toEntry(t: IndexerTournament): DashboardTournament {
     const entryFee = BigInt(t.entryFee);
-    const grossPool = t.grossPool != null ? BigInt(t.grossPool) : BigInt(0);
+    const organizerDeposit = BigInt(t.organizerDeposit);
+    
+    // Fallback: if grossPool is null (lagging indexer), show at least the organizer deposit.
+    // The indexer's grossPool should eventually be (deposit + total entry fees).
+    const grossPool = t.grossPool != null 
+        ? BigInt(t.grossPool) 
+        : organizerDeposit;
+    
     const participantCount =
         entryFee > 0n && t.grossPool != null
-            ? Number(grossPool / entryFee)
+            ? Number((BigInt(t.grossPool) - organizerDeposit) / entryFee)
             : 0;
+            
     const prizePoolUsdc = Number(grossPool) / USDC_DECIMALS;
     return { ...t, participantCount, prizePoolUsdc };
 }
@@ -119,7 +127,12 @@ export function useDashboard(filter: DashboardFilter) {
                 if (targetStatus) {
                     mine = mine.filter(t => {
                         if (targetStatus === "Active") {
-                            return t.status === "PendingBracketInit" || t.status === "Active";
+                            // "Active" tab should show everything that is playable or in setup
+                            return (
+                                t.status === "Registration" || 
+                                t.status === "PendingBracketInit" || 
+                                t.status === "Active"
+                            );
                         }
                         return t.status === targetStatus;
                     });

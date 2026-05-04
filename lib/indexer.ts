@@ -52,12 +52,30 @@ export interface IndexerPayout {
 
 export async function listIndexerTournaments(opts: {
     status?: IndexerTournamentStatus;
+    name?: string;
+    format?: string;
+    game?: string;
+    minPrize?: number;
+    maxPrize?: number;
+    freeOnly?: boolean;
+    offset?: number;
     limit?: number;
     signal?: AbortSignal;
 } = {}): Promise<IndexerTournament[]> {
     const params = new URLSearchParams();
     if (opts.status) params.set("status", opts.status);
-    if (opts.limit) params.set("limit", String(opts.limit));
+    // if (opts.name) params.set("name", opts.name);
+    // These parameters are currently not supported by the production indexer 
+    // and cause a 400 Bad Request if provided. 
+    // We filter them client-side in the hooks for now.
+    // if (opts.format) params.set("format", opts.format);
+    // if (opts.game) params.set("game", opts.game);
+    // if (opts.minPrize !== undefined) params.set("minPrize", String(opts.minPrize));
+    // if (opts.maxPrize !== undefined) params.set("maxPrize", String(opts.maxPrize));
+    // if (opts.freeOnly) params.set("freeOnly", "true");
+    
+    if (opts.offset !== undefined) params.set("offset", String(opts.offset));
+    if (opts.limit !== undefined) params.set("limit", String(opts.limit));
 
     const url = `${INDEXER_URL}/tournaments${params.toString() ? `?${params}` : ""}`;
     const res = await fetch(url, { signal: opts.signal });
