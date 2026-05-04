@@ -19,19 +19,19 @@ export function DetailsStep({
         <div className="flex flex-col gap-6">
             <FieldGroup
                 label="Tournament Name"
-                hint="Choose a unique, memorable name. Up to 64 characters."
+                hint="Choose a unique, memorable name. Up to 32 characters (Solana per-seed limit)."
                 error={errors.name}
             >
                 <div className="relative">
                     <input
                         className={inputCls(errors.name)}
-                        maxLength={64}
-                        placeholder="e.g. Spring Championship 2025"
+                        maxLength={32}
+                        placeholder="e.g. Spring Championship 2026"
                         value={data.name}
                         onChange={e => onChange({ name: e.target.value })}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-                        {data.name.length}/64
+                        {data.name.length}/32
                     </span>
                 </div>
                 {/* Duplicate name warning — shows only when no validation error */}
@@ -48,8 +48,13 @@ export function DetailsStep({
                     value={data.format}
                     onChange={e => onChange({ format: e.target.value as TournamentFormat })}
                 >
-                    {(Object.entries(FORMAT_INFO) as [TournamentFormat, { label: string }][]).map(([key, { label }]) => (
-                        <option key={key} value={key}>{label}</option>
+                    {(Object.entries(FORMAT_INFO) as [
+                        TournamentFormat,
+                        { label: string; available: boolean }
+                    ][]).map(([key, { label, available }]) => (
+                        <option key={key} value={key} disabled={!available}>
+                            {label}
+                        </option>
                     ))}
                 </select>
             </FieldGroup>
@@ -65,7 +70,7 @@ export function DetailsStep({
                         value={data.maxParticipants}
                         onChange={e => onChange({ maxParticipants: Number(e.target.value) as DetailsData["maxParticipants"] })}
                     >
-                        {[4, 8, 16, 32, 64, 128].map(n => (
+                        {[2, 4, 8, 16, 32, 64, 128].map(n => (
                             <option key={n} value={n}>{n} players</option>
                         ))}
                     </select>
@@ -102,7 +107,11 @@ export function DetailsStep({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-                <FieldGroup label="Start Date" hint="Must be a future date." error={errors.startDate}>
+                <FieldGroup
+                    label="Registration Closes"
+                    hint="Players can join until this moment. Must be in the future."
+                    error={errors.startDate}
+                >
                     <input
                         type="date"
                         min={today}
@@ -111,7 +120,7 @@ export function DetailsStep({
                         onChange={e => onChange({ startDate: e.target.value })}
                     />
                 </FieldGroup>
-                <FieldGroup label="Start Time (UTC)" error={errors.startTime}>
+                <FieldGroup label="Time (UTC)" error={errors.startTime}>
                     <input
                         type="time"
                         className={inputCls(errors.startTime)}

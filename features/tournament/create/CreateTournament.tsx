@@ -127,6 +127,7 @@ export function CreateTournament() {
         }
 
         const entryFeeMicro = detailsData.freeEntry ? BigInt(0) : microUsdcFromUsd(detailsData.entryFee);
+        const organizerDepositMicro = microUsdcFromUsd(prizeData.deposit);
         const deadlineSec = unixSecondsFromForm(detailsData.startDate, detailsData.startTime);
 
         setTxState("signing");
@@ -137,12 +138,17 @@ export function CreateTournament() {
                 maxParticipants: detailsData.maxParticipants,
                 payoutPreset: presetVariant,
                 registrationDeadline: deadlineSec,
+                // Phase 2.5: optional top-up to the prize pool. The SDK
+                // auto-creates the organizer's USDC ATA if missing and folds
+                // the transfer into the same tx. `0` is allowed (no deposit).
+                organizerDeposit: organizerDepositMicro,
             });
 
             setTournamentAddress(result.tournamentPda.toBase58());
             setTxSignature(result.txSignature);
             setTxState("success");
         } catch (err) {
+            console.log(err);
             setTxError(describeError(err));
             setTxState("error");
         }
