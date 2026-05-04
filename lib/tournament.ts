@@ -10,6 +10,7 @@ export interface Tournament {
     prizePool: number;
     participants: number;
     maxParticipants: number;
+    entryFee: number;
     startsIn: string;
 }
 
@@ -61,6 +62,7 @@ export function toUiTournament(t: IndexerTournament, now: number = Date.now()): 
         prizePool,
         participants,
         maxParticipants: t.maxParticipants,
+        entryFee: Number(entryFeeMicro) / USDC_DECIMALS,
         startsIn: formatStartsIn(t.registrationDeadline, now),
     };
 }

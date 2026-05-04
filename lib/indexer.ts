@@ -52,12 +52,26 @@ export interface IndexerPayout {
 
 export async function listIndexerTournaments(opts: {
     status?: IndexerTournamentStatus;
+    name?: string;
+    format?: string;
+    game?: string;
+    minPrize?: number;
+    maxPrize?: number;
+    freeOnly?: boolean;
     limit?: number;
+    offset?: number;
     signal?: AbortSignal;
 } = {}): Promise<IndexerTournament[]> {
     const params = new URLSearchParams();
     if (opts.status) params.set("status", opts.status);
+    if (opts.name) params.set("name", opts.name);
+    if (opts.format) params.set("format", opts.format);
+    if (opts.game) params.set("game", opts.game);
+    if (opts.minPrize !== undefined) params.set("minPrize", String(opts.minPrize));
+    if (opts.maxPrize !== undefined) params.set("maxPrize", String(opts.maxPrize));
+    if (opts.freeOnly) params.set("freeOnly", "true");
     if (opts.limit) params.set("limit", String(opts.limit));
+    if (opts.offset) params.set("offset", String(opts.offset));
 
     const url = `${INDEXER_URL}/tournaments${params.toString() ? `?${params}` : ""}`;
     const res = await fetch(url, { signal: opts.signal });

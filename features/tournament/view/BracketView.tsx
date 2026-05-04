@@ -2,8 +2,9 @@
 
 import { useState, useRef } from "react";
 import { ExternalLink, X } from "lucide-react";
+import Link from "next/link";
 import type { Match, Player } from "@/types/tournament";
-import { SOLANA } from "@/constants/links";
+import { SOLANA, ROUTES } from "@/constants/links";
 
 // ── Player slot ───────────────────────────────────────────────────────────────
 
@@ -16,12 +17,15 @@ function PlayerSlot({ player, isWinner }: { player: Player | null; isWinner: boo
         );
     }
     return (
-        <div className={`flex items-center h-8 px-3 text-xs font-mono rounded transition-colors ${isWinner
-            ? "bg-blue-600 text-white font-semibold"
-            : "text-gray-700"
-            }`}>
+        <Link 
+            href={ROUTES.player(player.address)}
+            className={`flex items-center h-8 px-3 text-xs font-mono rounded transition-colors hover:opacity-80 ${isWinner
+                ? "bg-blue-600 text-white font-semibold"
+                : "text-gray-700 bg-gray-50 hover:bg-gray-100"
+            }`}
+        >
             {player.display}
-        </div>
+        </Link>
     );
 }
 
@@ -59,7 +63,11 @@ function MatchTooltip({ match, organizerHint }: { match: Match; organizerHint: b
                         ? "bg-blue-600/30 text-blue-300"
                         : "text-gray-300"
                         }`}>
-                        <span className="font-mono">{p?.display ?? "TBD"}</span>
+                        {p ? (
+                            <Link href={ROUTES.player(p.address)} className="font-mono hover:underline">{p.display}</Link>
+                        ) : (
+                            <span className="font-mono text-gray-500">TBD</span>
+                        )}
                         {match.result && (
                             <span className="font-bold">
                                 {i === 0 ? match.result.scoreA : match.result.scoreB}
@@ -169,7 +177,11 @@ function MatchModal({ match, onClose }: { match: Match; onClose: () => void }) {
                             ? "border-blue-300 bg-blue-50"
                             : "border-gray-200 bg-gray-50"
                             }`}>
-                            <span className="text-sm font-mono text-gray-700">{p?.display ?? "TBD"}</span>
+                            {p ? (
+                                <Link href={ROUTES.player(p.address)} className="text-sm font-mono text-gray-700 hover:underline">{p.display}</Link>
+                            ) : (
+                                <span className="text-sm font-mono text-gray-400 italic">TBD</span>
+                            )}
                             {match.result && (
                                 <span className="text-sm font-bold text-gray-900">
                                     {i === 0 ? match.result.scoreA : match.result.scoreB}
