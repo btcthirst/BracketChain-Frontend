@@ -13,6 +13,7 @@ import { useBracketChainClient } from "@/lib/sdk";
 import { useConfetti } from "@/hooks/useConfetti";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import { JoinConfirmationModal } from "./JoinConfirmationModal";
+import { PayoutView } from "./PayoutView";
 
 // ── Participant list ───────────────────────────────────────────────────────────
 
@@ -91,11 +92,13 @@ function EscrowPanel({
     payoutsExpanded,
     setPayoutsExpanded,
     payoutsRef,
+    isOrganizer,
 }: {
     tournament: TournamentView;
     payoutsExpanded: boolean;
     setPayoutsExpanded: (v: boolean) => void;
     payoutsRef: React.RefObject<HTMLDivElement | null>;
+    isOrganizer: boolean;
 }) {
     const total = tournament.prizePool;
     const afterFee = total * 0.965;
@@ -137,14 +140,14 @@ function EscrowPanel({
                 </p>
             </div>
 
-            {/* Completed payouts — inline expander */}
+            {/* Completed payouts — full view */}
             {tournament.status === "completed" && (
-                <div ref={payoutsRef} className="flex flex-col gap-1.5">
+                <div ref={payoutsRef} className="pt-2">
                     <button
                         onClick={() => setPayoutsExpanded(!payoutsExpanded)}
-                        className="flex items-center justify-between w-full text-xs font-semibold text-gray-600 uppercase tracking-wide hover:text-gray-800 transition-colors"
+                        className="flex items-center justify-between w-full text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-900 transition-colors mb-4"
                     >
-                        <span>Payout Transactions</span>
+                        <span>Audit Distribution</span>
                         {payoutsExpanded
                             ? <ChevronUp className="w-3.5 h-3.5" />
                             : <ChevronDown className="w-3.5 h-3.5" />
@@ -152,28 +155,7 @@ function EscrowPanel({
                     </button>
 
                     {payoutsExpanded && (
-                        <div className="flex flex-col gap-1">
-                            {tournament.payouts.map(entry => (
-                                <div key={entry.place} className="flex items-center justify-between text-xs px-3 py-2 bg-green-50 rounded-lg">
-                                    <span className="text-gray-700">
-                                        {entry.label} — {entry.recipient?.display ?? "—"}
-                                    </span>
-                                    {entry.txSignature ? (
-                                        <a
-                                            href={SOLANA.explorerTx(entry.txSignature)}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-1 text-green-600 hover:underline font-mono"
-                                        >
-                                            {entry.txSignature.slice(0, 8)}…
-                                            <ExternalLink className="w-3 h-3" />
-                                        </a>
-                                    ) : (
-                                        <span className="text-gray-400">Pending</span>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
+                        <PayoutView tournament={tournament} isOrganizer={isOrganizer} />
                     )}
                 </div>
             )}
@@ -489,6 +471,7 @@ export function TournamentSidebar({
                 payoutsExpanded={payoutsExpanded}
                 setPayoutsExpanded={setPayoutsExpanded}
                 payoutsRef={payoutsRef}
+                isOrganizer={isOrganizer}
             />
             <OrganizerPanel organizer={tournament.organizer} />
             <ActionArea
