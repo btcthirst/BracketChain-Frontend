@@ -6,6 +6,7 @@ export const ROUTES = {
     home: "/",
     explore: "/explore",
     create: "/create",
+    dashboard: "/dashboard",
     tournament: (id: string) => `/t/${id}`,
     about: "/about",
 } as const;

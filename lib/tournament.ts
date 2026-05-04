@@ -6,6 +6,7 @@ export interface Tournament {
     name: string;
     game: string;
     format: "SE" | "DE" | "Swiss" | "RR";
+    status: "Registration" | "PendingBracketInit" | "Active" | "Completed" | "Cancelled";
     prizePool: number;
     participants: number;
     maxParticipants: number;
@@ -56,6 +57,7 @@ export function toUiTournament(t: IndexerTournament, now: number = Date.now()): 
         name: t.name,
         game: "On-chain",
         format: "SE",
+        status: t.status,
         prizePool,
         participants,
         maxParticipants: t.maxParticipants,

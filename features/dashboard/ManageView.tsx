@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArrowLeft, RefreshCw, AlertCircle } from "lucide-react";
+import { useWallet } from "@solana/wallet-adapter-react";
 import type { Match } from "@/types/tournament";
 import { useTournamentView } from "@/hooks/useTournamentView";
 import { BracketView, BracketEmpty, BracketSkeleton } from "@/features/tournament/view/BracketView";
@@ -27,6 +28,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function ManageView({ tournamentId, onBack }: Props) {
+    const { publicKey } = useWallet();
     const { state, refresh } = useTournamentView(tournamentId);
     const [reportMatch, setReportMatch] = useState<Match | null>(null);
     const [showCancel, setShowCancel] = useState(false);
@@ -90,12 +92,19 @@ export function ManageView({ tournamentId, onBack }: Props) {
                 const t = state.data;
                 const hasBracket = t.matches.length > 0;
                 const activeMatches = t.matches.filter(m => m.status === "in_progress");
+
+                // 1. Only organizer can cancel
+                // 2. Only if in registration OR in_progress but no matches played yet
+                const isOrganizer = t.organizer.address === publicKey?.toBase58();
                 const canCancel =
-                    t.status === "registration" ||
-                    (t.status === "in_progress" && t.matches.every(m => m.status === "pending"));
+                    isOrganizer && (
+                        t.status === "registration" ||
+                        (t.status === "in_progress" && t.matches.every(m => m.status === "pending"))
+                    );
 
                 return (
                     <div className="flex flex-col gap-4">
+
 
                         {/* Bracket panel */}
                         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
