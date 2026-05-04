@@ -231,7 +231,48 @@ export function TournamentTable({ tournaments, onManage }: Props) {
                 </table>
             </div>
 
-            {/* Mobile залишив як є (він нормальний) */}
+            {/* Mobile */}
+            <div className="md:hidden flex flex-col divide-y divide-gray-100">
+                {sorted.map((t) => (
+                    <div key={t.address} className="p-4 flex flex-col gap-4 active:bg-gray-50">
+                        <div className="flex justify-between items-start">
+                            <div className="flex flex-col gap-1">
+                                <span className="font-bold text-gray-900">{t.name}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                                        {t.payoutPreset === "WinnerTakesAll" ? "WTA" : t.payoutPreset}
+                                    </span>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLES[t.status] ?? "bg-gray-100 text-gray-500"}`}>
+                                        {STATUS_LABELS[t.status] ?? t.status}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="text-right flex flex-col gap-1">
+                                <span className="text-sm font-black text-gray-900">{formatMoney(t.prizePoolUsdc)}</span>
+                                <span className="text-[10px] text-gray-400">{formatDate(t.createdAt)}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span>{t.participantCount}/{t.maxParticipants} players</span>
+                            <div className="flex gap-2">
+                                <Link
+                                    href={ROUTES.tournament(t.address)}
+                                    className="px-3 py-1.5 rounded-lg border border-gray-200 font-medium"
+                                >
+                                    View
+                                </Link>
+                                <button
+                                    onClick={() => onManage(t.address)}
+                                    className="px-3 py-1.5 rounded-lg bg-blue-600 text-white font-bold"
+                                >
+                                    Manage
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
