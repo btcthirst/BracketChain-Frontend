@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useReducer, useEffect, useCallback } from "react";
-import { listIndexerTournaments, type IndexerTournamentStatus } from "@/lib/indexer";
 import { toUiTournament, type Tournament } from "@/lib/tournament";
-import { useBracketChainClient } from "@/lib/sdk";
-import { getTournament, getEnumKind } from "@bracketchain/sdk";
+import { useBracketChainClient, getIndexerClient } from "@/lib/sdk";
+import { getTournament, getEnumKind, type IndexerTournamentStatus } from "@bracketchain/sdk";
 import { PublicKey } from "@solana/web3.js";
 
 const ANCHOR_TO_INDEXER_STATUS: Record<string, Tournament["status"]> = {
@@ -100,10 +99,15 @@ export function useExplore(filters: ExploreFilters) {
 
         const apiStatus = filters.status === "All" ? undefined : filters.status;
 
-        listIndexerTournaments({
+        const indexer = getIndexerClient();
+        if (!indexer) {
+            dispatch({ type: "FETCH_ERROR" });
+            return () => ac.abort();
+        }
+
+        indexer.listTournaments({
             status: apiStatus,
-            name: filters.search || undefined,
-            limit: 100, 
+            limit: 100,
             signal: ac.signal,
         })
             .then(async (rows) => {

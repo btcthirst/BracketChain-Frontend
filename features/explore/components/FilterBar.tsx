@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ExploreFilters } from "@/hooks/useExplore";
-import type { IndexerTournamentStatus } from "@/lib/indexer";
+import type { IndexerTournamentStatus } from "@bracketchain/sdk";
 
 interface Props {
     filters: ExploreFilters;

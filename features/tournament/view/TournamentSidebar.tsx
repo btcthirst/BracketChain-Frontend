@@ -201,6 +201,21 @@ function OrganizerPanel({ organizer }: { organizer: Player }) {
     );
 }
 
+// ── Cancel danger zone ────────────────────────────────────────────────────────
+// Surfaced only in organizer branches where SDK `cancelTournament` accepts the
+// status: Registration + PendingBracketInit. Active/Completed reject on-chain.
+
+function CancelDangerZone({ onCancel }: { onCancel: () => void }) {
+    return (
+        <button
+            onClick={onCancel}
+            className="w-full py-2.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 text-xs font-semibold transition-colors"
+        >
+            Cancel Tournament & Refund
+        </button>
+    );
+}
+
 // ── Action area ───────────────────────────────────────────────────────────────
 
 function ActionArea({
@@ -209,12 +224,14 @@ function ActionArea({
     isOrganizer,
     onJoinSuccess,
     onViewPayouts,
+    onCancel,
 }: {
     tournament: TournamentView;
     currentAddress: string | null;
     isOrganizer: boolean;
     onJoinSuccess: () => void;
     onViewPayouts: () => void;
+    onCancel: () => void;
 }) {
     const [joining, setJoining] = useState(false);
     const [starting, setStarting] = useState(false);
@@ -320,21 +337,24 @@ function ActionArea({
             const canStart = tournament.participants.length >= 2;
 
             return (
-                <button
-                    onClick={handleStart}
-                    disabled={starting || !canStart}
-                    className={`w-full py-3 rounded-xl font-bold text-sm transition-colors ${isFull
-                        ? "bg-green-600 hover:bg-green-700 text-white"
-                        : "bg-purple-600 hover:bg-purple-700 text-white"
-                        } disabled:bg-gray-100 disabled:text-gray-400`}
-                >
-                    {starting
-                        ? <span className="flex items-center justify-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin" /> Initializing...
-                        </span>
-                        : isFull ? "Start Tournament" : "Start Early (Lock Bracket)"
-                    }
-                </button>
+                <div className="flex flex-col gap-3">
+                    <button
+                        onClick={handleStart}
+                        disabled={starting || !canStart}
+                        className={`w-full py-3 rounded-xl font-bold text-sm transition-colors ${isFull
+                            ? "bg-green-600 hover:bg-green-700 text-white"
+                            : "bg-purple-600 hover:bg-purple-700 text-white"
+                            } disabled:bg-gray-100 disabled:text-gray-400`}
+                    >
+                        {starting
+                            ? <span className="flex items-center justify-center gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin" /> Initializing...
+                            </span>
+                            : isFull ? "Start Tournament" : "Start Early (Lock Bracket)"
+                        }
+                    </button>
+                    <CancelDangerZone onCancel={onCancel} />
+                </div>
             );
         }
 
@@ -375,6 +395,7 @@ function ActionArea({
                             : "Continue Bracket Init"
                         }
                     </button>
+                    <CancelDangerZone onCancel={onCancel} />
                 </div>
             );
         }
@@ -456,10 +477,12 @@ export function TournamentSidebar({
     tournament,
     currentAddress,
     onJoinSuccess,
+    onCancel,
 }: {
     tournament: TournamentView;
     currentAddress: string | null;
     onJoinSuccess: () => void;
+    onCancel: () => void;
 }) {
     const isOrganizer = tournament.organizer.address === currentAddress;
     // Lifted from EscrowPanel so the "View Payouts" CTA in ActionArea can both
@@ -496,6 +519,7 @@ export function TournamentSidebar({
                 isOrganizer={isOrganizer}
                 onJoinSuccess={onJoinSuccess}
                 onViewPayouts={handleViewPayouts}
+                onCancel={onCancel}
             />
         </aside>
     );

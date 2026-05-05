@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { PlusCircle, RefreshCw, Wallet } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -8,7 +8,7 @@ import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ROUTES } from "@/constants/links";
-import { useDashboard, type DashboardFilter } from "@/hooks/useDashboard";
+import { useDashboard, type DashboardFilter, type DashboardTournament } from "@/hooks/useDashboard";
 import { TournamentTable } from "./TournamentTable";
 import { ManageView } from "./ManageView";
 import { AnalyticsSection } from "./AnalyticsSection";
@@ -126,16 +126,31 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 
 // ── Main dashboard ────────────────────────────────────────────────────────────
 
+function applyFilter(rows: DashboardTournament[], filter: DashboardFilter): DashboardTournament[] {
+    if (filter === "all") return rows;
+    if (filter === "active") {
+        return rows.filter(t => t.status === "PendingBracketInit" || t.status === "Active");
+    }
+    if (filter === "completed") return rows.filter(t => t.status === "Completed");
+    if (filter === "cancelled") return rows.filter(t => t.status === "Cancelled");
+    return rows;
+}
+
 function DashboardContent() {
     const { publicKey } = useWallet();
     const [filter, setFilter] = useState<DashboardFilter>("all");
     const [managingId, setManagingId] = useState<string | null>(null);
 
-    const { state, refresh } = useDashboard(filter);
+    // Single fetch — returns all organizer's tournaments. Filter is derived
+    // client-side to avoid double-fetching (and double-batch-RPC enrichment)
+    // when also rendering the AnalyticsSection.
+    const { state, refresh } = useDashboard();
 
-    // Derived: all tournaments (for analytics) — always use "all" filter data
-    const { state: allState } = useDashboard("all");
-    const allTournaments = allState.status === "success" ? allState.data : [];
+    const allTournaments = state.status === "success" ? state.data : [];
+    const filteredTournaments = useMemo(
+        () => applyFilter(allTournaments, filter),
+        [allTournaments, filter],
+    );
 
     const walletDisplay = publicKey
         ? `${publicKey.toBase58().slice(0, 4)}…${publicKey.toBase58().slice(-4)}`
@@ -191,14 +206,16 @@ function DashboardContent() {
                 ? <TableSkeleton />
                 : state.status === "error"
                     ? <ErrorState onRetry={refresh} />
-                    : state.status === "empty"
-                        ? <EmptyState filter={filter} />
-                        : (
-                            <TournamentTable
-                                tournaments={state.data}
-                                onManage={id => setManagingId(id)}
-                            />
-                        )
+                    : state.status === "empty" || allTournaments.length === 0
+                        ? <EmptyState filter="all" />
+                        : filteredTournaments.length === 0
+                            ? <EmptyState filter={filter} />
+                            : (
+                                <TournamentTable
+                                    tournaments={filteredTournaments}
+                                    onManage={id => setManagingId(id)}
+                                />
+                            )
             }
 
             {/* Analytics */}
