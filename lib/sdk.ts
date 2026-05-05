@@ -3,7 +3,11 @@
 import { useMemo } from "react";
 import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
-import { BracketChainClient, type BracketChainClientOptions } from "@bracketchain/sdk";
+import {
+    BracketChainClient,
+    BracketChainIndexerClient,
+    type BracketChainClientOptions,
+} from "@bracketchain/sdk";
 
 function programIdFromEnv(): PublicKey | undefined {
     const env = process.env.NEXT_PUBLIC_PROGRAM_ID;
@@ -43,4 +47,24 @@ export function useReadOnlySdkClient(): BracketChainClient {
             }),
         [connection],
     );
+}
+
+// ── Indexer client (Phase 5.3) ────────────────────────────────────────────────
+// Module-level singleton so SWR fetches reuse the same baseUrl + bound fetch
+// implementation across hook instances. Hot-module-reload friendly: `let`
+// rebinding survives Next.js dev refresh.
+
+let _indexerClient: BracketChainIndexerClient | null = null;
+
+/**
+ * Get (lazily) the SDK indexer client. Returns `null` when
+ * `NEXT_PUBLIC_INDEXER_URL` is unset — callers fall back to chain-only reads
+ * and SWR layer treats this as "indexer is down".
+ */
+export function getIndexerClient(): BracketChainIndexerClient | null {
+    if (_indexerClient) return _indexerClient;
+    const baseUrl = process.env.NEXT_PUBLIC_INDEXER_URL;
+    if (!baseUrl) return null;
+    _indexerClient = new BracketChainIndexerClient({ baseUrl });
+    return _indexerClient;
 }

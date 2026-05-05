@@ -1,5 +1,5 @@
 import { formatStartsIn, toUiTournament } from "../lib/tournament";
-import { IndexerTournament } from "../lib/indexer";
+import type { IndexerTournament } from "@bracketchain/sdk";
 
 describe("Tournament Utilities", () => {
     describe("formatStartsIn", () => {
@@ -46,6 +46,7 @@ describe("Tournament Utilities", () => {
             completedAt: null,
             createdTxSig: "sig123",
             completedTxSig: null,
+            chainSlotAtWrite: "0",
         };
 
         it("calculates participant count correctly from grossPool", () => {
