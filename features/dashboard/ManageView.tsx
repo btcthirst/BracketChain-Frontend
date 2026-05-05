@@ -7,7 +7,7 @@ import type { Match } from "@/types/tournament";
 import { useTournamentView } from "@/hooks/useTournamentView";
 import { BracketView, BracketEmpty, BracketSkeleton } from "@/features/tournament/view/BracketView";
 import { ReportResultModal } from "./ReportResultModal";
-import { CancelModal } from "./CancelModal";
+import { CancelModal } from "@/features/tournament/view/CancelModal";
 
 interface Props {
     tournamentId: string;
