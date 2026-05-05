@@ -162,26 +162,7 @@ export function useDashboard() {
                     }
                 }
 
-<<<<<<< HEAD
                 if (ac.signal.aborted) return;
-=======
-                // Apply the dashboard filter AFTER enriching
-                const targetStatus = STATUS_MAP[filter];
-                if (targetStatus) {
-                    mine = mine.filter(t => {
-                        if (targetStatus === "Active") {
-                            // "Active" tab should show everything that is playable or in setup
-                            return (
-                                t.status === "Registration" || 
-                                t.status === "PendingBracketInit" || 
-                                t.status === "Active"
-                            );
-                        }
-                        return t.status === targetStatus;
-                    });
-                }
-
->>>>>>> origin/develop
                 if (mine.length === 0) {
                     dispatch({ type: "FETCH_EMPTY" });
                 } else {
