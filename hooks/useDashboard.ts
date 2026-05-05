@@ -54,7 +54,6 @@ const USDC_DECIMALS = 1_000_000;
 
 function toEntry(t: IndexerTournament): DashboardTournament {
     const entryFee = BigInt(t.entryFee);
-    const grossPool = t.grossPool != null ? BigInt(t.grossPool) : BigInt(0);
     const organizerDeposit = BigInt(t.organizerDeposit);
 
     // Variant B (locked decision 2026-05-03): grossPool = entryFee × N + organizerDeposit.
@@ -63,14 +62,17 @@ function toEntry(t: IndexerTournament): DashboardTournament {
     // (shouldn't happen on-chain, but treat untrusted indexer data carefully).
     // This is a best-effort fallback only; the on-chain enrichment below
     // overwrites it with the authoritative `participant_count` from the
-    // Tournament PDA. For Active/Registration tournaments the indexer's
-    // grossPool is null until the TournamentCompleted event lands, so the
-    // initial value here is 0 and enrichment is the only source of truth.
+    // Tournament PDA. When the indexer's grossPool is null (Active/Registration
+    // tournaments before TournamentCompleted lands) we fall back to
+    // organizerDeposit (the on-chain floor) rather than 0 — keeps the
+    // dashboard pool from flashing $0 while the indexer catches up.
+    const grossPool = t.grossPool != null ? BigInt(t.grossPool) : organizerDeposit;
     const grossEntries = grossPool > organizerDeposit ? grossPool - organizerDeposit : 0n;
     const participantCount =
         entryFee > 0n && t.grossPool != null
             ? Number(grossEntries / entryFee)
             : 0;
+            
     const prizePoolUsdc = Number(grossPool) / USDC_DECIMALS;
     return { ...t, participantCount, prizePoolUsdc };
 }
@@ -160,7 +162,26 @@ export function useDashboard() {
                     }
                 }
 
+<<<<<<< HEAD
                 if (ac.signal.aborted) return;
+=======
+                // Apply the dashboard filter AFTER enriching
+                const targetStatus = STATUS_MAP[filter];
+                if (targetStatus) {
+                    mine = mine.filter(t => {
+                        if (targetStatus === "Active") {
+                            // "Active" tab should show everything that is playable or in setup
+                            return (
+                                t.status === "Registration" || 
+                                t.status === "PendingBracketInit" || 
+                                t.status === "Active"
+                            );
+                        }
+                        return t.status === targetStatus;
+                    });
+                }
+
+>>>>>>> origin/develop
                 if (mine.length === 0) {
                     dispatch({ type: "FETCH_EMPTY" });
                 } else {
