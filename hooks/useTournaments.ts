@@ -1,7 +1,6 @@
 "use client";
 
-import { useBracketChainClient } from "@/lib/sdk";
-import { listIndexerTournaments } from "@/lib/indexer";
+import { useBracketChainClient, getIndexerClient } from "@/lib/sdk";
 import { toUiTournament, type Tournament } from "@/lib/tournament";
 import { getTournament, getEnumKind } from "@bracketchain/sdk";
 import { PublicKey } from "@solana/web3.js";
@@ -56,7 +55,13 @@ export function useTournaments() {
         const ac = new AbortController();
         dispatch({ type: "FETCH_START" });
 
-        listIndexerTournaments({ status: "Registration", limit: 4, signal: ac.signal })
+        const indexer = getIndexerClient();
+        if (!indexer) {
+            dispatch({ type: "FETCH_ERROR" });
+            return () => ac.abort();
+        }
+
+        indexer.listTournaments({ status: "Registration", limit: 4, signal: ac.signal })
             .then(async (rows) => {
                 if (ac.signal.aborted) return;
                 const tournaments = rows.map(r => toUiTournament(r));

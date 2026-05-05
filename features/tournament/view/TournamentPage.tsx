@@ -12,6 +12,7 @@ import { TournamentHeader } from "./TournamentHeader";
 import { BracketView, BracketSkeleton, BracketEmpty } from "./BracketView";
 import { TournamentSidebar, SidebarSkeleton } from "./TournamentSidebar";
 import { ReportResultModal } from "./ReportResultModal";
+import { CancelModal } from "./CancelModal";
 import type { Match } from "@/types/tournament";
 
 // ── Edge state: not found ─────────────────────────────────────────────────────
@@ -147,6 +148,7 @@ export function TournamentPage({ id }: { id: string }) {
     const { publicKey } = useWallet();
     const currentAddress = publicKey?.toBase58() ?? null;
     const [reportingMatch, setReportingMatch] = useState<Match | null>(null);
+    const [showCancel, setShowCancel] = useState(false);
 
     const isOrganizer =
         state.status === "success" &&
@@ -210,6 +212,7 @@ export function TournamentPage({ id }: { id: string }) {
                                         tournament={t}
                                         currentAddress={currentAddress}
                                         onJoinSuccess={refresh}
+                                        onCancel={() => setShowCancel(true)}
                                     />
                                 </div>
                             </div>
@@ -219,6 +222,15 @@ export function TournamentPage({ id }: { id: string }) {
                                     match={reportingMatch}
                                     tournament={t}
                                     onClose={() => setReportingMatch(null)}
+                                    onSuccess={refresh}
+                                />
+                            )}
+
+                            {showCancel && (
+                                <CancelModal
+                                    tournamentId={t.id}
+                                    tournamentName={t.name}
+                                    onClose={() => setShowCancel(false)}
                                     onSuccess={refresh}
                                 />
                             )}
