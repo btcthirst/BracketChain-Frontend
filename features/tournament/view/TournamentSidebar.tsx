@@ -209,12 +209,14 @@ function ActionArea({
     isOrganizer,
     onJoinSuccess,
     onViewPayouts,
+    onCancel,
 }: {
     tournament: TournamentView;
     currentAddress: string | null;
     isOrganizer: boolean;
     onJoinSuccess: () => void;
     onViewPayouts: () => void;
+    onCancel?: () => void;
 }) {
     const [joining, setJoining] = useState(false);
     const [starting, setStarting] = useState(false);
@@ -320,21 +322,32 @@ function ActionArea({
             const canStart = tournament.participants.length >= 2;
 
             return (
-                <button
-                    onClick={handleStart}
-                    disabled={starting || !canStart}
-                    className={`w-full py-3 rounded-xl font-bold text-sm transition-colors ${isFull
-                        ? "bg-green-600 hover:bg-green-700 text-white"
-                        : "bg-purple-600 hover:bg-purple-700 text-white"
-                        } disabled:bg-gray-100 disabled:text-gray-400`}
-                >
-                    {starting
-                        ? <span className="flex items-center justify-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin" /> Initializing...
-                        </span>
-                        : isFull ? "Start Tournament" : "Start Early (Lock Bracket)"
-                    }
-                </button>
+                <div className="flex flex-col gap-3">
+                    <button
+                        onClick={handleStart}
+                        disabled={starting || !canStart}
+                        className={`w-full py-3 rounded-xl font-bold text-sm transition-colors ${isFull
+                            ? "bg-green-600 hover:bg-green-700 text-white"
+                            : "bg-purple-600 hover:bg-purple-700 text-white"
+                            } disabled:bg-gray-100 disabled:text-gray-400`}
+                    >
+                        {starting
+                            ? <span className="flex items-center justify-center gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin" /> Initializing...
+                            </span>
+                            : isFull ? "Start Tournament" : "Start Early (Lock Bracket)"
+                        }
+                    </button>
+                    {onCancel && (
+                        <button
+                            onClick={onCancel}
+                            disabled={starting}
+                            className="w-full py-3 rounded-xl font-bold text-sm text-red-600 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50"
+                        >
+                            Cancel Tournament
+                        </button>
+                    )}
+                </div>
             );
         }
 
@@ -456,10 +469,12 @@ export function TournamentSidebar({
     tournament,
     currentAddress,
     onJoinSuccess,
+    onCancel,
 }: {
     tournament: TournamentView;
     currentAddress: string | null;
     onJoinSuccess: () => void;
+    onCancel?: () => void;
 }) {
     const isOrganizer = tournament.organizer.address === currentAddress;
     // Lifted from EscrowPanel so the "View Payouts" CTA in ActionArea can both
@@ -496,6 +511,7 @@ export function TournamentSidebar({
                 isOrganizer={isOrganizer}
                 onJoinSuccess={onJoinSuccess}
                 onViewPayouts={handleViewPayouts}
+                onCancel={onCancel}
             />
         </aside>
     );

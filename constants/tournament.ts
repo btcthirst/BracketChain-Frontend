@@ -5,12 +5,6 @@ import type { TournamentFormat, PayoutEntry, PayoutPreset, Token } from "@/types
 export const PROTOCOL_FEE = 0.035;
 
 // ── Format descriptions ───────────────────────────────────────────────────────
-//
-// MVP supports Single Elimination only — the on-chain `MatchNode` shape and
-// `report_result` advancement logic model SE brackets exclusively. DE/Swiss/RR
-// are V1 program-level work (see project_v1_format_expansion.md). Entries with
-// `available: false` are still rendered (for roadmap visibility) but the form
-// disables their <option> tag so they can't be selected.
 export const FORMAT_INFO: Record<
     TournamentFormat,
     { label: string; desc: string; available: boolean }
@@ -38,15 +32,6 @@ export const FORMAT_INFO: Record<
 };
 
 // ── Payout presets ────────────────────────────────────────────────────────────
-//
-// MVP supports the 3 fixed presets only — `PayoutPreset` enum on-chain has
-// hard-coded BPS tables in `constants.rs`. "Custom" is V2 (sum-validation,
-// rounding edge cases). UI keeps the entry visible (with `available: false`)
-// to telegraph the roadmap, but the button disables.
-//
-// `minParticipants` mirrors the program's `PayoutPreset::min_participants()`
-// in `state/tournament.rs`. Keep these in sync — the program rejects with
-// `PresetExceedsParticipants` if `maxParticipants < minParticipants`.
 export const PAYOUT_PRESETS: Record<
     PayoutPreset,
     { label: string; entries: PayoutEntry[]; available: boolean; minParticipants: number }
@@ -93,11 +78,6 @@ export const PAYOUT_PRESETS: Record<
 };
 
 // ── Prize tokens ──────────────────────────────────────────────────────────────
-//
-// Program is mint-agnostic, but the MVP demo flow only validates against USDC
-// devnet. wSOL + custom SPL are V1 (UX, balance lookups, decimals handling).
-// Entries with `available: false` render disabled but visible — same roadmap-
-// signaling pattern as FORMAT_INFO / PAYOUT_PRESETS.
 export const TOKEN_INFO: Record<Token, { label: string; available: boolean }> = {
     USDC: { label: "USDC", available: true },
     SOL: { label: "wSOL (V1)", available: false },

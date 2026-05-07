@@ -27,7 +27,7 @@ bracketchain-frontend/
 ├── app/                        # Next.js App Router
 │   ├── create/                 # /create — tournament creation wizard
 │   ├── t/[id]/                 # /t/:id — public tournament view
-│   ├── explore/                # /explore — placeholder
+│   ├── explore/                # /explore — tournament browser
 │   ├── about/                  # /about — placeholder
 │   ├── layout.tsx
 │   └── page.tsx                # Landing page
@@ -211,7 +211,7 @@ const { connection } = useConnection();
 | `/` | ✅ Live | Landing — hero, stats, how it works, live tournaments |
 | `/create` | ✅ Live | 3-step tournament creation wizard |
 | `/t/[id]` | ✅ Live | Public bracket view, participants, escrow |
-| `/explore` | 🚧 Placeholder | Tournament browser |
+| `/explore` | ✅ Live | Tournament browser with advanced filters and pagination |
 | `/about` | 🚧 Placeholder | About page |
 
 ## Edge States
@@ -223,15 +223,10 @@ Every data-fetching component handles:
 - **Empty** — contextual empty state with CTA
 - **Not found** — 404 with link to `/explore` (tournament page only)
 
-## Current Limitations (MVP v0)
+## Current Limitations
 
-> This is a frontend prototype. The following are not yet implemented:
-
-- Real Solana transactions — all blockchain interactions are simulated with `setTimeout`
-- API layer — all data is mock/hardcoded
 - WebSocket subscriptions — no real-time bracket updates
-- Result reporting — organizer "Report Result" button is UI-only
-- `/explore` and `/about` pages are placeholders
+- `/about` page is a placeholder
 
 ## Contributing
 

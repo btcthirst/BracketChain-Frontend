@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { RefreshCw, AlertTriangle, ExternalLink } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -12,6 +12,9 @@ import { TournamentHeader } from "./TournamentHeader";
 import { BracketView, BracketSkeleton, BracketEmpty } from "./BracketView";
 import { TournamentSidebar, SidebarSkeleton } from "./TournamentSidebar";
 import { ReportResultModal } from "./ReportResultModal";
+import { CancelModal } from "../../dashboard/CancelModal";
+import { SimulatorControls } from "./SimulatorControls";
+import { useSimulator } from "@/hooks/useSimulator";
 import type { Match } from "@/types/tournament";
 
 // ── Edge state: not found ─────────────────────────────────────────────────────
@@ -60,7 +63,6 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 function LoadingSkeleton() {
     return (
         <div className="animate-pulse">
-            {/* Header skeleton */}
             <div className="bg-[#0a1929] py-8">
                 <div className="container mx-auto px-6 flex flex-col gap-4">
                     <div className="flex gap-2">
@@ -78,7 +80,6 @@ function LoadingSkeleton() {
                     </div>
                 </div>
             </div>
-            {/* Content skeleton */}
             <div className="container mx-auto px-6 py-8">
                 <div className="grid lg:grid-cols-[1fr_320px] gap-8">
                     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -100,6 +101,7 @@ function CancelledBanner({
     txSignature: string | null;
     refundTxs: string[];
 }) {
+    const uniqueRefundTxs = useMemo(() => Array.from(new Set(refundTxs)), [refundTxs]);
     return (
         <div className="bg-red-50 border-b border-red-200">
             <div className="container mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center gap-3">
@@ -108,10 +110,10 @@ function CancelledBanner({
                     <p className="text-sm font-semibold text-red-800">
                         This tournament was cancelled. All entry fees have been refunded.
                     </p>
-                    {refundTxs.length > 0 && (
+                    {uniqueRefundTxs.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-1">
-                            {refundTxs.map((tx, i) => (
-                                <a
+                            {uniqueRefundTxs.map((tx, i) => (
+                                <Link
                                     key={tx}
                                     href={`${SOLANA.explorerTx(tx)}?cluster=devnet`}
                                     target="_blank"
@@ -120,7 +122,7 @@ function CancelledBanner({
                                 >
                                     Refund #{i + 1}
                                     <ExternalLink className="w-3 h-3" />
-                                </a>
+                                </Link>
                             ))}
                         </div>
                     )}
@@ -140,6 +142,61 @@ function CancelledBanner({
     );
 }
 
+// ── SE-demo bracket panel ─────────────────────────────────────────────────────
+//
+// Separate sub-component so the useSimulator hook is only mounted when the
+// tournament is loaded AND the format is SE-demo. This avoids running the
+// hook with an empty matches array during loading.
+
+interface DemoBracketPanelProps {
+    sourceMatches: Match[];
+    maxRound: number;
+}
+
+function DemoBracketPanel({ sourceMatches, maxRound }: DemoBracketPanelProps) {
+    const { state, start, pause, resume, reset, setSpeed } = useSimulator({
+        sourceMatches,
+        maxRound,
+    });
+
+    // While idle, show the original (empty placeholder) matches.
+    // While running/paused/done, show the simulated matches.
+    const displayMatches = state.phase === "idle" ? sourceMatches : state.matches;
+
+    return (
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            {/* Section header */}
+            <div className="border-b border-gray-100 px-5 py-3">
+                <h2 className="text-sm font-semibold text-gray-700">Bracket</h2>
+            </div>
+
+            {/* Simulator HUD (champion banner, progress pills, controls) */}
+            <SimulatorControls
+                simState={state}
+                matches={displayMatches}
+                maxRound={maxRound}
+                onStart={start}
+                onPause={pause}
+                onResume={resume}
+                onReset={reset}
+                onSetSpeed={setSpeed}
+            />
+
+            {/* Bracket visualization — re-uses the existing BracketView */}
+            {state.phase !== "done" && (
+                displayMatches.length > 0 ? (
+                    <BracketView
+                        matches={displayMatches}
+                        isOrganizer={false}
+                    />
+                ) : (
+                    <BracketEmpty />
+                )
+            )}
+        </div>
+    );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function TournamentPage({ id }: { id: string }) {
@@ -147,10 +204,20 @@ export function TournamentPage({ id }: { id: string }) {
     const { publicKey } = useWallet();
     const currentAddress = publicKey?.toBase58() ?? null;
     const [reportingMatch, setReportingMatch] = useState<Match | null>(null);
+    const [showCancel, setShowCancel] = useState(false);
 
     const isOrganizer =
         state.status === "success" &&
         state.data.organizer.address === currentAddress;
+
+    const maxRound = useMemo(() => {
+        if (state.status !== "success") return 1;
+        const rounds = state.data.matches.map(m => m.round);
+        return rounds.length > 0 ? Math.max(...rounds) : 1;
+    }, [state]);
+
+    const isDemoFormat =
+        state.status === "success" && state.data.format === "SE";
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -179,37 +246,40 @@ export function TournamentPage({ id }: { id: string }) {
                             <div className="container mx-auto px-6 py-8">
                                 <div className="grid lg:grid-cols-[1fr_320px] gap-8 items-start">
 
-                                    {/* Bracket panel */}
-                                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                                        <div className="border-b border-gray-100 px-5 py-3">
-                                            <h2 className="text-sm font-semibold text-gray-700">Bracket</h2>
+                                    {isDemoFormat ? (
+                                        <DemoBracketPanel
+                                            sourceMatches={t.matches}
+                                            maxRound={maxRound}
+                                        />
+                                    ) : (
+                                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                                            <div className="border-b border-gray-100 px-5 py-3">
+                                                <h2 className="text-sm font-semibold text-gray-700">Bracket</h2>
+                                            </div>
+                                            {!hasBracket
+                                                ? <BracketEmpty
+                                                    onJoin={t.status === "registration"
+                                                        ? () => document.getElementById("join-btn")?.click()
+                                                        : undefined
+                                                    }
+                                                    isRegistered={t.participants.some(
+                                                        p => p.address === currentAddress
+                                                    )}
+                                                />
+                                                : <BracketView
+                                                    matches={t.matches}
+                                                    isOrganizer={isOrganizer && t.status === "in_progress" && t.bracketReady}
+                                                    onReport={setReportingMatch}
+                                                />
+                                            }
                                         </div>
-                                        {!hasBracket
-                                            ? <BracketEmpty
-                                                onJoin={t.status === "registration"
-                                                    ? () => document.getElementById("join-btn")?.click()
-                                                    : undefined
-                                                }
-                                                // Pass whether current user is already a participant
-                                                // so the empty state can show a more relevant message
-                                                isRegistered={t.participants.some(
-                                                    p => p.address === currentAddress
-                                                )}
-                                            />
-                                            : <BracketView
-                                                matches={t.matches}
-                                                isOrganizer={isOrganizer && t.status === "in_progress" && t.bracketReady}
-                                                onReport={setReportingMatch}
-                                            />
-                                        }
-                                    </div>
+                                    )}
 
-                                    {/* Sidebar — receives refresh so it can trigger
-                                        a data reload after a successful join */}
                                     <TournamentSidebar
                                         tournament={t}
                                         currentAddress={currentAddress}
                                         onJoinSuccess={refresh}
+                                        onCancel={() => setShowCancel(true)}
                                     />
                                 </div>
                             </div>
@@ -219,6 +289,15 @@ export function TournamentPage({ id }: { id: string }) {
                                     match={reportingMatch}
                                     tournament={t}
                                     onClose={() => setReportingMatch(null)}
+                                    onSuccess={refresh}
+                                />
+                            )}
+
+                            {showCancel && (
+                                <CancelModal
+                                    tournamentId={t.id}
+                                    tournamentName={t.name}
+                                    onClose={() => setShowCancel(false)}
                                     onSuccess={refresh}
                                 />
                             )}

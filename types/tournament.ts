@@ -94,9 +94,6 @@ export interface TournamentView extends Omit<TournamentSummary, "participants" |
     registrationDeadline: string;
     cancelledTxSignature: string | null;
     refundTxSignatures: string[];
-    // On-chain bracket-init progress. UI status `in_progress` covers both
-    // PendingBracketInit and Active — `bracketReady` distinguishes them so the
-    // organizer can't try to report results before all match PDAs exist.
     matchesInitialized: number;
     totalMatches: number;
     bracketReady: boolean;
