@@ -2,7 +2,7 @@
 
 import { Search, X, LayoutGrid, Gamepad2 } from "lucide-react";
 import type { ExploreFilters } from "@/hooks/useExplore";
-import type { IndexerTournamentStatus } from "@bracketchain/sdk";
+import type { IndexerTournamentStatus } from "@/lib/indexer";
 
 interface Props {
     filters: ExploreFilters;

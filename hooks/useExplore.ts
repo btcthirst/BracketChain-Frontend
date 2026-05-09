@@ -3,7 +3,8 @@
 import { useState, useReducer, useEffect, useCallback } from "react";
 import { toUiTournament, type Tournament } from "@/lib/tournament";
 import { useBracketChainClient, getIndexerClient } from "@/lib/sdk";
-import { getTournament, getEnumKind, type IndexerTournamentStatus } from "@bracketchain/sdk";
+import { getTournament, getEnumKind } from "@bracketchain/sdk";
+import type { IndexerTournamentStatus } from "@/lib/indexer";
 import { PublicKey } from "@solana/web3.js";
 
 const ANCHOR_TO_INDEXER_STATUS: Record<string, Tournament["status"]> = {

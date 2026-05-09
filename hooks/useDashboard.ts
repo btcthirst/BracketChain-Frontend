@@ -3,11 +3,8 @@
 import { useEffect, useReducer, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useBracketChainClient, getIndexerClient } from "@/lib/sdk";
-import {
-    getEnumKind,
-    type IndexerTournament,
-    type IndexerTournamentStatus,
-} from "@bracketchain/sdk";
+import { getEnumKind } from "@bracketchain/sdk";
+import type { IndexerTournament, IndexerTournamentStatus } from "@/lib/indexer";
 import { PublicKey } from "@solana/web3.js";
 
 const ANCHOR_TO_INDEXER_STATUS: Record<string, IndexerTournamentStatus> = {

@@ -164,7 +164,10 @@ function DashboardContent() {
     // when also rendering the AnalyticsSection.
     const { state, refresh } = useDashboard();
 
-    const allTournaments = state.status === "success" ? state.data : [];
+    const allTournaments = useMemo(
+        () => (state.status === "success" ? state.data : []),
+        [state],
+    );
     const filteredTournaments = useMemo(
         () => applyFilter(allTournaments, filter),
         [allTournaments, filter],

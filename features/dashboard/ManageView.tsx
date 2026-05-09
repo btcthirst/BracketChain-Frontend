@@ -6,7 +6,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import type { Match } from "@/types/tournament";
 import { useTournamentView } from "@/hooks/useTournamentView";
 import { BracketView, BracketEmpty, BracketSkeleton } from "@/features/tournament/view/BracketView";
-import { ReportResultModal } from "./ReportResultModal";
+import { ReportResultModal } from "@/features/tournament/view/ReportResultModal";
 import { CancelModal } from "@/features/tournament/view/CancelModal";
 
 interface Props {
