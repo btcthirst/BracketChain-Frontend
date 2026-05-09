@@ -1,6 +1,6 @@
+import { BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import {
-    BN,
     findMatchPda,
     findParticipantPda,
     findVaultPda,
@@ -14,10 +14,8 @@ import {
     type TournamentState,
     type TournamentStatusKind,
     type TournamentStatusVariant,
-    type IndexerTournament,
-    type IndexerParticipant,
-    type IndexerMatch,
 } from "@bracketchain/sdk";
+import type { IndexerTournament, IndexerParticipant, IndexerMatch } from "@/lib/indexer";
 
 // Shape parity with `payoutPreset()` helper. Constructs
 // `{ [variant]: {} }` for an arbitrary enum kind string. Anchor's IDL types

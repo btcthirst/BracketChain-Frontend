@@ -7,10 +7,6 @@ import {
     getTournamentState,
     subscribe,
     type BracketChainClient,
-    type IndexerMatch,
-    type IndexerParticipant,
-    type IndexerPayout,
-    type IndexerTournament,
     type MatchNode,
     type MatchNodeWithAddress,
     type ParticipantWithAddress,
@@ -18,6 +14,7 @@ import {
     type TournamentState,
     type TournamentStatusKind,
 } from "@bracketchain/sdk";
+import type { IndexerMatch, IndexerParticipant, IndexerPayout, IndexerTournament } from "@/lib/indexer";
 
 import { useReadOnlySdkClient, getIndexerClient } from "@/lib/sdk";
 import { indexerToTournamentState } from "@/lib/indexerToTournamentState";
@@ -209,7 +206,8 @@ function buildView(
 
     const refundTxSignatures = payouts
         .filter((p) => p.kind === "Refund")
-        .map((p) => p.txSignature);
+        .map((p) => p.txSignature)
+        .filter((sig): sig is string => sig !== null);
 
     // Bracket-init progress. On-chain `matches_initialized` ramps up across
     // start_tournament chunks; report_result requires status === Active, which
@@ -525,18 +523,6 @@ export function useTournamentView(id: string) {
                     () => {
                         refetch();
                         resetInactivityTimer();  // WS is alive — push timer back
-                    },
-                    {
-                        // Phase 5.4: surface subscription errors to console + force
-                        // an immediate reconcile so the user sees current state
-                        // instead of stale WS-driven data. Full Drift v2 resub
-                        // manager is V1+; SWR + this fast reconcile are enough
-                        // for MVP.
-                        onError: (err) => {
-                            console.warn(`subscription error (${err.kind})`, err.cause);
-                            refetch();
-                            resetInactivityTimer();
-                        },
                     },
                 );
 
