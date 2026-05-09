@@ -5,6 +5,10 @@ import { PublicKey } from "@solana/web3.js";
 import {
     getEnumKind,
     getTournamentState,
+    IndexerMatch,
+    IndexerParticipant,
+    IndexerPayout,
+    IndexerTournament,
     subscribe,
     type BracketChainClient,
     type MatchNode,
@@ -14,7 +18,6 @@ import {
     type TournamentState,
     type TournamentStatusKind,
 } from "@bracketchain/sdk";
-import type { IndexerMatch, IndexerParticipant, IndexerPayout, IndexerTournament } from "@/lib/indexer";
 
 import { useReadOnlySdkClient, getIndexerClient } from "@/lib/sdk";
 import { indexerToTournamentState } from "@/lib/indexerToTournamentState";
@@ -146,8 +149,8 @@ function buildPayouts(
             recipientAddress && participants.some((p) => p.account.wallet.toBase58() === recipientAddress)
                 ? makePlayer(recipientAddress, organizerAddress)
                 : recipientAddress
-                ? makePlayer(recipientAddress, organizerAddress)
-                : null;
+                    ? makePlayer(recipientAddress, organizerAddress)
+                    : null;
 
         return {
             place: e.place,

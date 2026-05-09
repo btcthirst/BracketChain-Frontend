@@ -5,9 +5,9 @@ import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import {
     BracketChainClient,
+    BracketChainIndexerClient,
     type BracketChainClientOptions,
 } from "@bracketchain/sdk";
-import { BracketChainIndexerClient } from "@/lib/indexer";
 
 function programIdFromEnv(): PublicKey | undefined {
     const env = process.env.NEXT_PUBLIC_PROGRAM_ID;
