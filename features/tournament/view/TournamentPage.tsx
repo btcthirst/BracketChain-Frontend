@@ -114,7 +114,7 @@ function CancelledBanner({ txSignature, refundTxs }: { txSignature: string | nul
                     {refundTxs.length > 0 && (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                             {refundTxs.map((tx, i) => (
-                                <a key={tx} href={`${SOLANA.explorerTx(tx)}?cluster=devnet`} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", color: "rgba(240,78,102,0.7)", textDecoration: "none" }}
+                                <a key={tx} href={`${SOLANA.explorerTx(tx)}`} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", color: "rgba(240,78,102,0.7)", textDecoration: "none" }}
                                     onMouseEnter={e => (e.currentTarget.style.color = "#f04e66")}
                                     onMouseLeave={e => (e.currentTarget.style.color = "rgba(240,78,102,0.7)")}
                                 >
@@ -125,7 +125,7 @@ function CancelledBanner({ txSignature, refundTxs }: { txSignature: string | nul
                     )}
                 </div>
                 {txSignature && (
-                    <a href={`${SOLANA.explorerTx(txSignature)}?cluster=devnet`} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", color: "rgba(240,78,102,0.7)", textDecoration: "none", flexShrink: 0 }}
+                    <a href={`${SOLANA.explorerTx(txSignature)}`} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", color: "rgba(240,78,102,0.7)", textDecoration: "none", flexShrink: 0 }}
                         onMouseEnter={e => (e.currentTarget.style.color = "#f04e66")}
                         onMouseLeave={e => (e.currentTarget.style.color = "rgba(240,78,102,0.7)")}
                     >

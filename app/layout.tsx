@@ -36,7 +36,7 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
       className={`${dmSans.variable} ${dmMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="relative min-h-full flex flex-col">
         <BackgroundGlow />
         <Providers>
           <AppRouterCacheProvider>

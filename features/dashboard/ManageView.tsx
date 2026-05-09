@@ -6,7 +6,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import type { Match } from "@/types/tournament";
 import { useTournamentView } from "@/hooks/useTournamentView";
 import { BracketView, BracketEmpty, BracketSkeleton } from "@/features/tournament/view/BracketView";
-import { ReportResultModal } from "./ReportResultModal";
+import { ReportResultModal } from "@/features/tournament/view/ReportResultModal";
 import { CancelModal } from "./CancelModal";
 
 interface Props {
@@ -305,9 +305,7 @@ export function ManageView({ tournamentId, onBack }: Props) {
                         {reportMatch && (
                             <ReportResultModal
                                 match={reportMatch}
-                                tournamentId={tournamentId}
-                                allMatches={t.matches}
-                                participants={t.participants}
+                                tournament={t}
                                 onClose={() => setReportMatch(null)}
                                 onSuccess={refresh}
                             />

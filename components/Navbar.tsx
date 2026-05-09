@@ -37,35 +37,35 @@ export function Navbar() {
                         textDecoration: "none",
                     }}
                 >
-                    <div
-                        style={{
-                            width: 28,
-                            height: 28,
-                            background: "linear-gradient(135deg, #22d47e 0%, #4ade80 100%)",
-                            borderRadius: 6,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                        }}
-                    >
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                            <rect x="0" y="3" width="5" height="3" rx="1" fill="white" />
-                            <rect x="0" y="8" width="5" height="3" rx="1" fill="white" />
-                            <rect x="5" y="5" width="4" height="4" rx="1" fill="white" opacity="0.7" />
-                            <rect x="9" y="5" width="5" height="4" rx="1" fill="white" opacity="0.5" />
-                        </svg>
+                    {/* Geometric B mark */}
+                    <svg width="27" height="23" viewBox="0 0 68 58" fill="#00ff66">
+                        <path d="M3,3 L38,3 L56,16 L38,25 L14,25 L3,14 Z"/>
+                        <path d="M3,40 L14,29 L42,29 L63,45 L42,55 L3,55 Z"/>
+                    </svg>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                        <span
+                            style={{
+                                fontFamily: "'Syne', sans-serif",
+                                fontWeight: 700,
+                                fontSize: "0.95rem",
+                                color: "#f0f1f5",
+                                letterSpacing: "-0.01em",
+                                lineHeight: 1.15,
+                            }}
+                        >
+                            BracketChain
+                        </span>
+                        <span
+                            style={{
+                                fontSize: "0.55rem",
+                                color: "rgba(240,241,245,0.38)",
+                                letterSpacing: "0.1em",
+                                lineHeight: 1.2,
+                            }}
+                        >
+                            tournament protocol
+                        </span>
                     </div>
-                    <span
-                        style={{
-                            fontFamily: "'Syne', sans-serif",
-                            fontWeight: 700,
-                            fontSize: "0.95rem",
-                            color: "#f0f1f5",
-                            letterSpacing: "-0.01em",
-                        }}
-                    >
-                        BracketChain
-                    </span>
                 </Link>
 
                 {/* Nav links */}
