@@ -2,9 +2,8 @@
 
 import { useEffect, useReducer, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { listIndexerTournaments, type IndexerTournament, type IndexerTournamentStatus } from "@/lib/indexer";
-import { useBracketChainClient } from "@/lib/sdk";
-import { getTournament, getEnumKind } from "@bracketchain/sdk";
+import { useBracketChainClient, getIndexerClient } from "@/lib/sdk";
+import { getEnumKind, type IndexerTournament, type IndexerTournamentStatus } from "@bracketchain/sdk";
 import { PublicKey } from "@solana/web3.js";
 
 const ANCHOR_TO_INDEXER_STATUS: Record<string, IndexerTournamentStatus> = {
@@ -49,33 +48,49 @@ function reducer(_: State, action: Action): State {
 
 const USDC_DECIMALS = 1_000_000;
 
-const STATUS_MAP: Record<DashboardFilter, IndexerTournamentStatus | undefined> = {
-    all: undefined,
-    active: "Active",
-    completed: "Completed",
-    cancelled: "Cancelled",
-};
-
 function toEntry(t: IndexerTournament): DashboardTournament {
     const entryFee = BigInt(t.entryFee);
     const organizerDeposit = BigInt(t.organizerDeposit);
-    
-    // Fallback: if grossPool is null (lagging indexer), show at least the organizer deposit.
-    // The indexer's grossPool should eventually be (deposit + total entry fees).
-    const grossPool = t.grossPool != null 
-        ? BigInt(t.grossPool) 
-        : organizerDeposit;
-    
+
+    // Variant B (locked decision 2026-05-03): grossPool = entryFee × N + organizerDeposit.
+    // To recover participantCount we subtract the deposit before dividing.
+    // Clamp to zero defensively — if the indexer ever returns deposit > grossPool
+    // (shouldn't happen on-chain, but treat untrusted indexer data carefully).
+    // This is a best-effort fallback only; the on-chain enrichment below
+    // overwrites it with the authoritative `participant_count` from the
+    // Tournament PDA. When the indexer's grossPool is null (Active/Registration
+    // tournaments before TournamentCompleted lands) we fall back to
+    // organizerDeposit (the on-chain floor) rather than 0 — keeps the
+    // dashboard pool from flashing $0 while the indexer catches up.
+    const grossPool = t.grossPool != null ? BigInt(t.grossPool) : organizerDeposit;
+    const grossEntries = grossPool > organizerDeposit ? grossPool - organizerDeposit : 0n;
     const participantCount =
         entryFee > 0n && t.grossPool != null
-            ? Number((BigInt(t.grossPool) - organizerDeposit) / entryFee)
+            ? Number(grossEntries / entryFee)
             : 0;
-            
+
     const prizePoolUsdc = Number(grossPool) / USDC_DECIMALS;
     return { ...t, participantCount, prizePoolUsdc };
 }
 
-export function useDashboard(filter: DashboardFilter) {
+/**
+ * Fetches every tournament organized by the connected wallet.
+ *
+ * Returns the unfiltered list — consumers (DashboardPage) derive the
+ * status-filtered view client-side via useMemo. This collapses what used
+ * to be two parallel hook instances (one for the table, one for analytics)
+ * into a single fetch + enrichment pass.
+ *
+ * Read path:
+ *   1. Indexer GET /tournaments?limit=100 — listing source
+ *   2. Filter rows by `organizer === connectedWallet`
+ *   3. Batch-fetch fresh Tournament accounts from chain via Anchor's
+ *      fetchMultiple ([...pdas]) — single getMultipleAccountsInfo RPC
+ *      instead of N separate getAccountInfo calls
+ *   4. Overlay on-chain status + participant_count over indexer rows
+ *      (fixes indexer lag and Variant B grossPool/entryFee math errors)
+ */
+export function useDashboard() {
     const { publicKey, connected } = useWallet();
     const client = useBracketChainClient();
     const [state, dispatch] = useReducer(reducer, { status: "idle" });
@@ -92,52 +107,58 @@ export function useDashboard(filter: DashboardFilter) {
         const ac = new AbortController();
         dispatch({ type: "FETCH_START" });
 
-        // Fetch all pages the organizer might have — indexer supports
-        // organizer filter via query param in future; for MVP fetch all + filter client-side.
-        // We do NOT pass `status` to the indexer so we can override stale indexer statuses with fresh on-chain ones.
-        listIndexerTournaments({ limit: 100, signal: ac.signal })
+        const indexer = getIndexerClient();
+        if (!indexer) {
+            dispatch({ type: "FETCH_ERROR" });
+            return () => ac.abort();
+        }
+
+        indexer.listTournaments({ limit: 100, signal: ac.signal })
             .then(async (rows) => {
                 if (ac.signal.aborted) return;
-                let mine = rows
+                const mine = rows
                     .filter(r => r.organizer === publicKey.toBase58())
                     .map(toEntry);
 
-                // Enrich with fresh on-chain data to fix indexer lag
+                // ── batch on-chain enrichment ───────────────────────────
+                // One getMultipleAccountsInfo RPC for up to 100 tournaments
+                // — Anchor decodes each entry server-side via the program's
+                // coder and returns null for missing accounts. Replaces the
+                // previous N+1 pattern (one getAccountInfo per row).
                 if (mine.length > 0 && client) {
+                    const validEntries = mine.filter(t => t.address && t.address.length >= 32);
+                    const pdas = validEntries.map(t => new PublicKey(t.address));
+
                     try {
-                        await Promise.all(mine.map(async (t) => {
-                            if (!t.address || t.address.length < 32) return;
-                            try {
-                                const data = await getTournament(client, new PublicKey(t.address));
-                                if (data) {
-                                    const kind = getEnumKind(data.status as never);
-                                    t.status = ANCHOR_TO_INDEXER_STATUS[kind] || t.status;
-                                }
-                            } catch (e) {
-                                console.warn(`Failed to fetch on-chain status for ${t.address}:`, e);
-                            }
-                        }));
+                        const fetched = await client.program.account.tournament.fetchMultiple(pdas);
+
+                        // Race guard: between dispatching FETCH_START and now the user
+                        // may have triggered a refetch (e.g. unmounted via wallet
+                        // disconnect). The Promise.all variant could mutate `mine`
+                        // entries even after the next FETCH_SUCCESS dispatched.
+                        // Single check here — fetchMultiple is one atomic RPC, so
+                        // there's no per-iteration window to worry about.
+                        if (ac.signal.aborted) return;
+
+                        validEntries.forEach((t, i) => {
+                            const data = fetched[i];
+                            if (!data) return;  // account not found / missing
+                            const kind = getEnumKind(data.status as never);
+                            t.status = ANCHOR_TO_INDEXER_STATUS[kind] || t.status;
+                            // Authoritative count from the Tournament PDA — fixes
+                            // indexer derivation for non-completed tournaments
+                            // (grossPool null) and for Variant B tournaments with
+                            // organizerDeposit > 0 (where grossPool/entryFee
+                            // over-counts by deposit/entryFee).
+                            t.participantCount = Number(data.participantCount);
+                        });
                     } catch (e) {
-                        console.warn("Failed to enrich tournament statuses:", e);
+                        // Enrichment is best-effort; fall back to indexer-derived values.
+                        console.warn("Batch on-chain enrichment failed:", e);
                     }
                 }
 
-                // Apply the dashboard filter AFTER enriching
-                const targetStatus = STATUS_MAP[filter];
-                if (targetStatus) {
-                    mine = mine.filter(t => {
-                        if (targetStatus === "Active") {
-                            // "Active" tab should show everything that is playable or in setup
-                            return (
-                                t.status === "Registration" || 
-                                t.status === "PendingBracketInit" || 
-                                t.status === "Active"
-                            );
-                        }
-                        return t.status === targetStatus;
-                    });
-                }
-
+                if (ac.signal.aborted) return;
                 if (mine.length === 0) {
                     dispatch({ type: "FETCH_EMPTY" });
                 } else {
@@ -151,7 +172,7 @@ export function useDashboard(filter: DashboardFilter) {
             });
 
         return () => ac.abort();
-    }, [connected, publicKey, filter, tick, client]);
+    }, [connected, publicKey, tick, client]);
 
     return { state, refresh };
 }

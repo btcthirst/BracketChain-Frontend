@@ -18,21 +18,47 @@ interface Props {
     tournaments: DashboardTournament[];
 }
 
-// ── Metric card ───────────────────────────────────────────────────────────────
-
 function Metric({ label, value }: { label: string; value: string }) {
     return (
-        <div className="flex flex-col gap-1 bg-white rounded-xl border border-gray-200 px-5 py-4">
-            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">{label}</span>
-            <span className="text-2xl font-bold text-gray-900">{value}</span>
+        <div
+            style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+                background: "rgba(13,15,24,0.85)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 12,
+                padding: "16px 20px",
+            }}
+        >
+            <span
+                style={{
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: "0.65rem",
+                    fontWeight: 500,
+                    color: "rgba(240,241,245,0.3)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                }}
+            >
+                {label}
+            </span>
+            <span
+                style={{
+                    fontFamily: "'Syne', sans-serif",
+                    fontWeight: 800,
+                    fontSize: "1.5rem",
+                    color: "#f0f1f5",
+                    letterSpacing: "-0.02em",
+                }}
+            >
+                {value}
+            </span>
         </div>
     );
 }
 
-// ── Volume chart data ─────────────────────────────────────────────────────────
-
 function buildChartData(tournaments: DashboardTournament[]) {
-    // Group by month (createdAt)
     const byMonth: Record<string, number> = {};
     for (const t of tournaments) {
         const d = new Date(t.createdAt);
@@ -42,12 +68,17 @@ function buildChartData(tournaments: DashboardTournament[]) {
     return Object.entries(byMonth)
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([month, volume]) => ({
-            month: month.slice(5) + "/" + month.slice(2, 4), // "MM/YY"
+            month: month.slice(5) + "/" + month.slice(2, 4),
             volume: parseFloat(volume.toFixed(2)),
         }));
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+const darkCard: React.CSSProperties = {
+    background: "rgba(13,15,24,0.85)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    borderRadius: 12,
+    padding: "20px",
+};
 
 export function AnalyticsSection({ tournaments }: Props) {
     const totalVolume = tournaments.reduce((s, t) => s + t.prizePoolUsdc, 0);
@@ -61,77 +92,128 @@ export function AnalyticsSection({ tournaments }: Props) {
     const chartData = buildChartData(tournaments);
 
     return (
-        <div className="flex flex-col gap-5">
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
             {/* Header */}
-            <div className="flex items-center gap-2">
-                <BarChart2 className="w-5 h-5 text-gray-400" />
-                <h2 className="text-base font-semibold text-gray-800">Analytics</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <BarChart2 style={{ width: 18, height: 18, color: "rgba(34,212,126,0.5)" }} />
+                <h2
+                    style={{
+                        fontFamily: "'Syne', sans-serif",
+                        fontWeight: 700,
+                        fontSize: "1rem",
+                        color: "#f0f1f5",
+                        letterSpacing: "-0.01em",
+                    }}
+                >
+                    Analytics
+                </h2>
             </div>
 
             {/* Summary metrics */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
                 <Metric label="Total Tournaments" value={String(tournaments.length)} />
-                <Metric label="Total Volume" value={`$${totalVolume.toLocaleString(undefined, { maximumFractionDigits: 0 })} USDC`} />
+                <Metric label="Total Volume"      value={`$${totalVolume.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
                 <Metric label="Total Participants" value={String(totalParticipants)} />
-                <Metric label="Completion Rate" value={`${completionRate}%`} />
+                <Metric label="Completion Rate"   value={`${completionRate}%`} />
             </div>
 
             {/* Revenue breakdown */}
-            <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 flex flex-col gap-3">
-                <h3 className="text-sm font-semibold text-gray-700">Revenue Breakdown</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="flex flex-col gap-1">
-                        <span className="text-xs text-gray-400">Protocol Fees Paid (3.5%)</span>
-                        <span className="font-bold text-red-500">
-                            −${feesPaid.toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC
+            <div style={darkCard}>
+                <h3
+                    style={{
+                        fontFamily: "'Syne', sans-serif",
+                        fontWeight: 700,
+                        fontSize: "0.85rem",
+                        color: "#f0f1f5",
+                        marginBottom: 16,
+                    }}
+                >
+                    Revenue Breakdown
+                </h3>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.65rem", color: "rgba(240,241,245,0.3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                            Protocol Fees (3.5%)
+                        </span>
+                        <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: "1.1rem", color: "#f04e66" }}>
+                            −${feesPaid.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </span>
                     </div>
-                    <div className="flex flex-col gap-1">
-                        <span className="text-xs text-gray-400">Net to Winners</span>
-                        <span className="font-bold text-green-600">
-                            ${(totalVolume - feesPaid).toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.65rem", color: "rgba(240,241,245,0.3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                            Net to Winners
+                        </span>
+                        <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: "1.1rem", color: "#22d47e" }}>
+                            ${(totalVolume - feesPaid).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </span>
                     </div>
                 </div>
             </div>
 
-            {/* Volume over time */}
+            {/* Volume chart */}
             {chartData.length > 0 ? (
-                <div className="bg-white rounded-xl border border-gray-200 px-5 pt-4 pb-2">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-4">Tournament Volume Over Time</h3>
+                <div style={{ ...darkCard, paddingBottom: 8 }}>
+                    <h3
+                        style={{
+                            fontFamily: "'Syne', sans-serif",
+                            fontWeight: 700,
+                            fontSize: "0.85rem",
+                            color: "#f0f1f5",
+                            marginBottom: 20,
+                        }}
+                    >
+                        Tournament Volume Over Time
+                    </h3>
                     <ResponsiveContainer width="100%" height={180}>
                         <LineChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                             <XAxis
                                 dataKey="month"
-                                tick={{ fontSize: 11, fill: "#9ca3af" }}
+                                tick={{ fontSize: 11, fill: "rgba(240,241,245,0.3)", fontFamily: "'DM Mono', monospace" }}
                                 axisLine={false}
                                 tickLine={false}
                             />
                             <YAxis
-                                tick={{ fontSize: 11, fill: "#9ca3af" }}
+                                tick={{ fontSize: 11, fill: "rgba(240,241,245,0.3)", fontFamily: "'DM Mono', monospace" }}
                                 axisLine={false}
                                 tickLine={false}
                                 tickFormatter={v => `$${v}`}
                             />
                             <Tooltip
                                 formatter={(v: number) => [`$${v.toLocaleString()} USDC`, "Volume"]}
-                                contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                                contentStyle={{
+                                    fontSize: 12,
+                                    borderRadius: 8,
+                                    background: "rgba(13,15,24,0.95)",
+                                    border: "1px solid rgba(255,255,255,0.1)",
+                                    color: "#f0f1f5",
+                                    fontFamily: "'DM Mono', monospace",
+                                }}
+                                labelStyle={{ color: "rgba(240,241,245,0.5)" }}
                             />
                             <Line
                                 type="monotone"
                                 dataKey="volume"
-                                stroke="#3b82f6"
+                                stroke="#22d47e"
                                 strokeWidth={2}
-                                dot={{ r: 4, fill: "#3b82f6", strokeWidth: 0 }}
-                                activeDot={{ r: 6 }}
+                                dot={{ r: 4, fill: "#22d47e", strokeWidth: 0 }}
+                                activeDot={{ r: 6, fill: "#22d47e", stroke: "rgba(34,212,126,0.3)", strokeWidth: 4 }}
                             />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
             ) : (
-                <div className="bg-white rounded-xl border border-gray-200 px-5 py-8 text-center text-sm text-gray-400">
+                <div
+                    style={{
+                        ...darkCard,
+                        textAlign: "center",
+                        padding: "32px 20px",
+                        fontFamily: "'DM Mono', monospace",
+                        fontSize: "0.8rem",
+                        color: "rgba(240,241,245,0.25)",
+                    }}
+                >
                     Chart will appear once you have tournament data.
                 </div>
             )}

@@ -44,7 +44,6 @@ export function DuplicateNameWarning({ name }: Props) {
     const [state, dispatch] = useReducer(reducer, { status: "idle" });
 
     useEffect(() => {
-        // dispatch is stable — no lint warning
         if (name.trim().length < 3) {
             dispatch({ type: "RESET" });
             return;
@@ -65,8 +64,18 @@ export function DuplicateNameWarning({ name }: Props) {
 
     if (state.status === "checking") {
         return (
-            <p className="text-xs text-gray-400 flex items-center gap-1.5 mt-1">
-                <span className="inline-block w-3 h-3 border-2 border-gray-300 border-t-gray-500 rounded-full animate-spin" />
+            <p style={{ fontSize: "0.72rem", color: "rgba(240,241,245,0.3)", display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                <span
+                    style={{
+                        display: "inline-block",
+                        width: 10,
+                        height: 10,
+                        border: "2px solid rgba(240,241,245,0.15)",
+                        borderTopColor: "rgba(240,241,245,0.5)",
+                        borderRadius: "50%",
+                        animation: "spin 0.7s linear infinite",
+                    }}
+                />
                 Checking name availability…
             </p>
         );
@@ -75,9 +84,20 @@ export function DuplicateNameWarning({ name }: Props) {
     if (state.status !== "exists") return null;
 
     return (
-        <div className="flex items-start gap-2 mt-1 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-            <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-blue-700 leading-relaxed">
+        <div
+            style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+                marginTop: 6,
+                background: "rgba(34,212,126,0.06)",
+                border: "1px solid rgba(34,212,126,0.18)",
+                borderRadius: 8,
+                padding: "8px 12px",
+            }}
+        >
+            <Info size={14} style={{ color: "#22d47e", flexShrink: 0, marginTop: 1 }} />
+            <p style={{ fontSize: "0.75rem", color: "rgba(240,241,245,0.5)", lineHeight: 1.55 }}>
                 A tournament with this name already exists. Tournament names are not
                 unique on-chain, but consider a different name to avoid confusion for
                 participants.

@@ -1,19 +1,8 @@
 "use client";
 
 import { Search, X, LayoutGrid, Gamepad2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ExploreFilters } from "@/hooks/useExplore";
-import type { IndexerTournamentStatus } from "@/lib/indexer";
+import type { IndexerTournamentStatus } from "@bracketchain/sdk";
 
 interface Props {
     filters: ExploreFilters;
@@ -22,8 +11,34 @@ interface Props {
     totalCount?: number;
 }
 
+const STATUSES: { value: IndexerTournamentStatus | "All"; label: string }[] = [
+    { value: "All", label: "All" },
+    { value: "Active", label: "Live" },
+    { value: "Registration", label: "Upcoming" },
+    { value: "Completed", label: "Completed" },
+];
+
 const FORMATS = ["All", "SE", "DE", "Swiss", "RR"];
 const GAMES = ["All", "Counter-Strike 2", "Dota 2", "League of Legends", "Valorant", "StarCraft II"];
+
+const selectStyle: React.CSSProperties = {
+    height: 40,
+    padding: "0 32px 0 12px",
+    background: "rgba(30,33,50,0.8)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: 8,
+    color: "rgba(240,241,245,0.7)",
+    fontSize: "0.82rem",
+    fontFamily: "'Inter', sans-serif",
+    cursor: "pointer",
+    outline: "none",
+    minWidth: 120,
+    appearance: "none",
+    backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2322d47e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' opacity='0.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "right 10px center",
+    minHeight: "unset",
+};
 
 export function FilterBar({ filters, onFilterChange, onClear, totalCount }: Props) {
     const activeTags: { id: string; label: string; clear: () => void }[] = [];
@@ -34,10 +49,10 @@ export function FilterBar({ filters, onFilterChange, onClear, totalCount }: Prop
         activeTags.push({ id: "format", label: filters.format, clear: () => onFilterChange({ ...filters, format: "All" }) });
     }
     if (filters.minPrize > 0 || filters.maxPrize < 10000) {
-        activeTags.push({ 
-            id: "prize", 
-            label: `$${filters.minPrize.toLocaleString()} - $${filters.maxPrize.toLocaleString()}${filters.maxPrize >= 10000 ? "+" : ""}`, 
-            clear: () => onFilterChange({ ...filters, minPrize: 0, maxPrize: 10000 }) 
+        activeTags.push({
+            id: "prize",
+            label: `$${filters.minPrize.toLocaleString()} – $${filters.maxPrize.toLocaleString()}`,
+            clear: () => onFilterChange({ ...filters, minPrize: 0, maxPrize: 10000 }),
         });
     }
     if (filters.freeOnly) {
@@ -45,123 +60,310 @@ export function FilterBar({ filters, onFilterChange, onClear, totalCount }: Prop
     }
 
     return (
-        <div className="flex flex-col gap-5 bg-white p-5 md:p-6 rounded-2xl border border-gray-200 shadow-sm">
-            {/* Row 1: Search and Main Status */}
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="relative w-full md:w-[400px]">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <Input
-                        placeholder="Search tournament name..."
-                        className="pl-11 h-12 rounded-full bg-white border-gray-200 focus:bg-white transition-all shadow-sm"
+        <div
+            style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+                background: "rgba(13,15,24,0.8)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 12,
+                padding: "20px 20px",
+            }}
+        >
+            {/* Row 1: Search + Status tabs */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
+                {/* Search */}
+                <div style={{ position: "relative", flex: "1 1 280px", maxWidth: 400 }}>
+                    <Search
+                        size={15}
+                        style={{
+                            position: "absolute",
+                            left: 12,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            color: "rgba(240,241,245,0.25)",
+                            pointerEvents: "none",
+                        }}
+                    />
+                    <input
+                        placeholder="Search tournament name…"
                         value={filters.search}
                         onChange={(e) => onFilterChange({ ...filters, search: e.target.value })}
+                        style={{
+                            width: "100%",
+                            height: 40,
+                            paddingLeft: 36,
+                            paddingRight: 14,
+                            background: "rgba(30,33,50,0.8)",
+                            border: "1px solid rgba(255,255,255,0.08)",
+                            borderRadius: 8,
+                            color: "#f0f1f5",
+                            fontSize: "0.85rem",
+                            fontFamily: "'Inter', sans-serif",
+                            outline: "none",
+                            transition: "border-color 0.15s",
+                            minHeight: "unset",
+                        }}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(34,212,126,0.4)"; }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
                     />
                 </div>
 
-                <Tabs
-                    value={filters.status}
-                    onValueChange={(v) => onFilterChange({ ...filters, status: v as IndexerTournamentStatus | "All" })}
-                    className="w-full md:w-auto"
+                {/* Status tabs */}
+                <div
+                    style={{
+                        display: "flex",
+                        gap: 2,
+                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(255,255,255,0.07)",
+                        borderRadius: 8,
+                        padding: 3,
+                    }}
                 >
-                    <TabsList className="grid grid-cols-4 w-full md:w-auto h-12 p-1 bg-white border border-gray-200 rounded-full shadow-sm">
-                        <TabsTrigger value="All" className="rounded-full px-6 text-sm">All</TabsTrigger>
-                        <TabsTrigger value="Active" className="rounded-full px-6 text-sm flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                            Live
-                        </TabsTrigger>
-                        <TabsTrigger value="Registration" className="rounded-full px-6 text-sm">Upcoming</TabsTrigger>
-                        <TabsTrigger value="Completed" className="rounded-full px-6 text-sm">Completed</TabsTrigger>
-                    </TabsList>
-                </Tabs>
+                    {STATUSES.map(({ value, label }) => {
+                        const active = filters.status === value;
+                        return (
+                            <button
+                                key={value}
+                                onClick={() => onFilterChange({ ...filters, status: value })}
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 5,
+                                    padding: "6px 14px",
+                                    borderRadius: 6,
+                                    border: "none",
+                                    fontFamily: "'Inter', sans-serif",
+                                    fontSize: "0.8rem",
+                                    fontWeight: 500,
+                                    cursor: "pointer",
+                                    transition: "background 0.15s, color 0.15s",
+                                    ...(active
+                                        ? { background: "rgba(34,212,126,0.12)", color: "#22d47e" }
+                                        : { background: "transparent", color: "rgba(240,241,245,0.4)" }),
+                                }}
+                            >
+                                {value === "Active" && (
+                                    <span
+                                        style={{
+                                            width: 6,
+                                            height: 6,
+                                            borderRadius: "50%",
+                                            background: active ? "#22d47e" : "#f04e66",
+                                            flexShrink: 0,
+                                            ...(active ? {} : { animation: "pulse 1.5s ease-in-out infinite" }),
+                                        }}
+                                    />
+                                )}
+                                {label}
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
-            {/* Row 2: Advanced Filters (Pills) */}
-            <div className="flex flex-wrap md:flex-nowrap items-center gap-3 w-full">
-                {/* Format Dropdown */}
-                <Select
-                    value={filters.format}
-                    onValueChange={(v) => onFilterChange({ ...filters, format: v })}
-                >
-                    <SelectTrigger className="h-11 rounded-full bg-white border-gray-200 w-full md:w-[140px] px-4 gap-2 shadow-sm shrink-0">
-                        <LayoutGrid className="w-4 h-4 text-gray-500" />
-                        <SelectValue placeholder="Format" />
-                    </SelectTrigger>
-                    <SelectContent>
+            {/* Row 2: Advanced filters */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                {/* Format */}
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                    <LayoutGrid size={13} style={{ position: "absolute", left: 10, color: "rgba(34,212,126,0.5)", pointerEvents: "none", zIndex: 1 }} />
+                    <select
+                        value={filters.format}
+                        onChange={(e) => onFilterChange({ ...filters, format: e.target.value })}
+                        style={{ ...selectStyle, paddingLeft: 28 }}
+                    >
                         {FORMATS.map(f => (
-                            <SelectItem key={f} value={f}>{f === "All" ? "All Formats" : f}</SelectItem>
+                            <option key={f} value={f}>{f === "All" ? "All Formats" : f}</option>
                         ))}
-                    </SelectContent>
-                </Select>
+                    </select>
+                </div>
 
-                {/* Game Dropdown */}
-                <Select
-                    value={filters.game}
-                    onValueChange={(v) => onFilterChange({ ...filters, game: v })}
-                >
-                    <SelectTrigger className="h-11 rounded-full bg-white border-gray-200 w-full md:w-[160px] px-4 gap-2 shadow-sm shrink-0">
-                        <Gamepad2 className="w-4 h-4 text-gray-500" />
-                        <SelectValue placeholder="Game" />
-                    </SelectTrigger>
-                    <SelectContent>
+                {/* Game */}
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                    <Gamepad2 size={13} style={{ position: "absolute", left: 10, color: "rgba(34,212,126,0.5)", pointerEvents: "none", zIndex: 1 }} />
+                    <select
+                        value={filters.game}
+                        onChange={(e) => onFilterChange({ ...filters, game: e.target.value })}
+                        style={{ ...selectStyle, paddingLeft: 28, minWidth: 150 }}
+                    >
                         {GAMES.map(g => (
-                            <SelectItem key={g} value={g}>{g === "All" ? "All Games" : g}</SelectItem>
+                            <option key={g} value={g}>{g === "All" ? "All Games" : g}</option>
                         ))}
-                    </SelectContent>
-                </Select>
+                    </select>
+                </div>
 
-                {/* Prize Range */}
-                <div className="flex-1 flex items-center h-11 px-5 rounded-full border border-gray-200 bg-white gap-4 w-full shadow-sm min-w-[280px]">
-                    <span className="text-sm font-medium text-gray-500 whitespace-nowrap">Prize Pool</span>
-                    <Slider
-                        value={[filters.minPrize, filters.maxPrize]}
-                        min={0}
-                        max={10000}
-                        step={100}
-                        onValueChange={([min, max]) => onFilterChange({ ...filters, minPrize: min, maxPrize: max })}
-                        className="flex-1"
-                        rangeClassName={filters.minPrize > 0 || filters.maxPrize < 10000 ? "bg-blue-500" : "bg-gray-300"}
-                        thumbClassName={filters.minPrize > 0 || filters.maxPrize < 10000 ? "border-blue-500 bg-blue-500" : "border-gray-400 bg-gray-400 hover:ring-gray-200 focus-visible:ring-gray-200"}
-                    />
-                    <span className={`text-sm font-medium whitespace-nowrap ${filters.minPrize > 0 || filters.maxPrize < 10000 ? "text-blue-600" : "text-gray-400"}`}>
-                        ${filters.minPrize.toLocaleString()} - ${filters.maxPrize.toLocaleString()}{filters.maxPrize >= 10000 ? "+" : ""}
+                {/* Prize range slider */}
+                <div
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        height: 40,
+                        padding: "0 14px",
+                        background: "rgba(30,33,50,0.8)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: 8,
+                        flex: 1,
+                        minWidth: 200,
+                    }}
+                >
+                    <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", color: "rgba(240,241,245,0.3)", whiteSpace: "nowrap" }}>
+                        Prize $
+                    </span>
+                    <div
+                        className="range-slider"
+                        style={{ position: "relative", flex: 1, height: 20, display: "flex", alignItems: "center" }}
+                    >
+                        <div
+                            style={{
+                                position: "absolute",
+                                height: 3,
+                                width: "100%",
+                                borderRadius: 999,
+                                pointerEvents: "none",
+                                background: `linear-gradient(to right, rgba(255,255,255,0.08) ${(filters.minPrize / 10000) * 100}%, #22d47e ${(filters.minPrize / 10000) * 100}%, #22d47e ${(filters.maxPrize / 10000) * 100}%, rgba(255,255,255,0.08) ${(filters.maxPrize / 10000) * 100}%)`,
+                            }}
+                        />
+                        <input
+                            type="range"
+                            min={0}
+                            max={10000}
+                            step={100}
+                            value={filters.minPrize}
+                            onChange={(e) => {
+                                const v = Number(e.target.value);
+                                onFilterChange({ ...filters, minPrize: Math.min(v, filters.maxPrize - 100) });
+                            }}
+                        />
+                        <input
+                            type="range"
+                            min={0}
+                            max={10000}
+                            step={100}
+                            value={filters.maxPrize}
+                            onChange={(e) => {
+                                const v = Number(e.target.value);
+                                onFilterChange({ ...filters, maxPrize: Math.max(v, filters.minPrize + 100) });
+                            }}
+                        />
+                    </div>
+                    <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.72rem", color: "#22d47e", whiteSpace: "nowrap" }}>
+                        {filters.minPrize.toLocaleString()} – {filters.maxPrize.toLocaleString()}
                     </span>
                 </div>
 
-                {/* Free Toggle */}
-                <div className="flex items-center h-11 px-5 rounded-full border border-gray-200 bg-white gap-3 shadow-sm shrink-0">
-                    <Switch
-                        id="free-only"
-                        checked={filters.freeOnly}
-                        onCheckedChange={(v) => onFilterChange({ ...filters, freeOnly: v })}
-                    />
-                    <label htmlFor="free-only" className="text-sm font-medium text-gray-700 cursor-pointer select-none">
+                {/* Free entry toggle */}
+                <label
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        height: 40,
+                        padding: "0 12px",
+                        background: "rgba(30,33,50,0.8)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: 8,
+                        cursor: "pointer",
+                        userSelect: "none",
+                    }}
+                >
+                    <div
+                        onClick={() => onFilterChange({ ...filters, freeOnly: !filters.freeOnly })}
+                        style={{
+                            position: "relative",
+                            width: 32,
+                            height: 18,
+                            borderRadius: 999,
+                            background: filters.freeOnly ? "#22d47e" : "rgba(255,255,255,0.1)",
+                            transition: "background 0.2s",
+                            flexShrink: 0,
+                        }}
+                    >
+                        <span
+                            style={{
+                                position: "absolute",
+                                top: 2,
+                                left: filters.freeOnly ? 16 : 2,
+                                width: 14,
+                                height: 14,
+                                borderRadius: "50%",
+                                background: "#f0f1f5",
+                                transition: "left 0.2s",
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                            }}
+                        />
+                    </div>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 500, color: filters.freeOnly ? "#22d47e" : "rgba(240,241,245,0.45)" }}>
                         Free Entry
-                    </label>
-                </div>
+                    </span>
+                </label>
             </div>
 
-            {/* Row 3: Active Filters & Results Count */}
+            {/* Row 3: Active tags + count */}
             {(activeTags.length > 0 || totalCount !== undefined) && (
-                <div className="flex flex-wrap items-center justify-between gap-4 pt-5 border-t border-gray-100">
-                    <div className="flex flex-wrap items-center gap-2">
+                <div
+                    style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        paddingTop: 14,
+                        borderTop: "1px solid rgba(255,255,255,0.06)",
+                    }}
+                >
+                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
                         {activeTags.map(tag => (
-                            <div key={tag.id} className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-100 text-blue-700 rounded-lg text-xs font-medium">
+                            <div
+                                key={tag.id}
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 5,
+                                    padding: "3px 10px",
+                                    background: "rgba(34,212,126,0.08)",
+                                    border: "1px solid rgba(34,212,126,0.20)",
+                                    borderRadius: 999,
+                                    fontSize: "0.72rem",
+                                    fontFamily: "'DM Mono', monospace",
+                                    color: "#22d47e",
+                                    letterSpacing: "0.02em",
+                                }}
+                            >
                                 {tag.label}
-                                <button onClick={tag.clear} className="hover:text-blue-900 focus:outline-none">
-                                    <X className="w-3 h-3" />
+                                <button
+                                    onClick={tag.clear}
+                                    style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "rgba(34,212,126,0.6)", lineHeight: 1 }}
+                                >
+                                    <X size={11} />
                                 </button>
                             </div>
                         ))}
                         {activeTags.length > 0 && (
-                            <button onClick={onClear} className="text-xs text-gray-500 hover:text-gray-900 ml-2 font-medium">
-                                Clear All
+                            <button
+                                onClick={onClear}
+                                style={{
+                                    background: "none",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    fontSize: "0.75rem",
+                                    color: "rgba(240,241,245,0.3)",
+                                    fontFamily: "'Inter', sans-serif",
+                                    padding: "0 4px",
+                                    transition: "color 0.15s",
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(240,241,245,0.7)"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(240,241,245,0.3)"; }}
+                            >
+                                Clear all
                             </button>
                         )}
                     </div>
                     {totalCount !== undefined && (
-                        <div className="text-sm text-gray-600 font-medium">
-                            <span className="font-bold text-gray-900">{totalCount}</span> tournaments found
-                        </div>
+                        <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.72rem", color: "rgba(240,241,245,0.3)", letterSpacing: "0.04em" }}>
+                            <span style={{ color: "#f0f1f5", fontWeight: 600 }}>{totalCount}</span> tournaments
+                        </p>
                     )}
                 </div>
             )}
