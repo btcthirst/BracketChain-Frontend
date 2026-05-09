@@ -1,5 +1,5 @@
-// lib/tournament.ts
-import type { IndexerTournament } from "@/lib/indexer";
+import { IndexerTournament } from "@bracketchain/sdk";
+
 
 export interface Tournament {
     id: string;
