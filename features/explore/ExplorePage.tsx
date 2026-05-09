@@ -5,12 +5,11 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { FilterBar } from "./components/FilterBar";
 import { TournamentCard } from "./components/TournamentCard";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import { Search, Plus, RefreshCw } from "lucide-react";
 import { useExplore, type ExploreFilters } from "@/hooks/useExplore";
 import Link from "next/link";
 import { ROUTES } from "@/constants/links";
+import { MotionDiv } from "@/components/ui/motion-wraper";
 
 const INITIAL_FILTERS: ExploreFilters = {
     status: "All",
@@ -27,20 +26,56 @@ export function ExplorePage() {
     const { state, loadMore, refresh } = useExplore(filters);
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
             <Navbar />
 
-            <main className="flex-1 container mx-auto px-6 py-8 max-w-7xl flex flex-col gap-8">
-                {/* Page Header */}
-                <div className="flex flex-col gap-2">
-                    <h1 className="text-3xl font-black text-gray-900 flex items-center gap-3">
+            <main
+                style={{
+                    flex: 1,
+                    maxWidth: 1280,
+                    margin: "0 auto",
+                    padding: "48px 24px",
+                    width: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 32,
+                }}
+            >
+                {/* Header */}
+                <MotionDiv
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                >
+                    <p
+                        style={{
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: "0.68rem",
+                            color: "rgba(240,241,245,0.3)",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.1em",
+                            marginBottom: 12,
+                        }}
+                    >
+                        On-chain competitions
+                    </p>
+                    <h1
+                        style={{
+                            fontFamily: "'Syne', sans-serif",
+                            fontWeight: 800,
+                            fontSize: "clamp(1.8rem, 4vw, 2.8rem)",
+                            color: "#f0f1f5",
+                            letterSpacing: "-0.03em",
+                            lineHeight: 1.1,
+                            marginBottom: 12,
+                        }}
+                    >
                         Explore Tournaments
                     </h1>
-                    <p className="text-gray-500 max-w-2xl">
-                        Discover the best on-chain competitions. Filter by game, prize pool, or status
-                        and start your journey to the top.
+                    <p style={{ fontSize: "0.95rem", color: "rgba(240,241,245,0.42)", maxWidth: 500 }}>
+                        Discover the best on-chain competitions. Filter by game, prize pool, or status.
                     </p>
-                </div>
+                </MotionDiv>
 
                 {/* Filters */}
                 <FilterBar
@@ -50,7 +85,7 @@ export function ExplorePage() {
                     totalCount={state.status !== "loading" ? state.total : undefined}
                 />
 
-                {/* Content Area */}
+                {/* Content */}
                 {state.status === "error" ? (
                     <ErrorState onRetry={refresh} />
                 ) : state.status === "loading" && state.data.length === 0 ? (
@@ -58,8 +93,14 @@ export function ExplorePage() {
                 ) : state.data.length === 0 ? (
                     <EmptyState onClear={() => setFilters(INITIAL_FILTERS)} />
                 ) : (
-                    <div className="flex flex-col gap-10">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                                gap: 16,
+                            }}
+                        >
                             {state.data.map((t) => (
                                 <TournamentCard key={t.id} tournament={t} />
                             ))}
@@ -67,19 +108,41 @@ export function ExplorePage() {
                         </div>
 
                         {state.hasMore && (
-                            <div className="flex justify-center pb-10">
-                                <Button
-                                    variant="outline"
-                                    size="lg"
+                            <div style={{ display: "flex", justifyContent: "center", paddingBottom: 40 }}>
+                                <button
                                     onClick={loadMore}
                                     disabled={state.status === "loading"}
-                                    className="bg-white px-10 h-14 font-bold rounded-xl border-2 hover:bg-gray-50 transition-all active:scale-95"
+                                    style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: 8,
+                                        padding: "12px 32px",
+                                        background: "transparent",
+                                        border: "1px solid rgba(255,255,255,0.12)",
+                                        borderRadius: 10,
+                                        color: "rgba(240,241,245,0.55)",
+                                        fontFamily: "'Inter', sans-serif",
+                                        fontWeight: 600,
+                                        fontSize: "0.875rem",
+                                        cursor: state.status === "loading" ? "not-allowed" : "pointer",
+                                        transition: "border-color 0.15s, color 0.15s, background 0.15s",
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (state.status !== "loading") {
+                                            e.currentTarget.style.borderColor = "rgba(34,212,126,0.3)";
+                                            e.currentTarget.style.color = "#22d47e";
+                                            e.currentTarget.style.background = "rgba(34,212,126,0.04)";
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)";
+                                        e.currentTarget.style.color = "rgba(240,241,245,0.55)";
+                                        e.currentTarget.style.background = "transparent";
+                                    }}
                                 >
-                                    {state.status === "loading" ? (
-                                        <RefreshCw className="w-5 h-5 animate-spin mr-2" />
-                                    ) : null}
+                                    {state.status === "loading" && <RefreshCw size={15} className="animate-spin" />}
                                     Load More Tournaments
-                                </Button>
+                                </button>
                             </div>
                         )}
                     </div>
@@ -93,7 +156,7 @@ export function ExplorePage() {
 
 function LoadingGrid() {
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
             <LoadingCards count={12} />
         </div>
     );
@@ -101,47 +164,121 @@ function LoadingGrid() {
 
 function LoadingCards({ count }: { count: number }) {
     return Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-4">
-            <Skeleton className="h-24 rounded-xl" />
-            <Skeleton className="h-6 w-3/4" />
-            <div className="flex gap-2">
-                <Skeleton className="h-5 w-12" />
-                <Skeleton className="h-5 w-16" />
-            </div>
-            <div className="flex flex-col gap-2 mt-4">
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-8 w-32" />
-            </div>
-            <div className="grid grid-cols-2 gap-4 mt-4">
-                <Skeleton className="h-10" />
-                <Skeleton className="h-10" />
-            </div>
+        <div
+            key={i}
+            style={{
+                background: "rgba(13,15,24,0.8)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 12,
+                padding: 20,
+                display: "flex",
+                flexDirection: "column",
+                gap: 14,
+            }}
+        >
+            {[["55%", "0s"], ["35%", "0.1s"], ["75%", "0.05s"], ["45%", "0.15s"]].map(([w, d], j) => (
+                <div
+                    key={j}
+                    style={{
+                        height: j === 1 ? 24 : 11,
+                        width: w,
+                        background: "rgba(255,255,255,0.05)",
+                        borderRadius: 4,
+                        animation: `pulse 1.5s ease-in-out ${d} infinite`,
+                    }}
+                />
+            ))}
         </div>
     ));
 }
 
 function EmptyState({ onClear }: { onClear: () => void }) {
     return (
-        <div className="bg-white rounded-3xl border border-gray-200 border-dashed p-16 flex flex-col items-center text-center gap-6">
-            <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center">
-                <Search className="w-10 h-10 text-blue-200" />
+        <div
+            style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+                gap: 24,
+                padding: "80px 24px",
+                background: "rgba(13,15,24,0.5)",
+                border: "1px dashed rgba(255,255,255,0.08)",
+                borderRadius: 16,
+            }}
+        >
+            <div
+                style={{
+                    width: 60,
+                    height: 60,
+                    borderRadius: "50%",
+                    background: "rgba(34,212,126,0.06)",
+                    border: "1px solid rgba(34,212,126,0.14)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                }}
+            >
+                <Search size={22} style={{ color: "rgba(34,212,126,0.45)" }} />
             </div>
-            <div className="flex flex-col gap-2">
-                <h2 className="text-2xl font-bold text-gray-900">No tournaments match your filters</h2>
-                <p className="text-gray-500 max-w-sm">
+            <div>
+                <p
+                    style={{
+                        fontFamily: "'Syne', sans-serif",
+                        fontWeight: 700,
+                        fontSize: "1.05rem",
+                        color: "#f0f1f5",
+                        marginBottom: 8,
+                    }}
+                >
+                    No tournaments match your filters
+                </p>
+                <p style={{ fontSize: "0.875rem", color: "rgba(240,241,245,0.35)", maxWidth: 320 }}>
                     Try adjusting your search terms or filters to find more competitions.
                 </p>
             </div>
-            <div className="flex items-center gap-3">
-                <Button variant="outline" onClick={onClear} className="font-bold px-6">
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <button
+                    onClick={onClear}
+                    style={{
+                        padding: "9px 20px",
+                        background: "transparent",
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        borderRadius: 8,
+                        color: "rgba(240,241,245,0.5)",
+                        fontSize: "0.875rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        fontFamily: "'Inter', sans-serif",
+                        transition: "border-color 0.15s, color 0.15s",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"; e.currentTarget.style.color = "#f0f1f5"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = "rgba(240,241,245,0.5)"; }}
+                >
                     Clear Filters
-                </Button>
-                <span className="text-sm font-medium text-gray-400">or</span>
-                <Link href={ROUTES.create}>
-                    <Button className="bg-blue-600 hover:bg-blue-700 font-bold px-6">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create one?
-                    </Button>
+                </button>
+                <span style={{ fontSize: "0.78rem", color: "rgba(240,241,245,0.2)" }}>or</span>
+                <Link
+                    href={ROUTES.create}
+                    style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "9px 20px",
+                        background: "#22d47e",
+                        color: "#06070b",
+                        borderRadius: 8,
+                        fontWeight: 700,
+                        fontSize: "0.875rem",
+                        textDecoration: "none",
+                        fontFamily: "'Inter', sans-serif",
+                        transition: "background 0.15s",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "#16c062"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "#22d47e"; }}
+                >
+                    <Plus size={14} />
+                    Create one
                 </Link>
             </div>
         </div>
@@ -150,15 +287,57 @@ function EmptyState({ onClear }: { onClear: () => void }) {
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
     return (
-        <div className="bg-white rounded-3xl border border-red-100 p-16 flex flex-col items-center text-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
-                <RefreshCw className="w-8 h-8 text-red-300" />
+        <div
+            style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+                gap: 16,
+                padding: "80px 24px",
+                background: "rgba(13,15,24,0.5)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 16,
+            }}
+        >
+            <div
+                style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: "50%",
+                    background: "rgba(240,78,102,0.07)",
+                    border: "1px solid rgba(240,78,102,0.18)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                }}
+            >
+                <RefreshCw size={20} style={{ color: "rgba(240,78,102,0.6)" }} />
             </div>
-            <h2 className="text-xl font-bold text-gray-900">Unable to load tournaments</h2>
-            <p className="text-gray-500">Please try again.</p>
-            <Button onClick={onRetry} variant="outline" className="mt-2 font-bold px-8">
+            <p style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "1rem", color: "#f0f1f5" }}>
+                Unable to load tournaments
+            </p>
+            <p style={{ fontSize: "0.85rem", color: "rgba(240,241,245,0.35)" }}>Please try again.</p>
+            <button
+                onClick={onRetry}
+                style={{
+                    marginTop: 4,
+                    padding: "9px 24px",
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: 8,
+                    color: "rgba(240,241,245,0.5)",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontFamily: "'Inter', sans-serif",
+                    transition: "border-color 0.15s, color 0.15s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"; e.currentTarget.style.color = "#f0f1f5"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = "rgba(240,241,245,0.5)"; }}
+            >
                 Retry
-            </Button>
+            </button>
         </div>
     );
 }

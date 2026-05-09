@@ -30,11 +30,20 @@ export function DetailsStep({
                         value={data.name}
                         onChange={e => onChange({ name: e.target.value })}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                    <span
+                        style={{
+                            position: "absolute",
+                            right: 12,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: "0.68rem",
+                            color: "rgba(240,241,245,0.25)",
+                        }}
+                    >
                         {data.name.length}/32
                     </span>
                 </div>
-                {/* Duplicate name warning — shows only when no validation error */}
                 {!errors.name && <DuplicateNameWarning name={data.name} />}
             </FieldGroup>
 
@@ -85,11 +94,34 @@ export function DetailsStep({
                         <label className="flex items-center gap-1.5 cursor-pointer select-none">
                             <div
                                 onClick={() => onChange({ freeEntry: !data.freeEntry })}
-                                className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${data.freeEntry ? "bg-blue-600" : "bg-gray-300"}`}
+                                style={{
+                                    position: "relative",
+                                    display: "inline-flex",
+                                    height: 20,
+                                    width: 36,
+                                    borderRadius: 999,
+                                    transition: "background 0.2s",
+                                    background: data.freeEntry ? "#22d47e" : "rgba(255,255,255,0.12)",
+                                    cursor: "pointer",
+                                    flexShrink: 0,
+                                }}
                             >
-                                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform mt-0.5 ${data.freeEntry ? "translate-x-4.5 ml-0.5" : "ml-0.5"}`} />
+                                <span
+                                    style={{
+                                        display: "inline-block",
+                                        width: 16,
+                                        height: 16,
+                                        borderRadius: "50%",
+                                        background: "#f0f1f5",
+                                        position: "absolute",
+                                        top: 2,
+                                        left: data.freeEntry ? 18 : 2,
+                                        transition: "left 0.2s",
+                                        boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                                    }}
+                                />
                             </div>
-                            <span className="text-xs text-gray-500">Free</span>
+                            <span style={{ fontSize: "0.75rem", color: "rgba(240,241,245,0.45)" }}>Free</span>
                         </label>
                         {!data.freeEntry && (
                             <input

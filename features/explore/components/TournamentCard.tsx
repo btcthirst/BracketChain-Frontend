@@ -1,9 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Gamepad2, Gift } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Gamepad2, Gift, Users, Clock, Trophy } from "lucide-react";
 import { ROUTES } from "@/constants/links";
 import type { Tournament } from "@/lib/tournament";
 import { motion } from "framer-motion";
@@ -15,84 +13,223 @@ interface Props {
 export function TournamentCard({ tournament }: Props) {
     const isLive = tournament.status === "Active" || tournament.status === "PendingBracketInit";
     const isCompleted = tournament.status === "Completed" || tournament.status === "Cancelled";
+    const fillPct = Math.round((tournament.participants / tournament.maxParticipants) * 100);
 
     return (
         <motion.div
-            whileHover={{ y: -4 }}
-            transition={{ duration: 0.2 }}
-            className="h-full"
+            whileHover={{ y: -3 }}
+            transition={{ duration: 0.18 }}
+            style={{ height: "100%" }}
         >
-            <Link href={ROUTES.tournament(tournament.id)} className="h-full block">
-                <Card className="h-full border-gray-200 hover:border-blue-400 hover:shadow-xl transition-all group flex flex-col p-5 gap-6 bg-white">
-                    {/* Top Row: Format & Status | Game */}
-                    <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="bg-gray-100 text-gray-700 hover:bg-gray-100 font-bold">{tournament.format}</Badge>
-                            {isLive ? (
-                                <Badge variant="outline" className="border-red-200 text-red-600 bg-red-50 gap-1.5 px-2">
-                                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" /> LIVE
-                                </Badge>
-                            ) : (
-                                <Badge variant="outline" className="border-blue-200 text-blue-600 bg-blue-50">
-                                    {isCompleted ? "Completed" : "Upcoming"}
-                                </Badge>
-                            )}
+            <Link
+                href={ROUTES.tournament(tournament.id)}
+                style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    height: "100%",
+                    background: "rgba(13,15,24,0.85)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: 12,
+                    padding: 20,
+                    textDecoration: "none",
+                    gap: 16,
+                    transition: "border-color 0.18s, box-shadow 0.18s",
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(34,212,126,0.22)";
+                    e.currentTarget.style.boxShadow = "0 0 28px rgba(34,212,126,0.06)";
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
+                    e.currentTarget.style.boxShadow = "none";
+                }}
+            >
+                {/* Top: format + status | game */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {/* Format badge */}
+                        <span
+                            style={{
+                                padding: "2px 8px",
+                                background: "rgba(34,212,126,0.08)",
+                                border: "1px solid rgba(34,212,126,0.18)",
+                                borderRadius: 999,
+                                fontFamily: "'DM Mono', monospace",
+                                fontSize: "0.65rem",
+                                color: "#22d47e",
+                                letterSpacing: "0.04em",
+                            }}
+                        >
+                            {tournament.format}
+                        </span>
+
+                        {/* Status badge */}
+                        {isLive ? (
+                            <span
+                                style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    padding: "2px 8px",
+                                    background: "rgba(240,78,102,0.08)",
+                                    border: "1px solid rgba(240,78,102,0.20)",
+                                    borderRadius: 999,
+                                    fontFamily: "'DM Mono', monospace",
+                                    fontSize: "0.65rem",
+                                    color: "#f04e66",
+                                    letterSpacing: "0.04em",
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        width: 5,
+                                        height: 5,
+                                        borderRadius: "50%",
+                                        background: "#f04e66",
+                                        animation: "pulse 1.2s ease-in-out infinite",
+                                    }}
+                                />
+                                LIVE
+                            </span>
+                        ) : (
+                            <span
+                                style={{
+                                    padding: "2px 8px",
+                                    background: "rgba(255,255,255,0.05)",
+                                    border: "1px solid rgba(255,255,255,0.08)",
+                                    borderRadius: 999,
+                                    fontFamily: "'DM Mono', monospace",
+                                    fontSize: "0.65rem",
+                                    color: "rgba(240,241,245,0.35)",
+                                    letterSpacing: "0.04em",
+                                }}
+                            >
+                                {isCompleted ? "Ended" : "Upcoming"}
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Game */}
+                    <div
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            fontSize: "0.7rem",
+                            color: "rgba(240,241,245,0.3)",
+                            fontFamily: "'DM Mono', monospace",
+                        }}
+                    >
+                        <Gamepad2 size={11} />
+                        {tournament.game || "On-chain"}
+                    </div>
+                </div>
+
+                {/* Title + prize */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <h3
+                        style={{
+                            fontFamily: "'Syne', sans-serif",
+                            fontWeight: 700,
+                            fontSize: "0.95rem",
+                            color: "#f0f1f5",
+                            letterSpacing: "-0.01em",
+                            lineHeight: 1.25,
+                            overflow: "hidden",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 1,
+                            WebkitBoxOrient: "vertical",
+                        }}
+                    >
+                        {tournament.name}
+                    </h3>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                        <Trophy size={12} style={{ color: "#f5a623", flexShrink: 0, marginBottom: -1 }} />
+                        <span
+                            style={{
+                                fontFamily: "'Syne', sans-serif",
+                                fontWeight: 800,
+                                fontSize: "1.4rem",
+                                color: "#22d47e",
+                                letterSpacing: "-0.02em",
+                                lineHeight: 1,
+                            }}
+                        >
+                            ${tournament.prizePool.toLocaleString()}
+                        </span>
+                        <span
+                            style={{
+                                fontFamily: "'DM Mono', monospace",
+                                fontSize: "0.62rem",
+                                color: "rgba(240,241,245,0.25)",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.08em",
+                            }}
+                        >
+                            Prize Pool
+                        </span>
+                    </div>
+                </div>
+
+                {/* Stats row */}
+                <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        {/* Players */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                            <Users size={12} style={{ color: "rgba(240,241,245,0.3)" }} />
+                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.75rem" }}>
+                                <span style={{ color: "#f0f1f5", fontWeight: 600 }}>{tournament.participants}</span>
+                                <span style={{ color: "rgba(240,241,245,0.3)" }}>/{tournament.maxParticipants}</span>
+                            </span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                            <Gamepad2 className="w-3.5 h-3.5" />
-                            {tournament.game || "On-chain"}
+
+                        {/* Time */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                            <Clock size={12} style={{ color: "rgba(240,241,245,0.3)" }} />
+                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.72rem", color: isLive ? "#f04e66" : "rgba(240,241,245,0.35)" }}>
+                                {isLive ? "In Progress" : isCompleted ? "Ended" : tournament.startsIn}
+                            </span>
                         </div>
                     </div>
 
-                    {/* Middle Row: Title & Prize Pool */}
-                    <div className="flex flex-col gap-1.5">
-                        <h3 className="font-bold text-lg text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">
-                            {tournament.name}
-                        </h3>
-                        <div className="flex items-baseline gap-2">
-                            <div className="text-2xl font-black text-green-600">${tournament.prizePool.toLocaleString()}</div>
-                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Prize Pool</div>
-                        </div>
+                    {/* Fill bar */}
+                    <div style={{ height: 2, background: "rgba(255,255,255,0.06)", borderRadius: 999, overflow: "hidden" }}>
+                        <div
+                            style={{
+                                height: "100%",
+                                width: `${fillPct}%`,
+                                background: "linear-gradient(90deg, #22d47e, #4ade80)",
+                                borderRadius: 999,
+                                transition: "width 0.4s ease",
+                            }}
+                        />
                     </div>
 
-                    {/* Bottom Rows: Players, Starts in, Entry Fee */}
-                    <div className="mt-auto flex flex-col gap-4">
-                        <div className="flex items-center justify-between">
-                            {/* Players */}
-                            <div className="flex items-center gap-2">
-                                <div className="flex -space-x-1.5">
-                                    <div className="w-6 h-6 rounded-full bg-gray-200 border-2 border-white" />
-                                    <div className="w-6 h-6 rounded-full bg-gray-300 border-2 border-white" />
-                                    <div className="w-6 h-6 rounded-full bg-gray-400 border-2 border-white" />
-                                </div>
-                                <div className="text-sm font-medium text-gray-500">
-                                    <span className="text-gray-900 font-bold">{tournament.participants}</span>/{tournament.maxParticipants}
-                                </div>
+                    {/* Entry fee */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        {tournament.entryFee === 0 ? (
+                            <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "0.78rem", fontWeight: 600, color: "#22d47e" }}>
+                                <Gift size={13} />
+                                Free Entry
                             </div>
-                            
-                            {/* Starts In */}
-                            <div className="text-sm font-medium text-gray-500">
-                                {isLive ? <span className="text-red-500 font-bold">• In Progress</span> : isCompleted ? "Ended" : `Starts in ${tournament.startsIn}`}
-                            </div>
-                        </div>
-
-                        <div className="h-px bg-gray-100" />
-
-                        <div className="flex items-center justify-between">
-                            {tournament.entryFee === 0 ? (
-                                <div className="flex items-center gap-1.5 text-sm font-bold text-green-600">
-                                    <Gift className="w-4 h-4" /> Free Entry
-                                </div>
-                            ) : (
-                                <div className="text-sm font-medium text-gray-500">Entry Fee</div>
-                            )}
-                            
-                            <div className="text-sm font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
-                                {tournament.entryFee === 0 ? "$0" : `$${tournament.entryFee}`}
-                            </div>
-                        </div>
+                        ) : (
+                            <span style={{ fontSize: "0.75rem", color: "rgba(240,241,245,0.3)", fontFamily: "'DM Mono', monospace" }}>Entry Fee</span>
+                        )}
+                        <span
+                            style={{
+                                fontFamily: "'DM Mono', monospace",
+                                fontSize: "0.78rem",
+                                fontWeight: 600,
+                                color: tournament.entryFee === 0 ? "rgba(34,212,126,0.6)" : "#f0f1f5",
+                                background: "rgba(255,255,255,0.05)",
+                                padding: "2px 8px",
+                                borderRadius: 5,
+                            }}
+                        >
+                            {tournament.entryFee === 0 ? "$0" : `$${tournament.entryFee}`}
+                        </span>
                     </div>
-                </Card>
+                </div>
             </Link>
         </motion.div>
     );

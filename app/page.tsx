@@ -5,10 +5,11 @@ import { HowItWorks } from "@/components/HowItWorks";
 import { LiveTournaments } from "@/components/LiveTournaments";
 import { ForDevelopers } from "@/components/ForDevelopers";
 import { Footer } from "@/components/Footer";
+import { BackgroundGlow } from "@/components/ui/background-glow";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen">
       <Navbar />
       <Hero />
       <StatsBar />

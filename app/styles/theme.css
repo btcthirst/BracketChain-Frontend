@@ -1,82 +1,70 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-    --font-size: 16px;
-    --background: #ffffff;
-    --foreground: oklch(0.145 0 0);
-    --card: #ffffff;
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: #030213;
-    --primary-foreground: oklch(1 0 0);
-    --secondary: oklch(0.95 0.0058 264.53);
-    --secondary-foreground: #030213;
-    --muted: #ececf0;
-    --muted-foreground: #717182;
-    --accent: #e9ebef;
-    --accent-foreground: #030213;
-    --destructive: #d4183d;
+    --background: #06070b;
+    --foreground: #f0f1f5;
+
+    --card: #0d0f18;
+    --card-foreground: #f0f1f5;
+
+    --popover: #12141f;
+    --popover-foreground: #f0f1f5;
+
+    --primary: #22d47e;
+    --primary-foreground: #06070b;
+
+    --secondary: #1e2132;
+    --secondary-foreground: #f0f1f5;
+
+    --muted: #1a1c2a;
+    --muted-foreground: #7b7e96;
+
+    --accent: #252840;
+    --accent-foreground: #f0f1f5;
+
+    --destructive: #f04e66;
     --destructive-foreground: #ffffff;
-    --border: rgba(0, 0, 0, 0.1);
-    --input: transparent;
-    --input-background: #f3f3f5;
-    --switch-background: #cbced4;
+
+    --border: rgba(255, 255, 255, 0.08);
+    --input: #1e2132;
+    --input-background: #1e2132;
+    --switch-background: #252840;
+
+    --ring: #22d47e;
+
+    --chart-1: #22d47e;
+    --chart-2: #4ade80;
+    --chart-3: #f5a623;
+    --chart-4: #f04e66;
+    --chart-5: #7c80f5;
+
+    --radius: 8px;
+
+    --sidebar: #0d0f18;
+    --sidebar-foreground: #f0f1f5;
+    --sidebar-primary: #5b5fef;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #1a1c2a;
+    --sidebar-accent-foreground: #f0f1f5;
+    --sidebar-border: rgba(255, 255, 255, 0.08);
+    --sidebar-ring: #5b5fef;
+
     --font-weight-medium: 500;
     --font-weight-normal: 400;
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.646 0.222 41.116);
-    --chart-2: oklch(0.6 0.118 184.704);
-    --chart-3: oklch(0.398 0.07 227.392);
-    --chart-4: oklch(0.828 0.189 84.429);
-    --chart-5: oklch(0.769 0.188 70.08);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: #030213;
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+
+    /* Brand-specific tokens */
+    --bc-green: #22d47e;
+    --bc-green-dim: rgba(34, 212, 126, 0.12);
+    --bc-accent-glow: rgba(34, 212, 126, 0.25);
+    --bc-surface: #1e2132;
+    --bc-surface-2: #252840;
+
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --font-sans: 'Inter', sans-serif;
 }
 
-.dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.145 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.145 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.985 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.396 0.141 25.723);
-    --destructive-foreground: oklch(0.637 0.237 25.331);
-    --border: oklch(0.269 0 0);
-    --input: oklch(0.269 0 0);
-    --ring: oklch(0.439 0 0);
-    --font-weight-medium: 500;
-    --font-weight-normal: 400;
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(0.269 0 0);
-    --sidebar-ring: oklch(0.439 0 0);
-}
+/* No separate dark class needed — the entire app is dark */
 
 @theme inline {
     --color-background: var(--background);
@@ -126,56 +114,78 @@
 
     body {
         @apply bg-background text-foreground;
+        font-family: 'Inter', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }
 
-    /**
-  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
-  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
-  */
-
-    html {
-        font-size: var(--font-size);
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        font-family: 'Syne', sans-serif;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+        color: var(--foreground);
     }
 
     h1 {
-        font-size: var(--text-2xl);
-        font-weight: var(--font-weight-medium);
-        line-height: 1.5;
+        font-size: clamp(2.2rem, 5.5vw, 4.5rem);
     }
 
     h2 {
-        font-size: var(--text-xl);
-        font-weight: var(--font-weight-medium);
-        line-height: 1.5;
+        font-size: clamp(1.6rem, 3.5vw, 2.8rem);
     }
 
     h3 {
-        font-size: var(--text-lg);
-        font-weight: var(--font-weight-medium);
-        line-height: 1.5;
-    }
-
-    h4 {
-        font-size: var(--text-base);
-        font-weight: var(--font-weight-medium);
-        line-height: 1.5;
+        font-size: clamp(1rem, 2vw, 1.35rem);
     }
 
     label {
-        font-size: var(--text-base);
-        font-weight: var(--font-weight-medium);
-        line-height: 1.5;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--foreground);
     }
 
-    button {
-        font-size: var(--text-base);
-        font-weight: var(--font-weight-medium);
-        line-height: 1.5;
+    input,
+    textarea,
+    select {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.875rem;
+        font-weight: 400;
+        background: var(--input-background);
+        color: var(--foreground);
+        border-color: var(--border);
     }
 
-    input {
-        font-size: var(--text-base);
-        font-weight: var(--font-weight-normal);
-        line-height: 1.5;
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--muted-foreground);
+    }
+
+    ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--background);
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--secondary);
+        border-radius: 99px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--accent);
+    }
+
+    ::selection {
+        background: var(--bc-accent-glow);
+        color: var(--foreground);
     }
 }
