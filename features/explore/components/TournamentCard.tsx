@@ -14,7 +14,12 @@ interface Props {
 
 export function TournamentCard({ tournament }: Props) {
     const isLive = tournament.status === "Active" || tournament.status === "PendingBracketInit";
-    const isCompleted = tournament.status === "Completed" || tournament.status === "Cancelled";
+    const isCancelled = tournament.status === "Cancelled";
+    const isCompleted = tournament.status === "Completed";
+    const isRegistrationClosed =
+        tournament.status === "Registration" &&
+        Number.isFinite(new Date(tournament.registrationDeadline).getTime()) &&
+        new Date(tournament.registrationDeadline).getTime() <= Date.now();
 
     return (
         <motion.div
@@ -32,9 +37,21 @@ export function TournamentCard({ tournament }: Props) {
                                 <Badge variant="outline" className="border-red-200 text-red-600 bg-red-50 gap-1.5 px-2">
                                     <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" /> LIVE
                                 </Badge>
+                            ) : isCancelled ? (
+                                <Badge variant="outline" className="border-red-200 text-red-700 bg-red-50">
+                                    Cancelled
+                                </Badge>
+                            ) : isCompleted ? (
+                                <Badge variant="outline" className="border-gray-200 text-gray-700 bg-gray-50">
+                                    Completed
+                                </Badge>
+                            ) : isRegistrationClosed ? (
+                                <Badge variant="outline" className="border-amber-200 text-amber-700 bg-amber-50">
+                                    Closed
+                                </Badge>
                             ) : (
                                 <Badge variant="outline" className="border-blue-200 text-blue-600 bg-blue-50">
-                                    {isCompleted ? "Completed" : "Upcoming"}
+                                    Upcoming
                                 </Badge>
                             )}
                         </div>
@@ -72,7 +89,15 @@ export function TournamentCard({ tournament }: Props) {
                             
                             {/* Starts In */}
                             <div className="text-sm font-medium text-gray-500">
-                                {isLive ? <span className="text-red-500 font-bold">• In Progress</span> : isCompleted ? "Ended" : `Starts in ${tournament.startsIn}`}
+                                {isLive
+                                    ? <span className="text-red-500 font-bold">• In Progress</span>
+                                    : isCancelled
+                                        ? <span className="text-red-600 font-semibold">Cancelled</span>
+                                        : isCompleted
+                                            ? "Ended"
+                                            : isRegistrationClosed
+                                                ? <span className="text-amber-600 font-semibold">Awaiting start</span>
+                                                : `Starts in ${tournament.startsIn}`}
                             </div>
                         </div>
 

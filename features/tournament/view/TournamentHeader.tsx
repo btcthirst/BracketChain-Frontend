@@ -2,6 +2,7 @@ import { ExternalLink, Share2, Check } from "lucide-react";
 import { useState } from "react";
 import type { TournamentView, TournamentStatus, TournamentFormat } from "@/types/tournament";
 import { CountdownTimer } from "@/components/ui/CountdownTimer";
+import { useDeadlineReached } from "@/hooks/useDeadlineReached";
 
 const STATUS_CONFIG: Record<TournamentStatus, { label: string; className: string }> = {
     registration: { label: "Registration Open", className: "bg-green-100 text-green-700 border-green-200" },
@@ -10,13 +11,29 @@ const STATUS_CONFIG: Record<TournamentStatus, { label: string; className: string
     cancelled: { label: "Cancelled", className: "bg-red-100   text-red-700   border-red-200" },
 };
 
+// Used when on-chain status is still `registration` but the deadline has passed
+// (program flips status only on the next interaction). Without this the header
+// badge and the countdown disagree — see screenshot of /t/<pda> showing both
+// "Registration Open" and "Registration Closed".
+const REGISTRATION_CLOSED_BADGE = {
+    label: "Registration Closed",
+    className: "bg-amber-100 text-amber-700 border-amber-200",
+};
+
 const FORMAT_LABEL: Record<TournamentFormat, string> = {
     SE: "Single Elim", DE: "Double Elim", Swiss: "Swiss", RR: "Round Robin",
 };
 
 export function TournamentHeader({ tournament }: { tournament: TournamentView }) {
     const [copied, setCopied] = useState(false);
-    const status = STATUS_CONFIG[tournament.status];
+
+    const deadlineReached = useDeadlineReached(tournament.registrationDeadline);
+    const registrationClosed =
+        tournament.status === "registration" && deadlineReached;
+
+    const status = registrationClosed
+        ? REGISTRATION_CLOSED_BADGE
+        : STATUS_CONFIG[tournament.status];
 
     function handleShare() {
         navigator.clipboard.writeText(window.location.href);
@@ -81,10 +98,19 @@ export function TournamentHeader({ tournament }: { tournament: TournamentView })
                         // Counts down to `registration_deadline`, NOT to a tournament
                         // start time — start is organizer-triggered (or "Start Early")
                         // and there is no on-chain auto-start.
-                        label={tournament.status === "registration" ? "Registration closes in" : "Started"}
-                        value={tournament.status === "registration"
-                            ? <CountdownTimer deadline={tournament.registrationDeadline} />
-                            : new Date(tournament.startTime).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                        label={
+                            tournament.status === "cancelled"
+                                ? "Refunds"
+                                : tournament.status === "registration"
+                                    ? registrationClosed ? "Registration" : "Registration closes in"
+                                    : "Started"
+                        }
+                        value={
+                            tournament.status === "cancelled"
+                                ? `${tournament.refundTxSignatures.length} issued`
+                                : tournament.status === "registration"
+                                    ? <CountdownTimer deadline={tournament.registrationDeadline} />
+                                    : new Date(tournament.startTime).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
                         }
                     />
                 </div>

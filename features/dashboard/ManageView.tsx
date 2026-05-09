@@ -115,7 +115,10 @@ export function ManageView({ tournamentId, onBack }: Props) {
                                 </span>
                             </div>
                             {!hasBracket
-                                ? <BracketEmpty />
+                                ? <BracketEmpty
+                                    isRegistered={isOrganizer}
+                                    cancelled={t.status === "cancelled"}
+                                />
                                 : <BracketView matches={t.matches} />
                             }
                         </div>

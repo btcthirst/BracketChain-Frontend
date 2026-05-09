@@ -248,9 +248,19 @@ export function BracketSkeleton() {
 export function BracketEmpty({
     onJoin,
     isRegistered = false,
+    registrationClosed = false,
+    cancelled = false,
 }: {
     onJoin?: () => void;
     isRegistered?: boolean;
+    // True when registration deadline has passed. When set, the not-registered
+    // branch hides the Join CTA (the on-chain program would reject) and the
+    // copy reflects waiting on organizer rather than waiting on players.
+    registrationClosed?: boolean;
+    // True when tournament was cancelled before any bracket was initialized.
+    // The CancelledBanner above already explains what happened — this branch
+    // just keeps the empty bracket panel from misleadingly inviting joins.
+    cancelled?: boolean;
 }) {
     return (
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
@@ -267,11 +277,25 @@ export function BracketEmpty({
                 <rect x="148" y="62" width="44" height="18" rx="4" stroke="currentColor" strokeWidth="2" strokeDasharray="5 3" />
             </svg>
 
-            {isRegistered ? (
+            {cancelled ? (
+                <>
+                    <p className="text-lg font-semibold text-gray-600">Tournament cancelled</p>
+                    <p className="text-sm text-gray-400 max-w-xs">
+                        This tournament was cancelled before it started. No bracket will be played.
+                    </p>
+                </>
+            ) : isRegistered ? (
                 <>
                     <p className="text-lg font-semibold text-gray-600">You&apos;re registered!</p>
                     <p className="text-sm text-gray-400 max-w-xs">
                         Waiting for the organizer to start the tournament. The bracket will appear here once it begins.
+                    </p>
+                </>
+            ) : registrationClosed ? (
+                <>
+                    <p className="text-lg font-semibold text-gray-600">Registration closed</p>
+                    <p className="text-sm text-gray-400 max-w-xs">
+                        The deadline has passed. Waiting for the organizer to start the bracket.
                     </p>
                 </>
             ) : (

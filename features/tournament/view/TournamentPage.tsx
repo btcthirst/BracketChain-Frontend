@@ -8,6 +8,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ROUTES, SOLANA } from "@/constants/links";
 import { useTournamentView } from "../../../hooks/useTournamentView";
+import { useDeadlineReached } from "@/hooks/useDeadlineReached";
 import { TournamentHeader } from "./TournamentHeader";
 import { BracketView, BracketSkeleton, BracketEmpty } from "./BracketView";
 import { TournamentSidebar, SidebarSkeleton } from "./TournamentSidebar";
@@ -150,6 +151,13 @@ export function TournamentPage({ id }: { id: string }) {
     const [reportingMatch, setReportingMatch] = useState<Match | null>(null);
     const [showCancel, setShowCancel] = useState(false);
 
+    // Hook must run unconditionally; empty-string deadline → NaN → false until
+    // success state arrives with a real timestamp, then it auto-flips on the
+    // deadline tick.
+    const deadlineReached = useDeadlineReached(
+        state.status === "success" ? state.data.registrationDeadline : ""
+    );
+
     const isOrganizer =
         state.status === "success" &&
         state.data.organizer.address === currentAddress;
@@ -166,6 +174,8 @@ export function TournamentPage({ id }: { id: string }) {
                 {state.status === "success" && (() => {
                     const t = state.data;
                     const hasBracket = t.matches && t.matches.length > 0;
+                    const registrationClosed =
+                        t.status === "registration" && deadlineReached;
 
                     return (
                         <>
@@ -188,7 +198,7 @@ export function TournamentPage({ id }: { id: string }) {
                                         </div>
                                         {!hasBracket
                                             ? <BracketEmpty
-                                                onJoin={t.status === "registration"
+                                                onJoin={t.status === "registration" && !registrationClosed
                                                     ? () => document.getElementById("join-btn")?.click()
                                                     : undefined
                                                 }
@@ -197,6 +207,8 @@ export function TournamentPage({ id }: { id: string }) {
                                                 isRegistered={t.participants.some(
                                                     p => p.address === currentAddress
                                                 )}
+                                                registrationClosed={registrationClosed}
+                                                cancelled={t.status === "cancelled"}
                                             />
                                             : <BracketView
                                                 matches={t.matches}

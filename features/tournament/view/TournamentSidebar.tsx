@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ExternalLink, CheckCircle2, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { ExternalLink, CheckCircle2, Loader2, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { PublicKey } from "@solana/web3.js";
 import { joinTournament, startTournament, mapError } from "@bracketchain/sdk";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import { SOLANA } from "@/constants/links";
 import { useBracketChainClient } from "@/lib/sdk";
 import { useConfetti } from "@/hooks/useConfetti";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
+import { useDeadlineReached } from "@/hooks/useDeadlineReached";
 
 // ── Participant list ───────────────────────────────────────────────────────────
 
@@ -248,6 +249,12 @@ function ActionArea({
 
     const hasEnough = walletUsdc !== null && walletUsdc >= tournament.entryFee;
 
+    // Client-side deadline guard. The program rejects join with RegistrationClosed
+    // once the deadline passes, even while UI status is still "registration"
+    // (status only flips on the next on-chain interaction). Without this gate the
+    // user sees an active Join button → signs → eats a confusing rejection.
+    const registrationClosed = useDeadlineReached(tournament.registrationDeadline);
+
     async function handleJoin() {
         if (!sdk) {
             toast.error("Connect your wallet to join");
@@ -291,6 +298,12 @@ function ActionArea({
                 );
             } else {
                 toast.error(sdkErr.message);
+            }
+            // RegistrationClosed / TournamentFull / status-mismatch errors mean
+            // our cached view is stale. Refresh so the disabled-state branches
+            // below pick up the current on-chain truth on next render.
+            if (/registration|closed|full|status/i.test(sdkErr.message)) {
+                onJoinSuccess();
             }
             console.error("Join failed:", err);
         } finally {
@@ -426,6 +439,24 @@ function ActionArea({
                         Tournament is full! Waiting for organizer to start…
                     </p>
                 )}
+            </div>
+        );
+    }
+
+    // ── Registration closed (deadline passed) ────────────────────────────────
+    if (registrationClosed) {
+        return (
+            <div className="flex flex-col gap-2">
+                <button
+                    disabled
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-100 text-gray-500 font-semibold text-sm cursor-not-allowed"
+                >
+                    <Clock className="w-4 h-4" />
+                    Registration Closed
+                </button>
+                <p className="text-[11px] text-center text-gray-500 italic">
+                    The deadline has passed. Waiting for organizer to start the bracket.
+                </p>
             </div>
         );
     }

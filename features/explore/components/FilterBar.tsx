@@ -12,8 +12,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { ExploreFilters } from "@/hooks/useExplore";
-import type { IndexerTournamentStatus } from "@bracketchain/sdk";
+import type { ExploreFilters, ExploreStatus } from "@/hooks/useExplore";
 
 interface Props {
     filters: ExploreFilters;
@@ -60,17 +59,22 @@ export function FilterBar({ filters, onFilterChange, onClear, totalCount }: Prop
 
                 <Tabs
                     value={filters.status}
-                    onValueChange={(v) => onFilterChange({ ...filters, status: v as IndexerTournamentStatus | "All" })}
+                    onValueChange={(v) => onFilterChange({ ...filters, status: v as ExploreStatus })}
                     className="w-full md:w-auto"
                 >
-                    <TabsList className="grid grid-cols-4 w-full md:w-auto h-12 p-1 bg-white border border-gray-200 rounded-full shadow-sm">
-                        <TabsTrigger value="All" className="rounded-full px-6 text-sm">All</TabsTrigger>
-                        <TabsTrigger value="Active" className="rounded-full px-6 text-sm flex items-center gap-1.5">
+                    <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full md:w-auto h-auto md:h-12 p-1 bg-white border border-gray-200 rounded-full shadow-sm gap-1">
+                        <TabsTrigger value="All" className="rounded-full px-4 text-sm">All</TabsTrigger>
+                        <TabsTrigger value="Active" className="rounded-full px-4 text-sm flex items-center gap-1.5">
                             <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
                             Live
                         </TabsTrigger>
-                        <TabsTrigger value="Registration" className="rounded-full px-6 text-sm">Upcoming</TabsTrigger>
-                        <TabsTrigger value="Completed" className="rounded-full px-6 text-sm">Completed</TabsTrigger>
+                        <TabsTrigger value="Registration" className="rounded-full px-4 text-sm">Upcoming</TabsTrigger>
+                        <TabsTrigger value="RegistrationClosed" className="rounded-full px-4 text-sm flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+                            Closed
+                        </TabsTrigger>
+                        <TabsTrigger value="Completed" className="rounded-full px-4 text-sm">Completed</TabsTrigger>
+                        <TabsTrigger value="Cancelled" className="rounded-full px-4 text-sm">Cancelled</TabsTrigger>
                     </TabsList>
                 </Tabs>
             </div>

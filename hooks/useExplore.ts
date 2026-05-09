@@ -14,8 +14,14 @@ const ANCHOR_TO_INDEXER_STATUS: Record<string, Tournament["status"]> = {
     cancelled: "Cancelled",
 };
 
+// Synthetic status that doesn't exist on-chain — derived from
+// `Registration` status + deadline check on the client side. Lets users find
+// tournaments where the deadline has passed but the organizer hasn't yet
+// transitioned the on-chain state (Start / Cancel).
+export type ExploreStatus = IndexerTournamentStatus | "All" | "RegistrationClosed";
+
 export interface ExploreFilters {
-    status: IndexerTournamentStatus | "All";
+    status: ExploreStatus;
     format: string; // "All", "SE", "DE", "Swiss", "RR"
     minPrize: number;
     maxPrize: number;
@@ -97,7 +103,15 @@ export function useExplore(filters: ExploreFilters) {
         const limit = 12;
         const offset = page * limit;
 
-        const apiStatus = filters.status === "All" ? undefined : filters.status;
+        // RegistrationClosed is a synthetic UI bucket — the indexer only knows
+        // the on-chain status, so we fetch `Registration` rows and post-filter
+        // by deadline.
+        const apiStatus =
+            filters.status === "All"
+                ? undefined
+                : filters.status === "RegistrationClosed"
+                    ? "Registration"
+                    : filters.status;
 
         const indexer = getIndexerClient();
         if (!indexer) {
@@ -126,6 +140,24 @@ export function useExplore(filters: ExploreFilters) {
                 if (filters.game !== "All") {
                     tournaments = tournaments.filter(t => t.game === filters.game);
                 }
+
+                // Split Registration into Upcoming (still open) vs Reg Closed
+                // (deadline passed). Without this split the two buckets overlap
+                // and Upcoming surfaces tournaments users can no longer join.
+                if (filters.status === "RegistrationClosed" || filters.status === "Registration") {
+                    const cutoff = Date.now();
+                    tournaments = tournaments.filter(t => {
+                        const ms = new Date(t.registrationDeadline).getTime();
+                        if (!Number.isFinite(ms)) {
+                            // Missing/invalid deadline → assume still open so it
+                            // doesn't disappear from both filters silently.
+                            return filters.status === "Registration";
+                        }
+                        return filters.status === "RegistrationClosed"
+                            ? ms <= cutoff
+                            : ms > cutoff;
+                    });
+                }
                 
                 tournaments = tournaments.filter(t => 
                     t.prizePool >= filters.minPrize && 
@@ -137,7 +169,8 @@ export function useExplore(filters: ExploreFilters) {
                 }
 
                 const total = tournaments.length;
-                const paginatedData = tournaments.slice(offset, offset + limit);
+                let paginatedData = tournaments.slice(offset, offset + limit);
+                const paginatedLenBeforeEnrichment = paginatedData.length;
                 const hasMore = offset + limit < total;
 
                 // Enrich with live blockchain data for participant counts using SDK
@@ -165,13 +198,44 @@ export function useExplore(filters: ExploreFilters) {
                     }
                 }
 
+                // Re-apply status filter after enrichment. The indexer can lag
+                // behind on-chain truth (e.g. a tournament cancelled on-chain
+                // but the indexer hasn't ingested the event yet). The first
+                // status filter ran on indexer-fed status; here we drop rows
+                // whose live status no longer matches the active tab.
+                if (filters.status !== "All") {
+                    const cutoff = Date.now();
+                    paginatedData = paginatedData.filter(t => {
+                        if (filters.status === "RegistrationClosed") {
+                            const ms = new Date(t.registrationDeadline).getTime();
+                            return t.status === "Registration"
+                                && Number.isFinite(ms)
+                                && ms <= cutoff;
+                        }
+                        if (filters.status === "Registration") {
+                            const ms = new Date(t.registrationDeadline).getTime();
+                            return t.status === "Registration"
+                                && (!Number.isFinite(ms) || ms > cutoff);
+                        }
+                        return t.status === filters.status;
+                    });
+                }
+
                 if (ac.signal.aborted) return;
+
+                // Adjust total by the number of rows the post-enrichment
+                // filter dropped on this page. Only accounts for the current
+                // page (future pages may still have stale-indexer mismatches),
+                // but it keeps the header count from claiming more rows than
+                // are actually visible.
+                const droppedThisPage = paginatedLenBeforeEnrichment - paginatedData.length;
+                const adjustedTotal = Math.max(0, total - droppedThisPage);
 
                 dispatch({
                     type: "FETCH_SUCCESS",
                     data: paginatedData,
                     hasMore,
-                    total,
+                    total: adjustedTotal,
                     append: !isInitial,
                 });
             })
