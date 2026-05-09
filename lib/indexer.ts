@@ -53,6 +53,13 @@ export interface IndexerPayout {
 
 interface ListTournamentsOpts {
     status?: IndexerTournamentStatus;
+    name?: string;
+    format?: string;
+    game?: string;
+    minPrize?: number;
+    maxPrize?: number;
+    freeOnly?: boolean;
+    offset?: number;
     limit?: number;
     signal?: AbortSignal;
 }
