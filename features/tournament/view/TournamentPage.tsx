@@ -14,21 +14,32 @@ import { TournamentSidebar, SidebarSkeleton } from "./TournamentSidebar";
 import { ReportResultModal } from "./ReportResultModal";
 import type { Match } from "@/types/tournament";
 
-// ── Edge state: not found ─────────────────────────────────────────────────────
+const darkPanel: React.CSSProperties = {
+    background: "rgba(13,15,24,0.85)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    borderRadius: 16,
+    overflow: "hidden",
+};
 
 function NotFound() {
     return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 text-center px-6">
-            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-3xl">
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 20, textAlign: "center", padding: "0 24px" }}>
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(34,212,126,0.06)", border: "1px solid rgba(34,212,126,0.14)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem" }}>
                 🏆
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Tournament not found</h1>
-            <p className="text-gray-500 max-w-sm">
-                It may have been closed, cancelled, or the link is incorrect.
-            </p>
+            <div>
+                <h1 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: "1.5rem", color: "#f0f1f5", marginBottom: 8 }}>
+                    Tournament not found
+                </h1>
+                <p style={{ fontSize: "0.9rem", color: "rgba(240,241,245,0.42)", maxWidth: 340 }}>
+                    It may have been closed, cancelled, or the link is incorrect.
+                </p>
+            </div>
             <Link
                 href={ROUTES.explore}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                style={{ padding: "10px 24px", background: "#22d47e", color: "#06070b", borderRadius: 8, fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: "0.875rem", textDecoration: "none", boxShadow: "0 0 18px rgba(34,212,126,0.28)", transition: "background 0.15s" }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#16c062")}
+                onMouseLeave={e => (e.currentTarget.style.background = "#22d47e")}
             >
                 Browse tournaments →
             </Link>
@@ -36,54 +47,54 @@ function NotFound() {
     );
 }
 
-// ── Edge state: error ─────────────────────────────────────────────────────────
-
 function ErrorState({ onRetry }: { onRetry: () => void }) {
     return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-6">
-            <RefreshCw className="w-10 h-10 text-gray-300" />
-            <h2 className="text-xl font-semibold text-gray-700">Failed to load tournament</h2>
-            <p className="text-sm text-gray-500">Check your connection and try again.</p>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 16, textAlign: "center", padding: "0 24px" }}>
+            <RefreshCw style={{ width: 40, height: 40, color: "rgba(240,78,102,0.4)" }} />
+            <div>
+                <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "1.1rem", color: "#f0f1f5", marginBottom: 6 }}>
+                    Failed to load tournament
+                </h2>
+                <p style={{ fontSize: "0.85rem", color: "rgba(240,241,245,0.35)" }}>Check your connection and try again.</p>
+            </div>
             <button
                 onClick={onRetry}
-                className="flex items-center gap-2 border border-gray-300 hover:border-gray-400 px-5 py-2.5 rounded-lg font-medium text-gray-700 transition-colors"
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 20px", background: "transparent", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "rgba(240,241,245,0.5)", fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", transition: "border-color 0.15s, color 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"; e.currentTarget.style.color = "#f0f1f5"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = "rgba(240,241,245,0.5)"; }}
             >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw style={{ width: 14, height: 14 }} />
                 Try again
             </button>
         </div>
     );
 }
 
-// ── Loading skeleton ──────────────────────────────────────────────────────────
-
 function LoadingSkeleton() {
     return (
-        <div className="animate-pulse">
+        <div style={{ animation: "pulse 1.5s ease-in-out infinite" }}>
             {/* Header skeleton */}
-            <div className="bg-[#0a1929] py-8">
-                <div className="container mx-auto px-6 flex flex-col gap-4">
-                    <div className="flex gap-2">
-                        <div className="h-6 w-32 bg-white/10 rounded-full" />
-                        <div className="h-6 w-24 bg-white/10 rounded-full" />
+            <div style={{ background: "rgba(6,7,11,0.95)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "32px 24px" }}>
+                <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+                    <div style={{ display: "flex", gap: 8 }}>
+                        <div style={{ height: 24, width: 128, background: "rgba(255,255,255,0.07)", borderRadius: 999 }} />
+                        <div style={{ height: 24, width: 96, background: "rgba(255,255,255,0.07)", borderRadius: 999 }} />
                     </div>
-                    <div className="h-10 w-72 bg-white/10 rounded-lg" />
-                    <div className="grid grid-cols-4 gap-6 mt-4 pt-4 border-t border-white/10">
+                    <div style={{ height: 40, width: 280, background: "rgba(255,255,255,0.07)", borderRadius: 8 }} />
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24, marginTop: 8, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                         {[0, 1, 2, 3].map(i => (
-                            <div key={i} className="flex flex-col gap-2">
-                                <div className="h-3 w-20 bg-white/10 rounded" />
-                                <div className="h-6 w-28 bg-white/10 rounded" />
+                            <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                <div style={{ height: 10, width: 80, background: "rgba(255,255,255,0.07)", borderRadius: 4 }} />
+                                <div style={{ height: 20, width: 110, background: "rgba(255,255,255,0.07)", borderRadius: 4 }} />
                             </div>
                         ))}
                     </div>
                 </div>
             </div>
             {/* Content skeleton */}
-            <div className="container mx-auto px-6 py-8">
-                <div className="grid lg:grid-cols-[1fr_320px] gap-8">
-                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                        <BracketSkeleton />
-                    </div>
+            <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 32 }}>
+                    <div style={darkPanel}><BracketSkeleton /></div>
                     <SidebarSkeleton />
                 </div>
             </div>
@@ -91,56 +102,40 @@ function LoadingSkeleton() {
     );
 }
 
-// ── Cancelled banner ──────────────────────────────────────────────────────────
-
-function CancelledBanner({
-    txSignature,
-    refundTxs,
-}: {
-    txSignature: string | null;
-    refundTxs: string[];
-}) {
+function CancelledBanner({ txSignature, refundTxs }: { txSignature: string | null; refundTxs: string[] }) {
     return (
-        <div className="bg-red-50 border-b border-red-200">
-            <div className="container mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center gap-3">
-                <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
-                <div className="flex-1">
-                    <p className="text-sm font-semibold text-red-800">
+        <div style={{ background: "rgba(240,78,102,0.07)", borderBottom: "1px solid rgba(240,78,102,0.18)" }}>
+            <div style={{ maxWidth: 1280, margin: "0 auto", padding: "14px 24px", display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                <AlertTriangle style={{ width: 16, height: 16, color: "#f04e66", flexShrink: 0, marginTop: 1 }} />
+                <div style={{ flex: 1 }}>
+                    <p style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "0.82rem", color: "#f04e66", marginBottom: refundTxs.length > 0 ? 4 : 0 }}>
                         This tournament was cancelled. All entry fees have been refunded.
                     </p>
                     {refundTxs.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-1">
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                             {refundTxs.map((tx, i) => (
-                                <a
-                                    key={tx}
-                                    href={`${SOLANA.explorerTx(tx)}?cluster=devnet`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-xs text-red-600 hover:underline font-mono"
+                                <a key={tx} href={`${SOLANA.explorerTx(tx)}?cluster=devnet`} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", color: "rgba(240,78,102,0.7)", textDecoration: "none" }}
+                                    onMouseEnter={e => (e.currentTarget.style.color = "#f04e66")}
+                                    onMouseLeave={e => (e.currentTarget.style.color = "rgba(240,78,102,0.7)")}
                                 >
-                                    Refund #{i + 1}
-                                    <ExternalLink className="w-3 h-3" />
+                                    Refund #{i + 1} <ExternalLink style={{ width: 10, height: 10 }} />
                                 </a>
                             ))}
                         </div>
                     )}
                 </div>
                 {txSignature && (
-                    <a
-                        href={`${SOLANA.explorerTx(txSignature)}?cluster=devnet`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-xs font-medium text-red-600 hover:underline shrink-0"
+                    <a href={`${SOLANA.explorerTx(txSignature)}?cluster=devnet`} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", color: "rgba(240,78,102,0.7)", textDecoration: "none", flexShrink: 0 }}
+                        onMouseEnter={e => (e.currentTarget.style.color = "#f04e66")}
+                        onMouseLeave={e => (e.currentTarget.style.color = "rgba(240,78,102,0.7)")}
                     >
-                        Cancel tx <ExternalLink className="w-3 h-3" />
+                        Cancel tx <ExternalLink style={{ width: 10, height: 10 }} />
                     </a>
                 )}
             </div>
         </div>
     );
 }
-
-// ── Main page ─────────────────────────────────────────────────────────────────
 
 export function TournamentPage({ id }: { id: string }) {
     const { state, refresh } = useTournamentView(id);
@@ -153,13 +148,13 @@ export function TournamentPage({ id }: { id: string }) {
         state.data.organizer.address === currentAddress;
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div style={{ minHeight: "100vh", background: "transparent", display: "flex", flexDirection: "column" }}>
             <Navbar />
 
-            <main className="flex-1">
-                {state.status === "loading" && <LoadingSkeleton />}
+            <main style={{ flex: 1 }}>
+                {state.status === "loading"   && <LoadingSkeleton />}
                 {state.status === "not_found" && <NotFound />}
-                {state.status === "error" && <ErrorState onRetry={refresh} />}
+                {state.status === "error"     && <ErrorState onRetry={refresh} />}
 
                 {state.status === "success" && (() => {
                     const t = state.data;
@@ -168,33 +163,25 @@ export function TournamentPage({ id }: { id: string }) {
                     return (
                         <>
                             {t.status === "cancelled" && (
-                                <CancelledBanner
-                                    txSignature={t.cancelledTxSignature}
-                                    refundTxs={t.refundTxSignatures}
-                                />
+                                <CancelledBanner txSignature={t.cancelledTxSignature} refundTxs={t.refundTxSignatures} />
                             )}
 
                             <TournamentHeader tournament={t} />
 
-                            <div className="container mx-auto px-6 py-8">
-                                <div className="grid lg:grid-cols-[1fr_320px] gap-8 items-start">
+                            <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 24px" }}>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 32, alignItems: "start" }} className="lg:grid-cols-[1fr_320px] grid-cols-1">
 
                                     {/* Bracket panel */}
-                                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                                        <div className="border-b border-gray-100 px-5 py-3">
-                                            <h2 className="text-sm font-semibold text-gray-700">Bracket</h2>
+                                    <div style={darkPanel}>
+                                        <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "12px 20px" }}>
+                                            <h2 style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", fontWeight: 500, color: "rgba(240,241,245,0.3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                                                Bracket
+                                            </h2>
                                         </div>
                                         {!hasBracket
                                             ? <BracketEmpty
-                                                onJoin={t.status === "registration"
-                                                    ? () => document.getElementById("join-btn")?.click()
-                                                    : undefined
-                                                }
-                                                // Pass whether current user is already a participant
-                                                // so the empty state can show a more relevant message
-                                                isRegistered={t.participants.some(
-                                                    p => p.address === currentAddress
-                                                )}
+                                                onJoin={t.status === "registration" ? () => document.getElementById("join-btn")?.click() : undefined}
+                                                isRegistered={t.participants.some(p => p.address === currentAddress)}
                                             />
                                             : <BracketView
                                                 matches={t.matches}
@@ -204,8 +191,6 @@ export function TournamentPage({ id }: { id: string }) {
                                         }
                                     </div>
 
-                                    {/* Sidebar — receives refresh so it can trigger
-                                        a data reload after a successful join */}
                                     <TournamentSidebar
                                         tournament={t}
                                         currentAddress={currentAddress}

@@ -33,7 +33,7 @@ function WalletGate() {
             </div>
             <div className="flex flex-col gap-2">
                 <h2 className="text-3xl font-bold text-[#f0f1f5]">Connect your wallet</h2>
-                <p className="text-gray-400 max-w-xs mx-auto">
+                <p className="max-w-xs mx-auto" style={{ color: "rgba(240,241,245,0.42)", fontSize: "0.925rem" }}>
                     Access your personalized tournament dashboard by connecting your Solana wallet.
                 </p>
             </div>
@@ -89,7 +89,7 @@ function EmptyState({ filter }: { filter: DashboardFilter }) {
                 <p className="text-xl font-bold text-[#f0f1f5]">
                     {isFiltered ? `No ${filter} tournaments` : "Empty Arena"}
                 </p>
-                <p className="text-sm text-gray-500 max-w-xs mx-auto">
+                <p className="text-sm max-w-xs mx-auto" style={{ color: "rgba(240,241,245,0.35)" }}>
                     {isFiltered
                         ? "Try switching to another filter tab to find what you're looking for."
                         : "You haven't created any tournaments yet. Ready to start your first one?"
@@ -99,9 +99,25 @@ function EmptyState({ filter }: { filter: DashboardFilter }) {
             {!isFiltered && (
                 <Link
                     href={ROUTES.create}
-                    className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-lg font-semibold transition-all border border-white/10"
+                    style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 7,
+                        padding: "10px 22px",
+                        background: "#22d47e",
+                        color: "#06070b",
+                        borderRadius: 8,
+                        fontFamily: "'Inter', sans-serif",
+                        fontWeight: 700,
+                        fontSize: "0.875rem",
+                        textDecoration: "none",
+                        boxShadow: "0 0 18px rgba(34,212,126,0.28)",
+                        transition: "background 0.15s, box-shadow 0.15s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#16c062"; e.currentTarget.style.boxShadow = "0 0 28px rgba(34,212,126,0.48)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "#22d47e"; e.currentTarget.style.boxShadow = "0 0 18px rgba(34,212,126,0.28)"; }}
                 >
-                    <PlusCircle className="w-4 h-4 text-[#22d47e]" />
+                    <PlusCircle style={{ width: 15, height: 15 }} />
                     Create Your First Tournament
                 </Link>
             )}
@@ -162,14 +178,30 @@ function DashboardContent() {
                     <h1 className="text-3xl font-bold text-[#f0f1f5] tracking-tight">Dashboard</h1>
                     <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-[#22d47e] shadow-[0_0_8px_#22d47e]" />
-                        <span className="text-xs font-mono text-gray-500 uppercase tracking-widest">{walletDisplay}</span>
+                        <span className="text-xs font-mono uppercase tracking-widest" style={{ color: "rgba(240,241,245,0.3)" }}>{walletDisplay}</span>
                     </div>
                 </div>
                 <Link
                     href={ROUTES.create}
-                    className="flex items-center gap-2 bg-[#22d47e] hover:bg-[#16c062] text-[#06070b] px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-[0_0_20px_rgba(34,212,126,0.25)] hover:scale-[1.02]"
+                    style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 7,
+                        padding: "10px 22px",
+                        background: "#22d47e",
+                        color: "#06070b",
+                        borderRadius: 8,
+                        fontFamily: "'Inter', sans-serif",
+                        fontWeight: 700,
+                        fontSize: "0.875rem",
+                        textDecoration: "none",
+                        boxShadow: "0 0 18px rgba(34,212,126,0.28)",
+                        transition: "background 0.15s, box-shadow 0.15s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#16c062"; e.currentTarget.style.boxShadow = "0 0 28px rgba(34,212,126,0.48)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "#22d47e"; e.currentTarget.style.boxShadow = "0 0 18px rgba(34,212,126,0.28)"; }}
                 >
-                    <PlusCircle className="w-4 h-4" />
+                    <PlusCircle style={{ width: 15, height: 15 }} />
                     Create Tournament
                 </Link>
             </div>

@@ -21,14 +21,10 @@ export function CancelModal({ tournamentId, tournamentName, onClose, onSuccess }
 
     async function handleCancel() {
         if (!sdk) { setError("Wallet not connected."); return; }
-
         setSubmitting(true);
         setError("");
-
         try {
-            await cancelTournament(sdk, {
-                tournamentPda: new PublicKey(tournamentId),
-            });
+            await cancelTournament(sdk, { tournamentPda: new PublicKey(tournamentId) });
             toast.success("Tournament cancelled. Entry fees have been refunded.");
             onSuccess();
             onClose();
@@ -42,46 +38,138 @@ export function CancelModal({ tournamentId, tournamentName, onClose, onSuccess }
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-5 p-6">
-
-                <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-gray-900">Cancel Tournament</h3>
-                    <button onClick={onClose} disabled={submitting} className="text-gray-400 hover:text-gray-600">
-                        <X className="w-5 h-5" />
+        <div
+            style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 50,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 16,
+                background: "rgba(0,0,0,0.65)",
+                backdropFilter: "blur(4px)",
+            }}
+        >
+            <div
+                style={{
+                    background: "rgba(13,15,24,0.98)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 16,
+                    boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
+                    width: "100%",
+                    maxWidth: 400,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 20,
+                    padding: 24,
+                }}
+            >
+                {/* Header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <h3 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "1rem", color: "#f0f1f5" }}>
+                        Cancel Tournament
+                    </h3>
+                    <button
+                        onClick={onClose}
+                        disabled={submitting}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(240,241,245,0.3)", transition: "color 0.15s", padding: 4 }}
+                        onMouseEnter={e => (e.currentTarget.style.color = "rgba(240,241,245,0.7)")}
+                        onMouseLeave={e => (e.currentTarget.style.color = "rgba(240,241,245,0.3)")}
+                    >
+                        <X style={{ width: 18, height: 18 }} />
                     </button>
                 </div>
 
-                <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                    <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                    <div className="flex flex-col gap-1">
-                        <p className="text-sm font-semibold text-amber-800">This action is irreversible</p>
-                        <p className="text-xs text-amber-700">
-                            Cancelling <span className="font-semibold">&quot;{tournamentName}&quot;</span> will
-                            refund all entry fees to participants. The organizer deposit will also be returned.
+                {/* Warning */}
+                <div
+                    style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 12,
+                        background: "rgba(245,166,35,0.07)",
+                        border: "1px solid rgba(245,166,35,0.2)",
+                        borderRadius: 10,
+                        padding: "12px 14px",
+                    }}
+                >
+                    <AlertTriangle style={{ width: 18, height: 18, color: "#f5a623", flexShrink: 0, marginTop: 1 }} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <p style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "0.82rem", color: "#f5a623" }}>
+                            This action is irreversible
+                        </p>
+                        <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "rgba(245,166,35,0.7)", lineHeight: 1.5 }}>
+                            Cancelling <span style={{ fontWeight: 700 }}>&quot;{tournamentName}&quot;</span> will refund all entry fees to participants. The organizer deposit will also be returned.
                         </p>
                     </div>
                 </div>
 
+                {/* Error */}
                 {error && (
-                    <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+                    <p
+                        style={{
+                            fontFamily: "'Inter', sans-serif",
+                            fontSize: "0.78rem",
+                            color: "#f04e66",
+                            background: "rgba(240,78,102,0.07)",
+                            border: "1px solid rgba(240,78,102,0.2)",
+                            borderRadius: 8,
+                            padding: "10px 14px",
+                        }}
+                    >
+                        {error}
+                    </p>
                 )}
 
-                <div className="flex gap-3">
+                {/* Actions */}
+                <div style={{ display: "flex", gap: 10 }}>
                     <button
                         onClick={onClose}
                         disabled={submitting}
-                        className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-40"
+                        style={{
+                            flex: 1,
+                            padding: "10px 0",
+                            borderRadius: 10,
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            background: "transparent",
+                            color: "rgba(240,241,245,0.5)",
+                            fontFamily: "'Inter', sans-serif",
+                            fontWeight: 600,
+                            fontSize: "0.875rem",
+                            cursor: submitting ? "not-allowed" : "pointer",
+                            opacity: submitting ? 0.4 : 1,
+                            transition: "border-color 0.15s, color 0.15s",
+                        }}
+                        onMouseEnter={e => { if (!submitting) { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = "#f0f1f5"; } }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(240,241,245,0.5)"; }}
                     >
                         Keep Tournament
                     </button>
                     <button
                         onClick={handleCancel}
                         disabled={submitting}
-                        className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                        style={{
+                            flex: 1,
+                            padding: "10px 0",
+                            borderRadius: 10,
+                            background: submitting ? "rgba(255,255,255,0.06)" : "rgba(240,78,102,0.12)",
+                            border: `1px solid ${submitting ? "rgba(255,255,255,0.08)" : "rgba(240,78,102,0.3)"}`,
+                            color: submitting ? "rgba(240,241,245,0.3)" : "#f04e66",
+                            fontFamily: "'Inter', sans-serif",
+                            fontWeight: 700,
+                            fontSize: "0.875rem",
+                            cursor: submitting ? "not-allowed" : "pointer",
+                            transition: "background 0.15s",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 6,
+                        }}
+                        onMouseEnter={e => { if (!submitting) e.currentTarget.style.background = "rgba(240,78,102,0.2)"; }}
+                        onMouseLeave={e => { if (!submitting) e.currentTarget.style.background = "rgba(240,78,102,0.12)"; }}
                     >
                         {submitting
-                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Cancelling…</>
+                            ? <><Loader2 style={{ width: 15, height: 15, animation: "spin 1s linear infinite" }} /> Cancelling…</>
                             : "Cancel & Refund"
                         }
                     </button>
