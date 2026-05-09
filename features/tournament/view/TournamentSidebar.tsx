@@ -198,9 +198,38 @@ function OrganizerPanel({ organizer }: { organizer: Player }) {
     );
 }
 
+// ── Cancel danger zone ────────────────────────────────────────────────────────
+// Surfaced only in organizer branches where SDK `cancelTournament` accepts the
+// status: Registration + PendingBracketInit. Active/Completed reject on-chain.
+
+function CancelDangerZone({ onCancel }: { onCancel: () => void }) {
+    return (
+        <button
+            onClick={onCancel}
+            className="w-full py-2.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 text-xs font-semibold transition-colors"
+        >
+            Cancel Tournament & Refund
+        </button>
+    );
+}
+
 // ── Action area ───────────────────────────────────────────────────────────────
 
-function ActionArea({ tournament, currentAddress, isOrganizer, onJoinSuccess, onViewPayouts }: { tournament: TournamentView; currentAddress: string | null; isOrganizer: boolean; onJoinSuccess: () => void; onViewPayouts: () => void }) {
+function ActionArea({
+    tournament,
+    currentAddress,
+    isOrganizer,
+    onJoinSuccess,
+    onViewPayouts,
+    onCancel,
+}: {
+    tournament: TournamentView;
+    currentAddress: string | null;
+    isOrganizer: boolean;
+    onJoinSuccess: () => void;
+    onViewPayouts: () => void;
+    onCancel: () => void;
+}) {
     const [joining, setJoining] = useState(false);
     const [starting, setStarting] = useState(false);
     const [optimisticJoined, setOptimisticJoined] = useState(false);
@@ -271,18 +300,24 @@ function ActionArea({ tournament, currentAddress, isOrganizer, onJoinSuccess, on
             const canStart = tournament.participants.length >= 2;
 
             return (
-                <button
-                    onClick={handleStart}
-                    disabled={starting || !canStart}
-                    style={starting || !canStart ? btnDisabled : btnGreen}
-                    onMouseEnter={e => { if (!starting && canStart) { e.currentTarget.style.background = "#16c062"; e.currentTarget.style.boxShadow = "0 0 28px rgba(34,212,126,0.48)"; } }}
-                    onMouseLeave={e => { if (!starting && canStart) { e.currentTarget.style.background = "#22d47e"; e.currentTarget.style.boxShadow = "0 0 18px rgba(34,212,126,0.28)"; } }}
-                >
-                    {starting
-                        ? <><Loader2 style={{ width: 15, height: 15, animation: "spin 1s linear infinite" }} /> Initializing…</>
-                        : isFull ? "Start Tournament" : "Start Early (Lock Bracket)"
-                    }
-                </button>
+                <div className="flex flex-col gap-3">
+                    <button
+                        onClick={handleStart}
+                        disabled={starting || !canStart}
+                        className={`w-full py-3 rounded-xl font-bold text-sm transition-colors ${isFull
+                            ? "bg-green-600 hover:bg-green-700 text-white"
+                            : "bg-purple-600 hover:bg-purple-700 text-white"
+                            } disabled:bg-gray-100 disabled:text-gray-400`}
+                    >
+                        {starting
+                            ? <span className="flex items-center justify-center gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin" /> Initializing...
+                            </span>
+                            : isFull ? "Start Tournament" : "Start Early (Lock Bracket)"
+                        }
+                    </button>
+                    <CancelDangerZone onCancel={onCancel} />
+                </div>
             );
         }
 
@@ -306,6 +341,7 @@ function ActionArea({ tournament, currentAddress, isOrganizer, onJoinSuccess, on
                     >
                         {starting ? <><Loader2 style={{ width: 15, height: 15, animation: "spin 1s linear infinite" }} /> Continuing…</> : "Continue Bracket Init"}
                     </button>
+                    <CancelDangerZone onCancel={onCancel} />
                 </div>
             );
         }
@@ -360,8 +396,8 @@ function ActionArea({ tournament, currentAddress, isOrganizer, onJoinSuccess, on
                 {joining
                     ? <><Loader2 style={{ width: 15, height: 15, animation: "spin 1s linear infinite" }} /> Awaiting wallet…</>
                     : isFull ? "Tournament Full"
-                    : insufficient ? "Insufficient Balance"
-                    : <>Join Tournament {tournament.entryFee > 0 ? `— ${tournament.entryFee} ${tournament.token}` : "— Free"}</>
+                        : insufficient ? "Insufficient Balance"
+                            : <>Join Tournament {tournament.entryFee > 0 ? `— ${tournament.entryFee} ${tournament.token}` : "— Free"}</>
                 }
             </button>
         </div>
@@ -382,7 +418,17 @@ export function SidebarSkeleton() {
 
 // ── Main sidebar ──────────────────────────────────────────────────────────────
 
-export function TournamentSidebar({ tournament, currentAddress, onJoinSuccess }: { tournament: TournamentView; currentAddress: string | null; onJoinSuccess: () => void }) {
+export function TournamentSidebar({
+    tournament,
+    currentAddress,
+    onJoinSuccess,
+    onCancel,
+}: {
+    tournament: TournamentView;
+    currentAddress: string | null;
+    onJoinSuccess: () => void;
+    onCancel: () => void;
+}) {
     const isOrganizer = tournament.organizer.address === currentAddress;
     const [payoutsExpanded, setPayoutsExpanded] = useState(false);
     const payoutsRef = useRef<HTMLDivElement | null>(null);
@@ -412,7 +458,14 @@ export function TournamentSidebar({ tournament, currentAddress, onJoinSuccess }:
             <EscrowPanel tournament={tournament} payoutsExpanded={payoutsExpanded} setPayoutsExpanded={setPayoutsExpanded} payoutsRef={payoutsRef} />
             <div style={{ height: 1, background: "rgba(255,255,255,0.05)" }} />
             <OrganizerPanel organizer={tournament.organizer} />
-            <ActionArea tournament={tournament} currentAddress={currentAddress} isOrganizer={isOrganizer} onJoinSuccess={onJoinSuccess} onViewPayouts={handleViewPayouts} />
+            <ActionArea
+                tournament={tournament}
+                currentAddress={currentAddress}
+                isOrganizer={isOrganizer}
+                onJoinSuccess={onJoinSuccess}
+                onViewPayouts={handleViewPayouts}
+                onCancel={onCancel}
+            />
         </aside>
     );
 }
