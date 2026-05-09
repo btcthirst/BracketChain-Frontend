@@ -1,42 +1,66 @@
 import { CheckCircle2 } from "lucide-react";
 
-
 export function Stepper({ current }: { current: number }) {
     const steps = ["Details", "Prize Pool", "Confirm"];
     return (
-        <div className="flex items-center gap-0 mb-10" >
-            {
-                steps.map((label, i) => {
-                    const done = i < current;
-                    const active = i === current;
-                    return (
-                        <div key={i} className="flex items-center" >
-                            <div className="flex flex-col items-center gap-1" >
-                                <div
-                                    className={
-                                        `w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold border-2 transition-all duration-300 ${done
-                                            ? "bg-blue-600 border-blue-600 text-white"
-                                            : active
-                                                ? "bg-white border-blue-600 text-blue-600"
-                                                : "bg-white border-gray-300 text-gray-400"
-                                        }`
-                                    }
-                                >
-                                    {done ? <CheckCircle2 className="w-5 h-5" /> : i + 1
-                                    }
-                                </div>
-                                < span className={`text-xs font-medium ${active ? "text-blue-600" : done ? "text-gray-700" : "text-gray-400"}`} >
-                                    {label}
-                                </span>
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 40 }}>
+            {steps.map((label, i) => {
+                const done = i < current;
+                const active = i === current;
+                return (
+                    <div key={i} style={{ display: "flex", alignItems: "center" }}>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                            <div
+                                style={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: "50%",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontSize: "0.8rem",
+                                    fontWeight: 600,
+                                    border: "2px solid",
+                                    transition: "all 0.3s",
+                                    ...(done
+                                        ? { background: "#22d47e", borderColor: "#22d47e", color: "#06070b" }
+                                        : active
+                                        ? { background: "transparent", borderColor: "#22d47e", color: "#22d47e" }
+                                        : { background: "transparent", borderColor: "rgba(255,255,255,0.12)", color: "rgba(240,241,245,0.25)" }),
+                                }}
+                            >
+                                {done ? <CheckCircle2 size={16} /> : i + 1}
                             </div>
-                            {
-                                i < steps.length - 1 && (
-                                    <div className={`h-0.5 w-16 mx-2 mb-5 transition-all duration-500 ${done ? "bg-blue-600" : "bg-gray-200"}`} />
-                                )
-                            }
+                            <span
+                                style={{
+                                    fontFamily: "'DM Mono', monospace",
+                                    fontSize: "0.68rem",
+                                    letterSpacing: "0.04em",
+                                    ...(active
+                                        ? { color: "#22d47e" }
+                                        : done
+                                        ? { color: "rgba(240,241,245,0.6)" }
+                                        : { color: "rgba(240,241,245,0.25)" }),
+                                }}
+                            >
+                                {label}
+                            </span>
                         </div>
-                    );
-                })}
+                        {i < steps.length - 1 && (
+                            <div
+                                style={{
+                                    height: 1,
+                                    width: 64,
+                                    margin: "0 8px",
+                                    marginBottom: 20,
+                                    background: done ? "#22d47e" : "rgba(255,255,255,0.08)",
+                                    transition: "background 0.5s",
+                                }}
+                            />
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 }

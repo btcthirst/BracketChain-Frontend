@@ -162,24 +162,65 @@ export function CreateTournament() {
         setTxSignature(null);
     }, []);
 
+    const isProcessing = txState === "signing" || txState === "pending";
+
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div style={{ minHeight: "100vh", background: "transparent" }}>
             {/* Header */}
-            <div className="bg-white border-b border-gray-200">
-                <div className="container mx-auto px-6 py-4 flex items-center gap-4">
+            <div
+                style={{
+                    background: "rgba(6,7,11,0.85)",
+                    backdropFilter: "blur(16px)",
+                    borderBottom: "1px solid rgba(255,255,255,0.07)",
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 40,
+                }}
+            >
+                <div
+                    style={{
+                        maxWidth: 880,
+                        margin: "0 auto",
+                        padding: "0 24px",
+                        height: 56,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 16,
+                    }}
+                >
                     <a
                         href={ROUTES.home}
-                        className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors text-sm"
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            color: "rgba(240,241,245,0.4)",
+                            fontSize: "0.85rem",
+                            textDecoration: "none",
+                            transition: "color 0.15s",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(240,241,245,0.8)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(240,241,245,0.4)"; }}
                     >
-                        <ChevronLeft className="w-4 h-4" />
+                        <ChevronLeft size={15} />
                         Back
                     </a>
-                    <div className="h-4 w-px bg-gray-300" />
-                    <h1 className="text-xl font-bold text-gray-900">Create Tournament</h1>
+                    <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.1)" }} />
+                    <h1
+                        style={{
+                            fontFamily: "'Syne', sans-serif",
+                            fontWeight: 700,
+                            fontSize: "0.95rem",
+                            color: "#f0f1f5",
+                            letterSpacing: "-0.01em",
+                        }}
+                    >
+                        Create Tournament
+                    </h1>
                 </div>
             </div>
 
-            <div className="container mx-auto px-6 py-10 max-w-4xl">
+            <div style={{ maxWidth: 880, margin: "0 auto", padding: "40px 24px" }}>
                 <Stepper current={step} />
 
                 <MotionDiv
@@ -220,22 +261,68 @@ export function CreateTournament() {
 
                 {/* Navigation */}
                 {txState !== "success" && (
-                    <div className="flex justify-between mt-10 pt-6 border-t border-gray-200">
+                    <div
+                        style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            marginTop: 40,
+                            paddingTop: 24,
+                            borderTop: "1px solid rgba(255,255,255,0.07)",
+                        }}
+                    >
                         <button
                             onClick={step === 0 ? () => router.push("/") : handleBack}
-                            disabled={txState === "signing" || txState === "pending"}
-                            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            disabled={isProcessing}
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                background: "transparent",
+                                border: "none",
+                                color: "rgba(240,241,245,0.45)",
+                                fontSize: "0.875rem",
+                                fontWeight: 500,
+                                cursor: isProcessing ? "not-allowed" : "pointer",
+                                opacity: isProcessing ? 0.4 : 1,
+                                transition: "color 0.15s",
+                                fontFamily: "'Inter', sans-serif",
+                            }}
+                            onMouseEnter={(e) => { if (!isProcessing) e.currentTarget.style.color = "rgba(240,241,245,0.85)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(240,241,245,0.45)"; }}
                         >
-                            <ChevronLeft className="w-4 h-4" />
+                            <ChevronLeft size={15} />
                             {step === 0 ? "Cancel" : "Back"}
                         </button>
                         {step < 2 && (
                             <button
                                 onClick={handleNext}
-                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold transition-colors"
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 7,
+                                    padding: "10px 22px",
+                                    background: "#22d47e",
+                                    color: "#06070b",
+                                    border: "none",
+                                    borderRadius: 8,
+                                    fontFamily: "'Inter', sans-serif",
+                                    fontWeight: 700,
+                                    fontSize: "0.875rem",
+                                    cursor: "pointer",
+                                    transition: "background 0.15s, box-shadow 0.15s",
+                                    boxShadow: "0 0 18px rgba(34,212,126,0.28)",
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = "#16c062";
+                                    e.currentTarget.style.boxShadow = "0 0 28px rgba(34,212,126,0.48)";
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = "#22d47e";
+                                    e.currentTarget.style.boxShadow = "0 0 18px rgba(34,212,126,0.28)";
+                                }}
                             >
                                 Next
-                                <ChevronRight className="w-4 h-4" />
+                                <ChevronRight size={15} />
                             </button>
                         )}
                     </div>
