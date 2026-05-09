@@ -24,8 +24,15 @@ export function CancelModal({ tournamentId, tournamentName, onClose, onSuccess }
         setSubmitting(true);
         setError("");
         try {
-            await cancelTournament(sdk, { tournamentPda: new PublicKey(tournamentId) });
-            toast.success("Tournament cancelled. Entry fees have been refunded.");
+            const result = await cancelTournament(sdk, {
+                tournamentPda: new PublicKey(tournamentId),
+            });
+            const { refundsSubmitted, txSignatures } = result;
+            const txCount = txSignatures.length;
+            const detail = refundsSubmitted === 0
+                ? "Organizer deposit refunded."
+                : `${refundsSubmitted} entry-fee refund${refundsSubmitted === 1 ? "" : "s"} + organizer deposit issued across ${txCount} tx${txCount === 1 ? "" : "s"}.`;
+            toast.success(`Tournament cancelled. ${detail}`);
             onSuccess();
             onClose();
         } catch (err) {

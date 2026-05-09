@@ -6,8 +6,8 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import type { Match } from "@/types/tournament";
 import { useTournamentView } from "@/hooks/useTournamentView";
 import { BracketView, BracketEmpty, BracketSkeleton } from "@/features/tournament/view/BracketView";
-import { ReportResultModal } from "@/features/tournament/view/ReportResultModal";
-import { CancelModal } from "./CancelModal";
+import { ReportResultModal } from "./ReportResultModal";
+import { CancelModal } from "@/features/tournament/view/CancelModal";
 
 interface Props {
     tournamentId: string;
@@ -16,15 +16,15 @@ interface Props {
 
 const STATUS_STYLES: Record<string, React.CSSProperties> = {
     registration: { background: "rgba(34,212,126,0.08)", color: "#22d47e", border: "1px solid rgba(34,212,126,0.2)" },
-    in_progress:  { background: "rgba(34,212,126,0.08)", color: "#22d47e", border: "1px solid rgba(34,212,126,0.2)" },
-    completed:    { background: "rgba(255,255,255,0.05)", color: "rgba(240,241,245,0.35)", border: "1px solid rgba(255,255,255,0.08)" },
-    cancelled:    { background: "rgba(240,78,102,0.08)", color: "#f04e66", border: "1px solid rgba(240,78,102,0.2)" },
+    in_progress: { background: "rgba(34,212,126,0.08)", color: "#22d47e", border: "1px solid rgba(34,212,126,0.2)" },
+    completed: { background: "rgba(255,255,255,0.05)", color: "rgba(240,241,245,0.35)", border: "1px solid rgba(255,255,255,0.08)" },
+    cancelled: { background: "rgba(240,78,102,0.08)", color: "#f04e66", border: "1px solid rgba(240,78,102,0.2)" },
 };
 const STATUS_LABELS: Record<string, string> = {
     registration: "Registration Open",
-    in_progress:  "In Progress",
-    completed:    "Completed",
-    cancelled:    "Cancelled",
+    in_progress: "In Progress",
+    completed: "Completed",
+    cancelled: "Cancelled",
 };
 
 const darkPanel: React.CSSProperties = {
