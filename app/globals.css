@@ -1,26 +1,223 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #06070b;
+  --bg-1: #0d0f18;
+  --bg-2: #12141f;
+  --bg-3: #1a1c2a;
+  --surface: #1e2132;
+  --surface-2: #252840;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-2: rgba(255, 255, 255, 0.14);
+
+  --text: #f0f1f5;
+  --text-muted: #7b7e96;
+  --text-dim: #4a4d63;
+
+  --accent: #22d47e;
+  --accent-2: #4ade80;
+  --accent-glow: rgba(34, 212, 126, 0.28);
+  --accent-dim: rgba(34, 212, 126, 0.12);
+
+  --green: #22d47e;
+  --green-dim: rgba(34, 212, 126, 0.15);
+  --red: #f04e66;
+  --amber: #f5a623;
+
+  --mono: 'DM Mono', monospace;
+  --sans: 'Inter', sans-serif;
+  --display: 'Syne', sans-serif;
+
+  --radius: 8px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-weight: 400;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ── Scrollbar ─────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface);
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-2);
+}
+
+/* ── Typography ────────────────────────────────── */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--display);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+h1 {
+  font-size: clamp(2.4rem, 6vw, 5rem);
+}
+
+h2 {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+}
+
+h3 {
+  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+}
+
+p {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+em,
+i {
+  font-style: italic;
+  color: var(--accent-2);
+}
+
+code,
+.mono {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  color: var(--accent-2);
+}
+
+/* ── Utility ───────────────────────────────────── */
+.container {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ── Selection ─────────────────────────────────── */
+::selection {
+  background: var(--accent-glow);
+  color: var(--text);
+}
+
+/* ── Form elements ─────────────────────────────── */
+
+/* Unified height and padding for all form controls */
+input,
+select,
+textarea {
+  min-height: 52px;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2322d47e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' opacity='0.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px !important;
+  cursor: pointer;
+}
+
+select option {
+  background: #12141f;
+  color: #f0f1f5;
+}
+
+/* date/time inputs ignore py-* — force padding explicitly */
+input[type="date"],
+input[type="time"] {
+  padding-top: 0.875rem;
+  padding-bottom: 0.875rem;
+  box-sizing: border-box;
+}
+
+/* Calendar/clock picker icons — green tint */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) sepia(1) saturate(2) hue-rotate(95deg) opacity(0.45);
+  cursor: pointer;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  filter: invert(1) sepia(1) saturate(2) hue-rotate(95deg) opacity(0.85);
+}
+
+/* ── Dual range price slider ────────────────────── */
+.range-slider input[type="range"] {
+  position: absolute;
+  width: 100%;
+  height: 3px;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+  outline: none;
+  min-height: unset;
+  padding: 0;
+}
+.range-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: all;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #22d47e;
+  border: 2px solid #06070b;
+  box-shadow: 0 0 8px rgba(34, 212, 126, 0.4);
+  cursor: grab;
+}
+.range-slider input[type="range"]::-webkit-slider-thumb:active {
+  cursor: grabbing;
+}
+.range-slider input[type="range"]::-moz-range-thumb {
+  pointer-events: all;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #22d47e;
+  border: 2px solid #06070b;
+  cursor: grab;
+}
+
+/* ── Focus ─────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--radius);
 }

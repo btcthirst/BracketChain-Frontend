@@ -8,37 +8,53 @@ import { useTournaments } from "@/hooks/useTournaments";
 import type { Tournament } from "@/hooks/useTournaments";
 import { memo } from "react";
 
-// ── Skeleton card ─────────────────────────────────────────────────────────────
-
 function TournamentCardSkeleton() {
     return (
-        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200 flex flex-col gap-4">
-            <div className="flex justify-between items-start">
-                <div className="flex flex-col gap-2">
-                    <div className="h-5 w-40 bg-gray-200 rounded animate-pulse" />
-                    <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
+        <div
+            style={{
+                background: "rgba(13,15,24,0.8)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 12,
+                padding: 24,
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+            }}
+        >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ height: 14, width: 140, background: "rgba(255,255,255,0.06)", borderRadius: 4 }} />
+                    <div style={{ height: 11, width: 80, background: "rgba(255,255,255,0.04)", borderRadius: 4 }} />
                 </div>
-                <div className="h-6 w-12 bg-gray-200 rounded-full animate-pulse" />
+                <div style={{ height: 20, width: 40, background: "rgba(91,95,239,0.1)", borderRadius: 999 }} />
             </div>
-            <div className="grid grid-cols-3 gap-4">
-                {[0, 1, 2].map(i => (
-                    <div key={i} className="flex flex-col gap-1.5">
-                        <div className="h-3 w-16 bg-gray-100 rounded animate-pulse" />
-                        <div className="h-5 w-20 bg-gray-200 rounded animate-pulse" />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                {[0, 1, 2].map((i) => (
+                    <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ height: 9, width: 52, background: "rgba(255,255,255,0.04)", borderRadius: 3 }} />
+                        <div style={{ height: 13, width: 64, background: "rgba(255,255,255,0.06)", borderRadius: 3 }} />
                     </div>
                 ))}
             </div>
-            <div className="h-2 w-full bg-gray-100 rounded-full animate-pulse" />
+            <div style={{ height: 2, width: "100%", background: "rgba(255,255,255,0.04)", borderRadius: 999 }} />
         </div>
     );
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
-
 function EmptyState() {
     return (
-        <div className="col-span-2 flex flex-col items-center gap-5 py-16 text-center">
-            <svg viewBox="0 0 120 80" className="w-32 h-20 text-gray-300" fill="none">
+        <div
+            style={{
+                gridColumn: "1 / -1",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 20,
+                padding: "64px 0",
+                textAlign: "center",
+            }}
+        >
+            <svg viewBox="0 0 120 80" style={{ width: 120, height: 80, color: "rgba(255,255,255,0.08)" }} fill="none">
                 <rect x="4" y="16" width="24" height="12" rx="3" stroke="currentColor" strokeWidth="2" />
                 <rect x="4" y="52" width="24" height="12" rx="3" stroke="currentColor" strokeWidth="2" />
                 <rect x="52" y="34" width="24" height="12" rx="3" stroke="currentColor" strokeWidth="2" />
@@ -47,100 +63,185 @@ function EmptyState() {
                 <path d="M40 40 H52" stroke="currentColor" strokeWidth="2" />
                 <path d="M76 40 H92" stroke="currentColor" strokeWidth="2" />
             </svg>
-
-            <div className="flex flex-col gap-1">
-                <p className="text-lg font-semibold text-gray-700">No tournaments yet</p>
-                <p className="text-sm text-gray-500 max-w-xs">
+            <div>
+                <p style={{ fontSize: "1rem", fontWeight: 600, color: "rgba(240,241,245,0.6)", marginBottom: 6, fontFamily: "'Syne', sans-serif" }}>
+                    No tournaments yet
+                </p>
+                <p style={{ fontSize: "0.83rem", color: "rgba(240,241,245,0.3)", maxWidth: 260, margin: "0 auto" }}>
                     Be the first to create one and start competing on-chain.
                 </p>
             </div>
-
             <Link
                 href={ROUTES.create}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 7,
+                    padding: "10px 20px",
+                    background: "#22d47e",
+                    color: "#06070b",
+                    borderRadius: 8,
+                    fontWeight: 600,
+                    fontSize: "0.85rem",
+                    textDecoration: "none",
+                    fontFamily: "'Inter', sans-serif",
+                }}
             >
-                <PlusCircle className="w-4 h-4" />
+                <PlusCircle size={14} />
                 Create the first tournament
             </Link>
         </div>
     );
 }
 
-// ── Error state ───────────────────────────────────────────────────────────────
-
 function ErrorState({ onRetry }: { onRetry: () => void }) {
     return (
-        <div className="col-span-2 flex flex-col items-center gap-4 py-16 text-center">
-            <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center">
-                <RefreshCw className="w-6 h-6 text-red-400" />
-            </div>
-            <div className="flex flex-col gap-1">
-                <p className="text-lg font-semibold text-gray-700">Unable to load tournaments</p>
-                <p className="text-sm text-gray-500">Something went wrong. Please try again.</p>
-            </div>
+        <div
+            style={{
+                gridColumn: "1 / -1",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 12,
+                padding: "64px 0",
+                textAlign: "center",
+            }}
+        >
+            <RefreshCw size={24} style={{ color: "rgba(255,255,255,0.15)" }} />
+            <p style={{ fontSize: "0.83rem", color: "rgba(240,241,245,0.3)" }}>Unable to load tournaments</p>
             <button
                 onClick={onRetry}
-                className="flex items-center gap-2 border border-gray-300 hover:border-gray-400 text-gray-700 px-5 py-2.5 rounded-lg font-medium transition-colors"
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "7px 14px",
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 7,
+                    color: "rgba(240,241,245,0.5)",
+                    fontSize: "0.8rem",
+                    cursor: "pointer",
+                    fontFamily: "'Inter', sans-serif",
+                    transition: "border-color 0.15s, color 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
+                    e.currentTarget.style.color = "rgba(240,241,245,0.8)";
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+                    e.currentTarget.style.color = "rgba(240,241,245,0.5)";
+                }}
             >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw size={12} />
                 Try again
             </button>
         </div>
     );
 }
 
-// ── Tournament card ───────────────────────────────────────────────────────────
-
 function TournamentCard({ tournament, index }: { tournament: Tournament; index: number }) {
+    const fillPct = (tournament.participants / tournament.maxParticipants) * 100;
+
     return (
         <MotionDiv
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
+            transition={{ duration: 0.45, delay: index * 0.07 }}
         >
             <Link
                 href={ROUTES.tournament(tournament.id)}
-                className="block bg-white rounded-xl p-6 shadow-md hover:shadow-xl transition-shadow cursor-pointer border border-gray-200"
+                style={{
+                    display: "block",
+                    background: "rgba(13,15,24,0.8)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: 12,
+                    padding: 24,
+                    textDecoration: "none",
+                    transition: "border-color 0.18s, box-shadow 0.18s",
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(34,212,126,0.25)";
+                    e.currentTarget.style.boxShadow = "0 0 24px rgba(34,212,126,0.07)";
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
+                    e.currentTarget.style.boxShadow = "none";
+                }}
             >
-                <div className="flex justify-between items-start mb-4">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
                     <div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-1">{tournament.name}</h3>
-                        <p className="text-gray-600">{tournament.game}</p>
+                        <h3
+                            style={{
+                                fontFamily: "'Syne', sans-serif",
+                                fontWeight: 700,
+                                fontSize: "0.95rem",
+                                color: "#f0f1f5",
+                                letterSpacing: "-0.01em",
+                                marginBottom: 4,
+                            }}
+                        >
+                            {tournament.name}
+                        </h3>
+                        <p style={{ fontSize: "0.78rem", color: "rgba(240,241,245,0.35)", fontFamily: "'DM Mono', monospace" }}>
+                            {tournament.game}
+                        </p>
                     </div>
-                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                    <span
+                        style={{
+                            padding: "3px 10px",
+                            background: "rgba(34,212,126,0.08)",
+                            border: "1px solid rgba(34,212,126,0.20)",
+                            borderRadius: 999,
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: "0.68rem",
+                            color: "#22d47e",
+                            letterSpacing: "0.04em",
+                        }}
+                    >
                         {tournament.format}
                     </span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 mb-4">
-                    <div className="flex items-center gap-2">
-                        <Trophy className="w-5 h-5 text-yellow-500" />
-                        <div>
-                            <div className="text-sm text-gray-500">Prize Pool</div>
-                            <div className="font-bold text-gray-900">${tournament.prizePool.toLocaleString()}</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
+                    {[
+                        { icon: <Trophy size={13} style={{ color: "#f5a623" }} />, label: "Prize Pool", value: `$${tournament.prizePool.toLocaleString()}` },
+                        { icon: <Users size={13} style={{ color: "#7c80f5" }} />, label: "Players", value: `${tournament.participants}/${tournament.maxParticipants}` },
+                        { icon: <Clock size={13} style={{ color: "#22d47e" }} />, label: "Closes In", value: tournament.startsIn },
+                    ].map((item) => (
+                        <div key={item.label}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
+                                {item.icon}
+                                <span style={{ fontSize: "0.68rem", color: "rgba(240,241,245,0.3)", fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                                    {item.label}
+                                </span>
+                            </div>
+                            <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "0.9rem", color: "#f0f1f5" }}>
+                                {item.value}
+                            </div>
                         </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Users className="w-5 h-5 text-blue-500" />
-                        <div>
-                            <div className="text-sm text-gray-500">Players</div>
-                            <div className="font-bold text-gray-900">{tournament.participants}/{tournament.maxParticipants}</div>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-green-500" />
-                        <div>
-                            <div className="text-sm text-gray-500">Closes In</div>
-                            <div className="font-bold text-gray-900">{tournament.startsIn}</div>
-                        </div>
-                    </div>
+                    ))}
                 </div>
 
-                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                {/* Progress bar */}
+                <div
+                    style={{
+                        height: 2,
+                        background: "rgba(255,255,255,0.06)",
+                        borderRadius: 999,
+                        overflow: "hidden",
+                    }}
+                >
                     <div
-                        className="h-full bg-blue-600 transition-all"
-                        style={{ width: `${(tournament.participants / tournament.maxParticipants) * 100}%` }}
+                        style={{
+                            height: "100%",
+                            width: `${fillPct}%`,
+                            background: "linear-gradient(90deg, #22d47e, #4ade80)",
+                            borderRadius: 999,
+                            transition: "width 0.4s ease",
+                        }}
                     />
                 </div>
             </Link>
@@ -148,70 +249,87 @@ function TournamentCard({ tournament, index }: { tournament: Tournament; index: 
     );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
-
 function LiveTournamentsComponent() {
     const { state, refresh } = useTournaments();
-
-    // "View All" is shown whenever we have data OR when empty —
-    // only hidden on loading / error states where it's not actionable.
     const showViewAll = state.status === "success" || state.status === "empty";
 
     return (
-        <section className="bg-gray-50 py-20">
-            <div className="container mx-auto px-6">
+        <section
+            style={{
+                background: "transparent",
+                padding: "96px 0",
+                position: "relative",
+            }}
+        >
+            <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 24px" }}>
                 <MotionDiv
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.6 }}
-                    className="text-center mb-12"
+                    style={{ marginBottom: 48 }}
                 >
-                    <h2 className="text-4xl font-bold text-gray-900 mb-4">Live Tournaments</h2>
-                    <p className="text-xl text-gray-600">Join the action now</p>
+                    <p
+                        style={{
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: "0.7rem",
+                            color: "rgba(240,241,245,0.3)",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.1em",
+                            marginBottom: 14,
+                        }}
+                    >
+                        Live now
+                    </p>
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                        <h2
+                            style={{
+                                fontFamily: "'Syne', sans-serif",
+                                fontWeight: 700,
+                                fontSize: "clamp(1.6rem, 3vw, 2.4rem)",
+                                color: "#f0f1f5",
+                                letterSpacing: "-0.03em",
+                                lineHeight: 1.1,
+                            }}
+                        >
+                            Live Tournaments
+                        </h2>
+                        {showViewAll && (
+                            <Link
+                                href={ROUTES.explore}
+                                style={{
+                                    fontFamily: "'DM Mono', monospace",
+                                    fontSize: "0.75rem",
+                                    color: "rgba(34,212,126,0.6)",
+                                    textDecoration: "none",
+                                    letterSpacing: "0.04em",
+                                    transition: "color 0.15s",
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.color = "#22d47e"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(34,212,126,0.6)"; }}
+                            >
+                                View All →
+                            </Link>
+                        )}
+                    </div>
                 </MotionDiv>
 
-                <div className="grid md:grid-cols-2 gap-6 mb-8">
-
-                    {/* Loading */}
-                    {state.status === "loading" && (
-                        [0, 1, 2, 3].map(i => <TournamentCardSkeleton key={i} />)
-                    )}
-
-                    {/* Error */}
-                    {state.status === "error" && (
-                        <ErrorState onRetry={refresh} />
-                    )}
-
-                    {/* Empty */}
-                    {state.status === "empty" && (
-                        <EmptyState />
-                    )}
-
-                    {/* Success */}
-                    {state.status === "success" && (
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(2, 1fr)",
+                        gap: 16,
+                    }}
+                    className="grid-cols-1 md:grid-cols-2"
+                >
+                    {state.status === "loading" && [0, 1, 2, 3].map((i) => <TournamentCardSkeleton key={i} />)}
+                    {state.status === "error" && <ErrorState onRetry={refresh} />}
+                    {state.status === "empty" && <EmptyState />}
+                    {state.status === "success" &&
                         state.data.map((tournament, index) => (
-                            <TournamentCard
-                                key={tournament.id}
-                                tournament={tournament}
-                                index={index}
-                            />
-                        ))
-                    )}
-
+                            <TournamentCard key={tournament.id} tournament={tournament} index={index} />
+                        ))}
                 </div>
-
-                {/* "View All" — visible for both success and empty states */}
-                {showViewAll && (
-                    <div className="text-center">
-                        <Link
-                            href={ROUTES.explore}
-                            className="text-blue-600 hover:text-blue-700 font-semibold text-lg hover:underline"
-                        >
-                            View All Tournaments →
-                        </Link>
-                    </div>
-                )}
             </div>
         </section>
     );

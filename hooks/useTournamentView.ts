@@ -5,6 +5,10 @@ import { PublicKey } from "@solana/web3.js";
 import {
     getEnumKind,
     getTournamentState,
+    IndexerMatch,
+    IndexerParticipant,
+    IndexerPayout,
+    IndexerTournament,
     subscribe,
     type BracketChainClient,
     type MatchNode,
@@ -15,8 +19,8 @@ import {
     type TournamentStatusKind,
 } from "@bracketchain/sdk";
 
-import { useReadOnlySdkClient } from "@/lib/sdk";
-import { getIndexerPayouts, type IndexerPayout } from "@/lib/indexer";
+import { useReadOnlySdkClient, getIndexerClient } from "@/lib/sdk";
+import { indexerToTournamentState } from "@/lib/indexerToTournamentState";
 import type {
     Match,
     Player,
@@ -145,8 +149,8 @@ function buildPayouts(
             recipientAddress && participants.some((p) => p.account.wallet.toBase58() === recipientAddress)
                 ? makePlayer(recipientAddress, organizerAddress)
                 : recipientAddress
-                ? makePlayer(recipientAddress, organizerAddress)
-                : null;
+                    ? makePlayer(recipientAddress, organizerAddress)
+                    : null;
 
         return {
             place: e.place,
@@ -205,7 +209,8 @@ function buildView(
 
     const refundTxSignatures = payouts
         .filter((p) => p.kind === "Refund")
-        .map((p) => p.txSignature);
+        .map((p) => p.txSignature)
+        .filter((sig): sig is string => sig !== null);
 
     // Bracket-init progress. On-chain `matches_initialized` ramps up across
     // start_tournament chunks; report_result requires status === Active, which
@@ -280,7 +285,109 @@ function reducer(_: State, action: Action): State {
 
 const PROTOCOL_FEE_BPS = 350; // 3.5% — matches on-chain ProtocolConfig default.
 
-async function loadView(
+// Phase 5.3: indexer SWR knobs.
+//
+//   INDEXER_TIMEOUT_MS — abort indexer fetches after this long and try chain.
+//     3 s matches the Phase 5 acceptance gate ("indexer down → app continues").
+//
+//   STALE_SLOT_THRESHOLD — when the indexer's chainSlotAtWrite is older than
+//     this many slots vs the current cluster slot, treat indexer data as
+//     stale and prioritise chain reads. Solana mainnet/devnet ≈ 400 ms/slot,
+//     so 150 slots ≈ 60 s — matches spec §6.3 "stale > 30 s" intent in slot
+//     domain (slot is more accurate than wall-clock).
+const INDEXER_TIMEOUT_MS = 3_000;
+const STALE_SLOT_THRESHOLD = 150;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const t = setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms);
+        promise.then(
+            (v) => {
+                clearTimeout(t);
+                resolve(v);
+            },
+            (e) => {
+                clearTimeout(t);
+                reject(e);
+            },
+        );
+    });
+}
+
+interface IndexerBundle {
+    tournament: IndexerTournament;
+    participants: IndexerParticipant[];
+    matches: IndexerMatch[];
+    payouts: IndexerPayout[];
+    chainSlotAtWrite: bigint;
+}
+
+/**
+ * Fetch all indexer slices in parallel + the cluster's current slot.
+ * Returns null on any indexer failure (treated as "indexer down" — caller
+ * falls back to chain). Per-call abort via shared AbortSignal.
+ */
+async function loadFromIndexer(
+    client: BracketChainClient,
+    pda: PublicKey,
+    signal: AbortSignal,
+): Promise<{ bundle: IndexerBundle; currentSlot: number } | null> {
+    const indexer = getIndexerClient();
+    if (!indexer) return null;  // INDEXER_URL not configured
+
+    const address = pda.toBase58();
+
+    try {
+        const [tournament, participants, matches, payouts, currentSlot] = await Promise.all([
+            withTimeout(
+                indexer.getTournament(address, { signal }),
+                INDEXER_TIMEOUT_MS,
+                "indexer getTournament",
+            ),
+            withTimeout(
+                indexer.getParticipants(address, { signal }),
+                INDEXER_TIMEOUT_MS,
+                "indexer getParticipants",
+            ),
+            withTimeout(
+                indexer.getMatches(address, { signal }),
+                INDEXER_TIMEOUT_MS,
+                "indexer getMatches",
+            ),
+            withTimeout(
+                indexer.getPayouts(address, { signal }),
+                INDEXER_TIMEOUT_MS,
+                "indexer getPayouts",
+            ),
+            // getSlot is part of the SWR freshness gate — if RPC is so slow
+            // it can't return a slot in 3 s, indexer-first is moot.
+            withTimeout(client.connection.getSlot(), INDEXER_TIMEOUT_MS, "rpc getSlot"),
+        ]);
+
+        return {
+            bundle: {
+                tournament,
+                participants,
+                matches,
+                payouts,
+                chainSlotAtWrite: BigInt(tournament.chainSlotAtWrite),
+            },
+            currentSlot,
+        };
+    } catch {
+        // Indexer / network / timeout — treat as down and let chain take over.
+        return null;
+    }
+}
+
+/**
+ * Authoritative chain read. Used as the primary source when:
+ *  - indexer is unreachable (down or NEXT_PUBLIC_INDEXER_URL unset)
+ *  - indexer row is stale beyond STALE_SLOT_THRESHOLD
+ *  - indexer reports tournament not found (404)
+ * Also used as the background reconcile after an indexer-served first paint.
+ */
+async function loadFromChain(
     client: BracketChainClient,
     pda: PublicKey,
     signal: AbortSignal,
@@ -295,17 +402,62 @@ async function loadView(
     }
     if (signal.aborted) throw new Error("aborted");
 
-    // Indexer payouts only matter once the tournament has terminal payouts on
-    // chain — fetch eagerly but don't fail the whole load if indexer is down.
+    // Indexer payouts augment chain state for completed tournaments. Failure
+    // here is non-fatal — chain has enough to render most fields.
     let payouts: IndexerPayout[] = [];
-    try {
-        payouts = await getIndexerPayouts(pda.toBase58(), { signal });
-    } catch {
-        // Ignore — indexer is a cache, not source of truth.
+    const indexer = getIndexerClient();
+    if (indexer) {
+        try {
+            payouts = await indexer.getPayouts(pda.toBase58(), { signal });
+        } catch {
+            // Ignore — indexer down / 404 / network. Chain path stays valid.
+        }
     }
     if (signal.aborted) throw new Error("aborted");
 
     return buildView(state, payouts, PROTOCOL_FEE_BPS);
+}
+
+/**
+ * Phase 5.3 SWR loader. Tries indexer first (<500 ms target); falls through
+ * to chain if indexer is unreachable, stale, or 404s. Either path returns a
+ * full TournamentView, so consumers don't need to know which served the read.
+ *
+ * Spec §6.3 acceptance gates closed by this routine:
+ *  - "/t/[address] loads in <500ms from indexer" — indexer path skips RPC
+ *  - "Stopping indexer → app continues with RPC fallback (no errors)" —
+ *    the catch + null-return path keeps every error path ending in chain
+ */
+async function loadView(
+    client: BracketChainClient,
+    pda: PublicKey,
+    signal: AbortSignal,
+): Promise<TournamentView | null> {
+    const indexerResult = await loadFromIndexer(client, pda, signal);
+    if (signal.aborted) throw new Error("aborted");
+
+    if (indexerResult) {
+        const { bundle, currentSlot } = indexerResult;
+        const slotGap = BigInt(currentSlot) - bundle.chainSlotAtWrite;
+
+        // Freshness gate. Negative gaps shouldn't happen but guard anyway.
+        // Zero chainSlotAtWrite = legacy row (pre-5.1) — treat as fully stale.
+        const isFresh = bundle.chainSlotAtWrite > 0n && slotGap < BigInt(STALE_SLOT_THRESHOLD);
+
+        if (isFresh) {
+            const adapted = indexerToTournamentState(
+                pda,
+                client.programId,
+                bundle.tournament,
+                bundle.participants,
+                bundle.matches,
+            );
+            return buildView(adapted, bundle.payouts, PROTOCOL_FEE_BPS);
+        }
+        // Stale — fall through to chain.
+    }
+
+    return loadFromChain(client, pda, signal);
 }
 
 export function useTournamentView(id: string) {
@@ -368,10 +520,14 @@ export function useTournamentView(id: string) {
                 // report_result / join CPI bumps a counter on the Tournament
                 // PDA, so this fires for every state-change we care about
                 // without needing per-match subscriptions.
-                unsubscribe = subscribe(client, pda, () => {
-                    refetch();
-                    resetInactivityTimer();  // WS is alive — push timer back
-                });
+                unsubscribe = subscribe(
+                    client,
+                    pda,
+                    () => {
+                        refetch();
+                        resetInactivityTimer();  // WS is alive — push timer back
+                    },
+                );
 
                 // Arm the safety net after first successful subscribe.
                 resetInactivityTimer();
