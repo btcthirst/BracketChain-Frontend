@@ -14,17 +14,24 @@ interface Props {
     onBack: () => void;
 }
 
-const STATUS_STYLES: Record<string, string> = {
-    registration: "bg-green-100 text-green-700",
-    in_progress: "bg-blue-100  text-blue-700",
-    completed: "bg-gray-100  text-gray-600",
-    cancelled: "bg-red-100   text-red-600",
+const STATUS_STYLES: Record<string, React.CSSProperties> = {
+    registration: { background: "rgba(34,212,126,0.08)", color: "#22d47e", border: "1px solid rgba(34,212,126,0.2)" },
+    in_progress:  { background: "rgba(34,212,126,0.08)", color: "#22d47e", border: "1px solid rgba(34,212,126,0.2)" },
+    completed:    { background: "rgba(255,255,255,0.05)", color: "rgba(240,241,245,0.35)", border: "1px solid rgba(255,255,255,0.08)" },
+    cancelled:    { background: "rgba(240,78,102,0.08)", color: "#f04e66", border: "1px solid rgba(240,78,102,0.2)" },
 };
 const STATUS_LABELS: Record<string, string> = {
     registration: "Registration Open",
-    in_progress: "In Progress",
-    completed: "Completed",
-    cancelled: "Cancelled",
+    in_progress:  "In Progress",
+    completed:    "Completed",
+    cancelled:    "Cancelled",
+};
+
+const darkPanel: React.CSSProperties = {
+    background: "rgba(13,15,24,0.85)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    borderRadius: 16,
+    overflow: "hidden",
 };
 
 export function ManageView({ tournamentId, onBack }: Props) {
@@ -34,31 +41,74 @@ export function ManageView({ tournamentId, onBack }: Props) {
     const [showCancel, setShowCancel] = useState(false);
 
     return (
-        <div className="flex flex-col gap-6">
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
             {/* Sub-page top bar */}
-            <div className="flex items-center gap-4 flex-wrap">
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <button
                     onClick={onBack}
-                    className="flex items-center gap-2 text-gray-500 hover:text-gray-800 text-sm font-medium transition-colors"
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        background: "none",
+                        border: "none",
+                        color: "rgba(240,241,245,0.4)",
+                        fontSize: "0.875rem",
+                        fontFamily: "'Inter', sans-serif",
+                        fontWeight: 500,
+                        cursor: "pointer",
+                        transition: "color 0.15s",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.color = "#f0f1f5")}
+                    onMouseLeave={e => (e.currentTarget.style.color = "rgba(240,241,245,0.4)")}
                 >
-                    <ArrowLeft className="w-4 h-4" />
+                    <ArrowLeft style={{ width: 16, height: 16 }} />
                     Back to Dashboard
                 </button>
 
                 {state.status === "success" && (
                     <>
-                        <div className="h-4 w-px bg-gray-300" />
-                        <h2 className="text-lg font-bold text-gray-900">{state.data.name}</h2>
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${STATUS_STYLES[state.data.status] ?? ""}`}>
+                        <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.1)" }} />
+                        <h2
+                            style={{
+                                fontFamily: "'Syne', sans-serif",
+                                fontWeight: 700,
+                                fontSize: "1rem",
+                                color: "#f0f1f5",
+                            }}
+                        >
+                            {state.data.name}
+                        </h2>
+                        <span
+                            style={{
+                                fontFamily: "'DM Mono', monospace",
+                                fontSize: "0.65rem",
+                                fontWeight: 600,
+                                padding: "3px 10px",
+                                borderRadius: 999,
+                                ...(STATUS_STYLES[state.data.status] ?? STATUS_STYLES.completed),
+                            }}
+                        >
                             {STATUS_LABELS[state.data.status] ?? state.data.status}
                         </span>
                         <button
                             onClick={refresh}
-                            className="ml-auto p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
                             title="Refresh"
+                            style={{
+                                marginLeft: "auto",
+                                padding: 8,
+                                background: "none",
+                                border: "none",
+                                color: "rgba(240,241,245,0.3)",
+                                cursor: "pointer",
+                                borderRadius: 8,
+                                transition: "color 0.15s, background 0.15s",
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.color = "#22d47e"; e.currentTarget.style.background = "rgba(34,212,126,0.06)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = "rgba(240,241,245,0.3)"; e.currentTarget.style.background = "none"; }}
                         >
-                            <RefreshCw className="w-4 h-4" />
+                            <RefreshCw style={{ width: 16, height: 16 }} />
                         </button>
                     </>
                 )}
@@ -66,25 +116,30 @@ export function ManageView({ tournamentId, onBack }: Props) {
 
             {/* Loading */}
             {state.status === "loading" && (
-                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                <div style={darkPanel}>
                     <BracketSkeleton />
                 </div>
             )}
 
             {/* Error */}
             {state.status === "error" && (
-                <div className="flex flex-col items-center gap-3 py-16 text-center">
-                    <AlertCircle className="w-8 h-8 text-gray-300" />
-                    <p className="text-sm text-gray-500">Failed to load tournament data.</p>
-                    <button onClick={refresh} className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700">
-                        <RefreshCw className="w-4 h-4" /> Retry
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "64px 24px", textAlign: "center" }}>
+                    <AlertCircle style={{ width: 32, height: 32, color: "rgba(240,78,102,0.5)" }} />
+                    <p style={{ fontSize: "0.875rem", color: "rgba(240,241,245,0.35)" }}>Failed to load tournament data.</p>
+                    <button
+                        onClick={refresh}
+                        style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", fontSize: "0.875rem", color: "#22d47e", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}
+                    >
+                        <RefreshCw style={{ width: 14, height: 14 }} /> Retry
                     </button>
                 </div>
             )}
 
             {/* Not found */}
             {state.status === "not_found" && (
-                <div className="py-16 text-center text-sm text-gray-400">Tournament not found.</div>
+                <div style={{ padding: "64px 24px", textAlign: "center", fontFamily: "'DM Mono', monospace", fontSize: "0.85rem", color: "rgba(240,241,245,0.25)" }}>
+                    Tournament not found.
+                </div>
             )}
 
             {/* Success */}
@@ -93,8 +148,6 @@ export function ManageView({ tournamentId, onBack }: Props) {
                 const hasBracket = t.matches.length > 0;
                 const activeMatches = t.matches.filter(m => m.status === "in_progress");
 
-                // 1. Only organizer can cancel
-                // 2. Only if in registration OR in_progress but no matches played yet
                 const isOrganizer = t.organizer.address === publicKey?.toBase58();
                 const canCancel =
                     isOrganizer && (
@@ -103,48 +156,96 @@ export function ManageView({ tournamentId, onBack }: Props) {
                     );
 
                 return (
-                    <div className="flex flex-col gap-4">
-
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
                         {/* Bracket panel */}
-                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
-                                <h3 className="text-sm font-semibold text-gray-700">Bracket</h3>
-                                <span className="text-xs text-gray-400">
-                                    {t.participants.length}/{t.maxParticipants} participants
+                        <div style={darkPanel}>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    borderBottom: "1px solid rgba(255,255,255,0.06)",
+                                    padding: "12px 20px",
+                                }}
+                            >
+                                <h3
+                                    style={{
+                                        fontFamily: "'DM Mono', monospace",
+                                        fontSize: "0.68rem",
+                                        fontWeight: 500,
+                                        color: "rgba(240,241,245,0.3)",
+                                        textTransform: "uppercase",
+                                        letterSpacing: "0.08em",
+                                    }}
+                                >
+                                    Bracket
+                                </h3>
+                                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.72rem", color: "rgba(240,241,245,0.3)" }}>
+                                    <span style={{ color: "#f0f1f5", fontWeight: 600 }}>{t.participants.length}</span>/{t.maxParticipants} participants
                                 </span>
                             </div>
-                            {!hasBracket
-                                ? <BracketEmpty />
-                                : <BracketView matches={t.matches} />
-                            }
+                            {!hasBracket ? <BracketEmpty /> : <BracketView matches={t.matches} />}
                         </div>
 
-                        {/* Active matches — Report Result buttons */}
+                        {/* Active matches */}
                         {activeMatches.length > 0 && (
-                            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                                <div className="border-b border-gray-100 px-5 py-3">
-                                    <h3 className="text-sm font-semibold text-gray-700">
+                            <div style={darkPanel}>
+                                <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 8 }}>
+                                    <h3 style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", fontWeight: 500, color: "rgba(240,241,245,0.3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                                         Active Matches
-                                        <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
-                                            {activeMatches.length}
-                                        </span>
                                     </h3>
+                                    <span
+                                        style={{
+                                            fontFamily: "'DM Mono', monospace",
+                                            fontSize: "0.62rem",
+                                            fontWeight: 600,
+                                            padding: "2px 8px",
+                                            borderRadius: 999,
+                                            background: "rgba(34,212,126,0.1)",
+                                            color: "#22d47e",
+                                            border: "1px solid rgba(34,212,126,0.2)",
+                                        }}
+                                    >
+                                        {activeMatches.length}
+                                    </span>
                                 </div>
-                                <div className="flex flex-col divide-y divide-gray-100">
+                                <div style={{ display: "flex", flexDirection: "column" }}>
                                     {activeMatches.map(match => (
-                                        <div key={match.id} className="flex items-center justify-between px-5 py-3">
-                                            <div className="flex flex-col gap-0.5">
-                                                <span className="text-xs font-semibold text-gray-700">
+                                        <div
+                                            key={match.id}
+                                            style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "space-between",
+                                                padding: "14px 20px",
+                                                borderBottom: "1px solid rgba(255,255,255,0.04)",
+                                            }}
+                                        >
+                                            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                                                <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "0.8rem", color: "#f0f1f5" }}>
                                                     Round {match.round} — Match {match.position + 1}
                                                 </span>
-                                                <span className="text-xs text-gray-400 font-mono">
+                                                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.72rem", color: "rgba(240,241,245,0.35)" }}>
                                                     {match.playerA?.display ?? "TBD"} vs {match.playerB?.display ?? "TBD"}
                                                 </span>
                                             </div>
                                             <button
                                                 onClick={() => setReportMatch(match)}
-                                                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                                                style={{
+                                                    padding: "7px 16px",
+                                                    background: "#22d47e",
+                                                    color: "#06070b",
+                                                    border: "none",
+                                                    borderRadius: 8,
+                                                    fontFamily: "'Inter', sans-serif",
+                                                    fontWeight: 700,
+                                                    fontSize: "0.75rem",
+                                                    cursor: "pointer",
+                                                    transition: "background 0.15s",
+                                                }}
+                                                onMouseEnter={e => (e.currentTarget.style.background = "#16c062")}
+                                                onMouseLeave={e => (e.currentTarget.style.background = "#22d47e")}
                                             >
                                                 Report Result
                                             </button>
@@ -156,16 +257,44 @@ export function ManageView({ tournamentId, onBack }: Props) {
 
                         {/* Danger zone */}
                         {canCancel && (
-                            <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-2xl px-5 py-4">
-                                <div className="flex flex-col gap-0.5">
-                                    <p className="text-sm font-semibold text-red-800">Cancel Tournament</p>
-                                    <p className="text-xs text-red-600">
+                            <div
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    background: "rgba(240,78,102,0.06)",
+                                    border: "1px solid rgba(240,78,102,0.18)",
+                                    borderRadius: 12,
+                                    padding: "16px 20px",
+                                    gap: 16,
+                                    flexWrap: "wrap",
+                                }}
+                            >
+                                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                                    <p style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "0.875rem", color: "#f04e66" }}>
+                                        Cancel Tournament
+                                    </p>
+                                    <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "rgba(240,78,102,0.6)" }}>
                                         All entry fees will be refunded. This cannot be undone.
                                     </p>
                                 </div>
                                 <button
                                     onClick={() => setShowCancel(true)}
-                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors shrink-0"
+                                    style={{
+                                        padding: "8px 18px",
+                                        background: "rgba(240,78,102,0.12)",
+                                        color: "#f04e66",
+                                        border: "1px solid rgba(240,78,102,0.3)",
+                                        borderRadius: 8,
+                                        fontFamily: "'Inter', sans-serif",
+                                        fontWeight: 700,
+                                        fontSize: "0.78rem",
+                                        cursor: "pointer",
+                                        flexShrink: 0,
+                                        transition: "background 0.15s",
+                                    }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(240,78,102,0.2)")}
+                                    onMouseLeave={e => (e.currentTarget.style.background = "rgba(240,78,102,0.12)")}
                                 >
                                     Cancel Tournament
                                 </button>
