@@ -185,7 +185,13 @@ export function ManageView({ tournamentId, onBack }: Props) {
                                     <span style={{ color: "#f0f1f5", fontWeight: 600 }}>{t.participants.length}</span>/{t.maxParticipants} participants
                                 </span>
                             </div>
-                            {!hasBracket ? <BracketEmpty /> : <BracketView matches={t.matches} />}
+                            {!hasBracket
+                                ? <BracketEmpty
+                                    isRegistered={isOrganizer}
+                                    cancelled={t.status === "cancelled"}
+                                />
+                                : <BracketView matches={t.matches} />
+                            }
                         </div>
 
                         {/* Active matches */}

@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ExternalLink, CheckCircle2, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { ExternalLink, CheckCircle2, Loader2, ChevronDown, ChevronUp, Clock, Wallet } from "lucide-react";
 import { PublicKey } from "@solana/web3.js";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { joinTournament, startTournament, mapError } from "@bracketchain/sdk";
 import { toast } from "sonner";
 import type { TournamentView, Player } from "@/types/tournament";
@@ -10,6 +11,7 @@ import { SOLANA } from "@/constants/links";
 import { useBracketChainClient } from "@/lib/sdk";
 import { useConfetti } from "@/hooks/useConfetti";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
+import { useDeadlineReached } from "@/hooks/useDeadlineReached";
 
 const sectionLabel: React.CSSProperties = {
     fontFamily: "'DM Mono', monospace",
@@ -220,13 +222,21 @@ function ActionArea({
     currentAddress,
     isOrganizer,
     onJoinSuccess,
+    onStartSuccess,
+    onRefresh,
     onViewPayouts,
     onCancel,
 }: {
     tournament: TournamentView;
     currentAddress: string | null;
     isOrganizer: boolean;
+    // Split into three semantic callbacks so the parent can apply the right
+    // optimistic patch for each: join → patch participants list, start →
+    // patch status to in_progress, refresh → no optimistic patch (used after
+    // failed join when our cached view is stale).
     onJoinSuccess: () => void;
+    onStartSuccess: () => void;
+    onRefresh: () => void;
     onViewPayouts: () => void;
     onCancel: () => void;
 }) {
@@ -235,11 +245,18 @@ function ActionArea({
     const [optimisticJoined, setOptimisticJoined] = useState(false);
 
     const sdk = useBracketChainClient();
+    const { setVisible: setWalletModalVisible } = useWalletModal();
     const { fire } = useConfetti();
     const { usdc: walletUsdc, refresh: refreshBalance } = useWalletBalance();
 
     const isParticipant = optimisticJoined || tournament.participants.some(p => p.address === currentAddress);
     const hasEnough = walletUsdc !== null && walletUsdc >= tournament.entryFee;
+
+    // Client-side deadline guard. The program rejects join with RegistrationClosed
+    // once the deadline passes, even while UI status is still "registration"
+    // (status only flips on the next on-chain interaction). Without this gate the
+    // user sees an active Join button → signs → eats a confusing rejection.
+    const registrationClosed = useDeadlineReached(tournament.registrationDeadline);
 
     async function handleJoin() {
         if (!sdk) { toast.error("Connect your wallet to join"); return; }
@@ -256,8 +273,31 @@ function ActionArea({
             if (error.message?.toLowerCase().includes("rejected")) { toast.info("Request cancelled"); return; }
             const sdkErr = mapError(err);
             if (sdkErr.message.includes("balance") || sdkErr.constructor.name === "InsufficientBalanceError") {
-                toast.error(<div className="flex flex-col gap-1"><span className="font-semibold">Insufficient Balance</span><span className="text-xs opacity-90">{sdkErr.message}</span><a href="https://spl-token-faucet.com" target="_blank" className="mt-1 text-[10px] font-bold uppercase tracking-wider text-blue-200 hover:text-white underline">Get Devnet USDC →</a></div>);
-            } else { toast.error(sdkErr.message); }
+                toast.error(
+                    <div className="flex flex-col gap-1">
+                        <span className="font-semibold">Insufficient Balance</span>
+                        <span className="text-xs opacity-90">{sdkErr.message}</span>
+                        <a
+                            href="https://spl-token-faucet.com"
+                            target="_blank"
+                            className="mt-1 text-[10px] font-bold uppercase tracking-wider text-blue-200 hover:text-white underline"
+                        >
+                            Get Devnet USDC →
+                        </a>
+                    </div>
+                );
+            } else {
+                toast.error(sdkErr.message);
+            }
+            // RegistrationClosed / TournamentFull / status-mismatch errors mean
+            // our cached view is stale. Refresh so the disabled-state branches
+            // below pick up the current on-chain truth on next render. Note:
+            // this is a refresh-only path (join failed) — we deliberately call
+            // onRefresh, not onJoinSuccess, so the parent doesn't apply the
+            // optimistic-participant patch for a join that didn't happen.
+            if (/registration|closed|full|status/i.test(sdkErr.message)) {
+                onRefresh();
+            }
             console.error("Join failed:", err);
         } finally { setJoining(false); }
     }
@@ -268,7 +308,7 @@ function ActionArea({
         try {
             await startTournament(sdk, { tournamentPda: new PublicKey(tournament.id) });
             toast.success("Tournament started! Bracket is being initialized.");
-            onJoinSuccess();
+            onStartSuccess();
         } catch (err) {
             const sdkErr = mapError(err);
             toast.error(sdkErr.message);
@@ -374,6 +414,48 @@ function ActionArea({
         );
     }
 
+    // ── Wallet not connected ─────────────────────────────────────────────────
+    // Without an address we can't tell if the viewer is a participant, can't
+    // estimate balance, and can't sign a join tx. Show a single Connect CTA
+    // instead of a disabled Join button (whose label "Join — X USDC" reads as
+    // "you can't afford it" rather than "you're not signed in").
+    if (!currentAddress) {
+        return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button
+                    onClick={() => setWalletModalVisible(true)}
+                    style={{ ...btnGreen, gap: 8 }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#16c062"; e.currentTarget.style.boxShadow = "0 0 28px rgba(34,212,126,0.48)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "#22d47e"; e.currentTarget.style.boxShadow = "0 0 18px rgba(34,212,126,0.28)"; }}
+                >
+                    <Wallet style={{ width: 16, height: 16 }} />
+                    Connect to Join
+                </button>
+                <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", textAlign: "center", color: "rgba(240,241,245,0.3)" }}>
+                    {tournament.entryFee > 0
+                        ? `Entry fee ${tournament.entryFee} ${tournament.token}. Connect a Solana wallet to register.`
+                        : "Free entry. Connect a Solana wallet to register."}
+                </p>
+            </div>
+        );
+    }
+
+    // ── Registration closed (deadline passed) ────────────────────────────────
+    if (registrationClosed) {
+        return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button disabled style={{ ...btnDisabled, gap: 8 }}>
+                    <Clock style={{ width: 16, height: 16 }} />
+                    Registration Closed
+                </button>
+                <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", textAlign: "center", color: "rgba(240,241,245,0.3)", fontStyle: "italic" }}>
+                    The deadline has passed. Waiting for organizer to start the bracket.
+                </p>
+            </div>
+        );
+    }
+
+    // ── Join button ──────────────────────────────────────────────────────────
     const isFull = tournament.participants.length >= tournament.maxParticipants;
     const insufficient = !hasEnough && !!currentAddress && !joining && tournament.entryFee > 0;
     const joinDisabled = joining || insufficient || isFull;
@@ -422,11 +504,15 @@ export function TournamentSidebar({
     tournament,
     currentAddress,
     onJoinSuccess,
+    onStartSuccess,
+    onRefresh,
     onCancel,
 }: {
     tournament: TournamentView;
     currentAddress: string | null;
     onJoinSuccess: () => void;
+    onStartSuccess: () => void;
+    onRefresh: () => void;
     onCancel: () => void;
 }) {
     const isOrganizer = tournament.organizer.address === currentAddress;
@@ -463,6 +549,8 @@ export function TournamentSidebar({
                 currentAddress={currentAddress}
                 isOrganizer={isOrganizer}
                 onJoinSuccess={onJoinSuccess}
+                onStartSuccess={onStartSuccess}
+                onRefresh={onRefresh}
                 onViewPayouts={handleViewPayouts}
                 onCancel={onCancel}
             />
