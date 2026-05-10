@@ -208,7 +208,9 @@ function CancelDangerZone({ onCancel }: { onCancel: () => void }) {
     return (
         <button
             onClick={onCancel}
-            className="w-full py-2.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 text-xs font-semibold transition-colors"
+            style={{ width: "100%", padding: "10px 0", borderRadius: 10, background: "rgba(240,78,102,0.08)", border: "1px solid rgba(240,78,102,0.25)", color: "#f04e66", fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: "0.8rem", cursor: "pointer", transition: "background 0.15s" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(240,78,102,0.15)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "rgba(240,78,102,0.08)")}
         >
             Cancel Tournament & Refund
         </button>
@@ -338,21 +340,35 @@ function ActionArea({
         if (tournament.status === "registration") {
             const isFull = tournament.participants.length >= tournament.maxParticipants;
             const canStart = tournament.participants.length >= 2;
+            const isDisabled = starting || !canStart;
+
+            const startBtnStyle: React.CSSProperties = isDisabled
+                ? btnDisabled
+                : isFull
+                    ? btnGreen
+                    : { ...btnGreen, background: "rgba(245,166,35,0.12)", color: "#f5a623", border: "1px solid rgba(245,166,35,0.3)", boxShadow: "none" };
 
             return (
-                <div className="flex flex-col gap-3">
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <button
                         onClick={handleStart}
-                        disabled={starting || !canStart}
-                        className={`w-full py-3 rounded-xl font-bold text-sm transition-colors ${isFull
-                            ? "bg-green-600 hover:bg-green-700 text-white"
-                            : "bg-purple-600 hover:bg-purple-700 text-white"
-                            } disabled:bg-gray-100 disabled:text-gray-400`}
+                        disabled={isDisabled}
+                        style={startBtnStyle}
+                        onMouseEnter={e => {
+                            if (!isDisabled) {
+                                if (isFull) { e.currentTarget.style.background = "#16c062"; e.currentTarget.style.boxShadow = "0 0 28px rgba(34,212,126,0.48)"; }
+                                else { e.currentTarget.style.background = "rgba(245,166,35,0.2)"; }
+                            }
+                        }}
+                        onMouseLeave={e => {
+                            if (!isDisabled) {
+                                if (isFull) { e.currentTarget.style.background = "#22d47e"; e.currentTarget.style.boxShadow = "0 0 18px rgba(34,212,126,0.28)"; }
+                                else { e.currentTarget.style.background = "rgba(245,166,35,0.12)"; }
+                            }
+                        }}
                     >
                         {starting
-                            ? <span className="flex items-center justify-center gap-2">
-                                <Loader2 className="w-4 h-4 animate-spin" /> Initializing...
-                            </span>
+                            ? <><Loader2 style={{ width: 15, height: 15, animation: "spin 1s linear infinite" }} /> Initializing…</>
                             : isFull ? "Start Tournament" : "Start Early (Lock Bracket)"
                         }
                     </button>
