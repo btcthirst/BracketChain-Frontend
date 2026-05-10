@@ -190,15 +190,9 @@ export function TournamentTable({ tournaments, onManage }: Props) {
 
                                 <td style={{ padding: "12px 16px", textAlign: "right" }}>
                                     <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                                        <Link
-                                            href={ROUTES.tournament(t.address)}
-                                            target="_blank"
-                                            style={{ fontSize: "0.75rem", fontFamily: "'Inter', sans-serif", fontWeight: 600, color: "rgba(240,241,245,0.4)", border: "1px solid rgba(255,255,255,0.1)", padding: "5px 12px", borderRadius: 8, textDecoration: "none", transition: "border-color 0.15s, color 0.15s" }}
-                                            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = "#f0f1f5"; }}
-                                            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(240,241,245,0.4)"; }}
-                                        >
-                                            View
-                                        </Link>
+                                        <Button variant="outline" size="sm" asChild>
+                                            <Link href={ROUTES.tournament(t.address)} target="_blank">View</Link>
+                                        </Button>
                                         <Button variant="primary" size="sm" onClick={() => onManage(t.address)}>
                                             Manage
                                         </Button>
@@ -240,12 +234,9 @@ export function TournamentTable({ tournaments, onManage }: Props) {
                                 <span style={{ color: "#f0f1f5", fontWeight: 600 }}>{t.participantCount}</span>/{t.maxParticipants} players
                             </span>
                             <div style={{ display: "flex", gap: 8 }}>
-                                <Link
-                                    href={ROUTES.tournament(t.address)}
-                                    style={{ fontSize: "0.75rem", fontFamily: "'Inter', sans-serif", fontWeight: 600, color: "rgba(240,241,245,0.4)", border: "1px solid rgba(255,255,255,0.1)", padding: "6px 14px", borderRadius: 8, textDecoration: "none" }}
-                                >
-                                    View
-                                </Link>
+                                <Button variant="outline" size="sm" asChild>
+                                    <Link href={ROUTES.tournament(t.address)}>View</Link>
+                                </Button>
                                 <Button variant="primary" size="sm" onClick={() => onManage(t.address)}>
                                     Manage
                                 </Button>

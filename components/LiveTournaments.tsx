@@ -97,34 +97,10 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
         >
             <RefreshCw size={24} style={{ color: "rgba(255,255,255,0.15)" }} />
             <p style={{ fontSize: "0.83rem", color: "rgba(240,241,245,0.3)" }}>Unable to load tournaments</p>
-            <button
-                onClick={onRetry}
-                style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "7px 14px",
-                    background: "transparent",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 7,
-                    color: "rgba(240,241,245,0.5)",
-                    fontSize: "0.8rem",
-                    cursor: "pointer",
-                    fontFamily: "'Inter', sans-serif",
-                    transition: "border-color 0.15s, color 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
-                    e.currentTarget.style.color = "rgba(240,241,245,0.8)";
-                }}
-                onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-                    e.currentTarget.style.color = "rgba(240,241,245,0.5)";
-                }}
-            >
-                <RefreshCw size={12} />
+            <Button variant="outline" size="sm" onClick={onRetry}>
+                <RefreshCw className="size-3" />
                 Try again
-            </button>
+            </Button>
         </div>
     );
 }
