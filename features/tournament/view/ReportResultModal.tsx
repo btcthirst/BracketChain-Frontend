@@ -339,13 +339,13 @@ export function ReportResultModal({
                     matches. The program writes match results to a Match PDA and
                     has no instruction to amend or rewind, so once confirmed the
                     bracket cannot be edited from the UI. */}
-                <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
-                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <div className="flex flex-col gap-0.5">
-                        <p className="text-xs font-semibold text-amber-800">
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "rgba(245,166,35,0.07)", border: "1px solid rgba(245,166,35,0.2)", borderRadius: 8, padding: "10px 12px" }}>
+                    <AlertTriangle style={{ width: 16, height: 16, color: "#f5a623", flexShrink: 0, marginTop: 1 }} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <p style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "0.8rem", color: "#f5a623" }}>
                             Reporting is final
                         </p>
-                        <p className="text-[11px] text-amber-700 leading-relaxed">
+                        <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(245,166,35,0.7)", lineHeight: 1.5 }}>
                             {isFinal
                                 ? "Once signed, prize payouts are distributed on-chain and cannot be reversed."
                                 : "Once signed, the winner advances on-chain. Scores cannot be changed."}
