@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import Link from "next/link";
 import { RefreshCw, AlertTriangle, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -37,14 +38,9 @@ function NotFound() {
                     It may have been closed, cancelled, or the link is incorrect.
                 </p>
             </div>
-            <Link
-                href={ROUTES.explore}
-                style={{ padding: "10px 24px", background: "#22d47e", color: "#06070b", borderRadius: 8, fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: "0.875rem", textDecoration: "none", boxShadow: "0 0 18px rgba(34,212,126,0.28)", transition: "background 0.15s" }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#16c062")}
-                onMouseLeave={e => (e.currentTarget.style.background = "#22d47e")}
-            >
-                Browse tournaments →
-            </Link>
+            <Button variant="primary" asChild>
+                <Link href={ROUTES.explore}>Browse tournaments →</Link>
+            </Button>
         </div>
     );
 }
@@ -59,15 +55,10 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
                 </h2>
                 <p style={{ fontSize: "0.85rem", color: "rgba(240,241,245,0.35)" }}>Check your connection and try again.</p>
             </div>
-            <button
-                onClick={onRetry}
-                style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 20px", background: "transparent", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "rgba(240,241,245,0.5)", fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", transition: "border-color 0.15s, color 0.15s" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"; e.currentTarget.style.color = "#f0f1f5"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = "rgba(240,241,245,0.5)"; }}
-            >
-                <RefreshCw style={{ width: 14, height: 14 }} />
+            <Button variant="outline" onClick={onRetry}>
+                <RefreshCw className="size-[14px]" />
                 Try again
-            </button>
+            </Button>
         </div>
     );
 }

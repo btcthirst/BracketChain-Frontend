@@ -6,6 +6,7 @@ import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { LayoutDashboard, LogOut, ChevronDown } from "lucide-react";
 import { ROUTES } from "@/constants/links";
+import { Button } from "@/components/ui/button";
 
 export function ConnectButton() {
     const { setVisible } = useWalletModal();
@@ -157,34 +158,8 @@ export function ConnectButton() {
     }
 
     return (
-        <button
-            onClick={() => setVisible(true)}
-            style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "8px 18px",
-                background: "#22d47e",
-                color: "#06070b",
-                border: "none",
-                borderRadius: 8,
-                fontFamily: "'Inter', sans-serif",
-                fontWeight: 700,
-                fontSize: "0.85rem",
-                cursor: "pointer",
-                transition: "background 0.15s, box-shadow 0.15s",
-                boxShadow: "0 0 16px rgba(34,212,126,0.30)",
-            }}
-            onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#16c062";
-                e.currentTarget.style.boxShadow = "0 0 24px rgba(34,212,126,0.50)";
-            }}
-            onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#22d47e";
-                e.currentTarget.style.boxShadow = "0 0 16px rgba(34,212,126,0.30)";
-            }}
-        >
+        <Button variant="primary" onClick={() => setVisible(true)}>
             Connect Wallet
-        </button>
+        </Button>
     );
 }

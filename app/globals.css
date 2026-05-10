@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
+/* ── Design tokens → Tailwind utilities ────────────────────────────────────
+   Colors defined here become bg-*, text-*, border-* Tailwind utilities.
+   To add a new theme, override these variables in [data-theme="..."] selector.
+   ──────────────────────────────────────────────────────────────────────── */
+@theme {
+  --color-accent:       #22d47e;
+  --color-accent-hover: #16c062;
+  --color-red:          #f04e66;
+  --color-amber:        #f5a623;
+  --color-surface:      #0d0f18;
+  --color-surface-2:    #12141f;
+  --color-text:         #f0f1f5;
+  --color-text-muted:   #7b7e96;
+
+  --font-mono:    'DM Mono', monospace;
+  --font-sans:    'Inter', sans-serif;
+  --font-display: 'Syne', sans-serif;
+}
+
 :root {
   --bg: #06070b;
   --bg-1: #0d0f18;

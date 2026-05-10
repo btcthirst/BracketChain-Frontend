@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { DashboardTournament } from "@/hooks/useDashboard";
 import { ROUTES, SOLANA } from "@/constants/links";
 import Link from "next/link";
@@ -198,14 +199,9 @@ export function TournamentTable({ tournaments, onManage }: Props) {
                                         >
                                             View
                                         </Link>
-                                        <button
-                                            onClick={() => onManage(t.address)}
-                                            style={{ fontSize: "0.75rem", fontFamily: "'Inter', sans-serif", fontWeight: 700, color: "#06070b", background: "#22d47e", border: "none", padding: "5px 12px", borderRadius: 8, cursor: "pointer", transition: "background 0.15s" }}
-                                            onMouseEnter={e => (e.currentTarget.style.background = "#16c062")}
-                                            onMouseLeave={e => (e.currentTarget.style.background = "#22d47e")}
-                                        >
+                                        <Button variant="primary" size="sm" onClick={() => onManage(t.address)}>
                                             Manage
-                                        </button>
+                                        </Button>
                                     </div>
                                 </td>
                             </tr>
@@ -250,12 +246,9 @@ export function TournamentTable({ tournaments, onManage }: Props) {
                                 >
                                     View
                                 </Link>
-                                <button
-                                    onClick={() => onManage(t.address)}
-                                    style={{ fontSize: "0.75rem", fontFamily: "'Inter', sans-serif", fontWeight: 700, color: "#06070b", background: "#22d47e", border: "none", padding: "6px 14px", borderRadius: 8, cursor: "pointer" }}
-                                >
+                                <Button variant="primary" size="sm" onClick={() => onManage(t.address)}>
                                     Manage
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     </div>

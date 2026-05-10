@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { MotionDiv, MotionPath } from "@/components/ui/motion-wraper";
 import { ROUTES } from "@/constants/links";
+import { Button } from "@/components/ui/button";
 
 export function Hero() {
     return (
@@ -108,65 +109,17 @@ export function Hero() {
 
                     {/* CTA row */}
                     <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 48 }}>
-                        <Link
-                            href={ROUTES.create}
-                            style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 8,
-                                padding: "12px 24px",
-                                background: "#22d47e",
-                                color: "#06070b",
-                                borderRadius: 8,
-                                fontWeight: 700,
-                                fontSize: "0.9rem",
-                                textDecoration: "none",
-                                fontFamily: "'Inter', sans-serif",
-                                transition: "background 0.15s, box-shadow 0.15s",
-                                boxShadow: "0 0 24px rgba(34,212,126,0.35)",
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = "#16c062";
-                                e.currentTarget.style.boxShadow = "0 0 36px rgba(34,212,126,0.55)";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = "#22d47e";
-                                e.currentTarget.style.boxShadow = "0 0 24px rgba(34,212,126,0.35)";
-                            }}
-                        >
-                            Create Tournament
-                            <ArrowRight size={15} />
-                        </Link>
-                        <Link
-                            href={ROUTES.explore}
-                            style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 8,
-                                padding: "12px 24px",
-                                background: "transparent",
-                                color: "rgba(240,241,245,0.65)",
-                                border: "1px solid rgba(255,255,255,0.11)",
-                                borderRadius: 8,
-                                fontWeight: 500,
-                                fontSize: "0.9rem",
-                                textDecoration: "none",
-                                fontFamily: "'Inter', sans-serif",
-                                transition: "border-color 0.15s, color 0.15s, background 0.15s",
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)";
-                                e.currentTarget.style.color = "#f0f1f5";
-                                e.currentTarget.style.background = "rgba(255,255,255,0.04)";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = "rgba(255,255,255,0.11)";
-                                e.currentTarget.style.color = "rgba(240,241,245,0.65)";
-                                e.currentTarget.style.background = "transparent";
-                            }}
-                        >
-                            Explore Tournaments
-                        </Link>
+                        <Button variant="primary" asChild>
+                            <Link href={ROUTES.create}>
+                                Create Tournament
+                                <ArrowRight className="size-[15px]" />
+                            </Link>
+                        </Button>
+                        <Button variant="outline" asChild>
+                            <Link href={ROUTES.explore}>
+                                Explore Tournaments
+                            </Link>
+                        </Button>
                     </div>
 
                     {/* Stats strip */}

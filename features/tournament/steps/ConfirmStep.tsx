@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { MotionDiv } from "@/components/ui/motion-wraper";
 import { AlertCircle, Check, CheckCircle2, Copy, ExternalLink, Loader2, RefreshCw } from "lucide-react";
 import { ROUTES, SOLANA } from "@/constants/links";
+import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { DetailsData, PrizeData, TxState } from "@/types/tournament";
 import { totalPool } from "@/features/tournament/utils/utils";
 import { FORMAT_INFO, PAYOUT_PRESETS } from "@/constants/tournament";
@@ -163,35 +165,11 @@ export function ConfirmStep({
                 )}
 
                 {tournamentAddress && (
-                    <a
-                        href={ROUTES.tournament(tournamentAddress)}
-                        style={{
-                            marginTop: 8,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 8,
-                            padding: "12px 28px",
-                            background: "#22d47e",
-                            color: "#06070b",
-                            borderRadius: 8,
-                            fontWeight: 700,
-                            fontSize: "0.875rem",
-                            textDecoration: "none",
-                            fontFamily: "'Inter', sans-serif",
-                            transition: "background 0.15s, box-shadow 0.15s",
-                            boxShadow: "0 0 20px rgba(34,212,126,0.30)",
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "#16c062";
-                            e.currentTarget.style.boxShadow = "0 0 32px rgba(34,212,126,0.50)";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "#22d47e";
-                            e.currentTarget.style.boxShadow = "0 0 20px rgba(34,212,126,0.30)";
-                        }}
-                    >
-                        View Tournament →
-                    </a>
+                    <Button variant="primary" size="lg" asChild className="mt-2">
+                        <a href={ROUTES.tournament(tournamentAddress)}>
+                            View Tournament →
+                        </a>
+                    </Button>
                 )}
             </div>
         );
@@ -407,72 +385,21 @@ export function ConfirmStep({
                             {txError}
                         </p>
                     </div>
-                    <button
-                        onClick={onRetry}
-                        style={{
-                            flexShrink: 0,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 5,
-                            fontSize: "0.75rem",
-                            fontWeight: 600,
-                            color: "#f04e66",
-                            background: "rgba(240,78,102,0.10)",
-                            border: "none",
-                            borderRadius: 6,
-                            padding: "6px 10px",
-                            cursor: "pointer",
-                            transition: "background 0.15s",
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,78,102,0.18)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,78,102,0.10)"; }}
-                    >
-                        <RefreshCw size={12} />
+                    <Button variant="destructive" size="sm" onClick={onRetry} className="shrink-0">
+                        <RefreshCw className="size-3" />
                         Retry
-                    </button>
+                    </Button>
                 </MotionDiv>
             )}
 
             {/* Primary action */}
-            <button
-                onClick={
-                    txState === "error"
-                        ? onRetry
-                        : () => setShowFinalConfirm(true)
-                }
+            <Button
+                variant="primary"
+                size="lg"
+                className="w-full text-base py-[14px] h-auto"
+                onClick={txState === "error" ? onRetry : () => setShowFinalConfirm(true)}
                 disabled={isProcessing || isBlocked}
                 title={isBlocked ? "Resolve the issues above to continue" : undefined}
-                style={{
-                    width: "100%",
-                    padding: "14px 24px",
-                    borderRadius: 10,
-                    border: "none",
-                    fontFamily: "'Inter', sans-serif",
-                    fontWeight: 700,
-                    fontSize: "1rem",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 10,
-                    cursor: (isProcessing || isBlocked) ? "not-allowed" : "pointer",
-                    transition: "background 0.15s, box-shadow 0.15s, opacity 0.15s",
-                    background: (isProcessing || isBlocked) ? "rgba(34,212,126,0.4)" : "#22d47e",
-                    color: "#06070b",
-                    boxShadow: (isProcessing || isBlocked) ? "none" : "0 0 24px rgba(34,212,126,0.30)",
-                    opacity: (isProcessing || isBlocked) ? 0.7 : 1,
-                }}
-                onMouseEnter={(e) => {
-                    if (!isProcessing && !isBlocked) {
-                        e.currentTarget.style.background = "#16c062";
-                        e.currentTarget.style.boxShadow = "0 0 36px rgba(34,212,126,0.50)";
-                    }
-                }}
-                onMouseLeave={(e) => {
-                    if (!isProcessing && !isBlocked) {
-                        e.currentTarget.style.background = "#22d47e";
-                        e.currentTarget.style.boxShadow = "0 0 24px rgba(34,212,126,0.30)";
-                    }
-                }}
             >
                 {txState === "signing" && (
                     <><Loader2 size={18} className="animate-spin" /> Awaiting wallet approval…</>
@@ -484,7 +411,7 @@ export function ConfirmStep({
                 {txState === "error" && (
                     <><RefreshCw size={18} /> Try Again</>
                 )}
-            </button>
+            </Button>
 
             <p style={{ textAlign: "center", fontSize: "0.75rem", color: "rgba(240,241,245,0.2)" }}>
                 {isBlocked
@@ -493,151 +420,62 @@ export function ConfirmStep({
             </p>
 
             {/* ── Final pre-sign confirmation ─────────────────────────────── */}
-            {showFinalConfirm && (
-                <div
-                    style={{
-                        position: "fixed",
-                        inset: 0,
-                        zIndex: 50,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        padding: 16,
-                        background: "rgba(0,0,0,0.65)",
-                        backdropFilter: "blur(4px)",
-                    }}
-                >
-                    <div
+            <Modal open={showFinalConfirm} onClose={() => setShowFinalConfirm(false)} maxWidth={384}>
+                <Modal.Header onClose={() => setShowFinalConfirm(false)}>
+                    <h3
                         style={{
-                            background: "rgba(13,15,24,0.98)",
-                            border: "1px solid rgba(255,255,255,0.1)",
-                            borderRadius: 16,
-                            boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
-                            width: "100%",
-                            maxWidth: 384,
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 20,
-                            padding: 24,
+                            fontFamily: "'Syne', sans-serif",
+                            fontWeight: 700,
+                            fontSize: "1rem",
+                            color: "#f0f1f5",
+                            letterSpacing: "-0.01em",
                         }}
                     >
-                        <h3
-                            style={{
-                                fontFamily: "'Syne', sans-serif",
-                                fontWeight: 700,
-                                fontSize: "1rem",
-                                color: "#f0f1f5",
-                                letterSpacing: "-0.01em",
-                                margin: 0,
-                            }}
-                        >
-                            Create this tournament on-chain?
-                        </h3>
+                        Create this tournament on-chain?
+                    </h3>
+                </Modal.Header>
 
-                        <div
-                            style={{
-                                display: "flex",
-                                alignItems: "flex-start",
-                                gap: 12,
-                                background: "rgba(245,166,35,0.07)",
-                                border: "1px solid rgba(245,166,35,0.22)",
-                                borderRadius: 12,
-                                padding: "12px 14px",
-                            }}
-                        >
-                            <AlertCircle size={18} style={{ color: "#f5a623", flexShrink: 0, marginTop: 2 }} />
-                            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                <p
-                                    style={{
-                                        fontSize: "0.85rem",
-                                        fontWeight: 600,
-                                        color: "#f5a623",
-                                        margin: 0,
-                                        fontFamily: "'Inter', sans-serif",
-                                    }}
-                                >
-                                    {depositAmount > 0
-                                        ? `You'll deposit ${depositAmount} ${prizeData.token} into the prize vault.`
-                                        : "Your tournament will be created on-chain."}
-                                </p>
-                                <p
-                                    style={{
-                                        fontSize: "0.78rem",
-                                        color: "rgba(245,166,35,0.75)",
-                                        margin: 0,
-                                        lineHeight: 1.5,
-                                    }}
-                                >
-                                    Once signed and confirmed, the tournament is live. The vault is unlocked
-                                    only by completion or cancellation — both of which require another
-                                    on-chain transaction.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div style={{ display: "flex", gap: 12 }}>
-                            <button
-                                onClick={() => setShowFinalConfirm(false)}
-                                style={{
-                                    flex: 1,
-                                    padding: "10px 0",
-                                    borderRadius: 10,
-                                    border: "1px solid rgba(255,255,255,0.1)",
-                                    background: "transparent",
-                                    color: "rgba(240,241,245,0.5)",
-                                    fontFamily: "'Inter', sans-serif",
-                                    fontWeight: 600,
-                                    fontSize: "0.875rem",
-                                    cursor: "pointer",
-                                    transition: "border-color 0.15s, color 0.15s",
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
-                                    e.currentTarget.style.color = "#f0f1f5";
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-                                    e.currentTarget.style.color = "rgba(240,241,245,0.5)";
-                                }}
-                            >
-                                Back
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setShowFinalConfirm(false);
-                                    onConfirm();
-                                }}
-                                style={{
-                                    flex: 1,
-                                    padding: "10px 0",
-                                    borderRadius: 10,
-                                    border: "none",
-                                    background: "#22d47e",
-                                    color: "#06070b",
-                                    fontFamily: "'Inter', sans-serif",
-                                    fontWeight: 700,
-                                    fontSize: "0.875rem",
-                                    cursor: "pointer",
-                                    transition: "background 0.15s, box-shadow 0.15s",
-                                    boxShadow: "0 0 18px rgba(34,212,126,0.28)",
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = "#16c062";
-                                    e.currentTarget.style.boxShadow = "0 0 28px rgba(34,212,126,0.48)";
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = "#22d47e";
-                                    e.currentTarget.style.boxShadow = "0 0 18px rgba(34,212,126,0.28)";
-                                }}
-                            >
-                                {depositAmount > 0
-                                    ? `Sign & deposit ${depositAmount} ${prizeData.token}`
-                                    : "Sign & create"}
-                            </button>
-                        </div>
+                <div
+                    style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 12,
+                        background: "rgba(245,166,35,0.07)",
+                        border: "1px solid rgba(245,166,35,0.22)",
+                        borderRadius: 12,
+                        padding: "12px 14px",
+                    }}
+                >
+                    <AlertCircle size={18} style={{ color: "#f5a623", flexShrink: 0, marginTop: 2 }} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "#f5a623", fontFamily: "'Inter', sans-serif" }}>
+                            {depositAmount > 0
+                                ? `You'll deposit ${depositAmount} ${prizeData.token} into the prize vault.`
+                                : "Your tournament will be created on-chain."}
+                        </p>
+                        <p style={{ fontSize: "0.78rem", color: "rgba(245,166,35,0.75)", lineHeight: 1.5 }}>
+                            Once signed and confirmed, the tournament is live. The vault is unlocked
+                            only by completion or cancellation — both of which require another
+                            on-chain transaction.
+                        </p>
                     </div>
                 </div>
-            )}
+
+                <Modal.Actions>
+                    <Button variant="outline" className="flex-1" onClick={() => setShowFinalConfirm(false)}>
+                        Back
+                    </Button>
+                    <Button
+                        variant="primary"
+                        className="flex-1"
+                        onClick={() => { setShowFinalConfirm(false); onConfirm(); }}
+                    >
+                        {depositAmount > 0
+                            ? `Sign & deposit ${depositAmount} ${prizeData.token}`
+                            : "Sign & create"}
+                    </Button>
+                </Modal.Actions>
+            </Modal>
         </div>
     );
 }
