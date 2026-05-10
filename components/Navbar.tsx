@@ -38,10 +38,7 @@ export function Navbar() {
                     }}
                 >
                     {/* Geometric B mark */}
-                    <svg width="27" height="23" viewBox="0 0 68 58" fill="#00ff66">
-                        <path d="M3,3 L38,3 L56,16 L38,25 L14,25 L3,14 Z"/>
-                        <path d="M3,40 L14,29 L42,29 L63,45 L42,55 L3,55 Z"/>
-                    </svg>
+                    <img src="/logo.svg" alt="BracketChain" width={32} height={32} />
                     <div style={{ display: "flex", flexDirection: "column" }}>
                         <span
                             style={{

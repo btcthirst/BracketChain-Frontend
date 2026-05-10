@@ -47,19 +47,14 @@ export function Footer() {
                                 style={{
                                     width: 28,
                                     height: 28,
-                                    background: "linear-gradient(135deg, #22d47e 0%, #4ade80 100%)",
+                                    background: "transparent",
                                     borderRadius: 6,
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
                                 }}
                             >
-                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                                    <rect x="0" y="3" width="5" height="3" rx="1" fill="white" />
-                                    <rect x="0" y="8" width="5" height="3" rx="1" fill="white" />
-                                    <rect x="5" y="5" width="4" height="4" rx="1" fill="white" opacity="0.7" />
-                                    <rect x="9" y="5" width="5" height="4" rx="1" fill="white" opacity="0.5" />
-                                </svg>
+                                <img src="/logo.svg" alt="BracketChain" width={32} height={32} />
                             </div>
                             <span
                                 style={{
