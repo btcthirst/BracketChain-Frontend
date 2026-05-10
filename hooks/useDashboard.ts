@@ -3,11 +3,7 @@
 import { useEffect, useReducer, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useBracketChainClient, getIndexerClient } from "@/lib/sdk";
-import {
-    getEnumKind,
-    type IndexerTournament,
-    type IndexerTournamentStatus,
-} from "@bracketchain/sdk";
+import { getEnumKind, type IndexerTournament, type IndexerTournamentStatus } from "@bracketchain/sdk";
 import { PublicKey } from "@solana/web3.js";
 
 const ANCHOR_TO_INDEXER_STATUS: Record<string, IndexerTournamentStatus> = {
@@ -72,7 +68,7 @@ function toEntry(t: IndexerTournament): DashboardTournament {
         entryFee > 0n && t.grossPool != null
             ? Number(grossEntries / entryFee)
             : 0;
-            
+
     const prizePoolUsdc = Number(grossPool) / USDC_DECIMALS;
     return { ...t, participantCount, prizePoolUsdc };
 }

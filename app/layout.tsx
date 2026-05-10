@@ -1,42 +1,29 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { DM_Sans, DM_Mono } from "next/font/google";
 import "./globals.css";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import Providers from "@/components/Providers";
 import { Toaster } from "@/components/ui/sonner";
+import { BackgroundGlow } from "@/components/ui/background-glow";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
   subsets: ["latin"],
+  display: "swap",
+  style: ["normal", "italic"],
+  weight: ["300", "400", "500", "600"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const dmMono = DM_Mono({
+  variable: "--font-dm-mono",
   subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: "BracketChain — Trustless tournaments on Solana",
-    template: "%s — BracketChain",
-  },
-  description:
-    "Run on-chain tournaments with trustless escrow and instant USDC payouts. No custodian, no payout delays, no fragmented tooling.",
-  // metadataBase: new URL("https://bracketchain.xyz"),
-  openGraph: {
-    title: "BracketChain — Trustless tournaments on Solana",
-    description:
-      "Run on-chain tournaments with trustless escrow and instant USDC payouts.",
-    siteName: "BracketChain",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "BracketChain — Trustless tournaments on Solana",
-    description:
-      "Run on-chain tournaments with trustless escrow and instant USDC payouts.",
-  },
-  icons: { icon: "/favicon.ico" },
+  title: "Bracketchain",
+  description: "Tournaments platform on Solana",
 };
 
 export default function RootLayout({
@@ -47,9 +34,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
+      className={`${dmSans.variable} ${dmMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="relative min-h-full flex flex-col">
+        <BackgroundGlow />
         <Providers>
           <AppRouterCacheProvider>
             {children}

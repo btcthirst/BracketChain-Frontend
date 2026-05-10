@@ -27,10 +27,8 @@ export function PrizeStep({
     const afterFee = pool * (1 - PROTOCOL_FEE);
     const pctSum = data.payoutEntries.reduce((a, e) => a + e.pct, 0);
 
-    // ── Balance ──────────────────────────────────────────────────────────────
     const { sol, usdc, loading: balanceLoading, refresh: refreshBalance } = useWalletBalance();
 
-    // Required = organizer deposit only (entry fees come from participants)
     const requiredDeposit = parseFloat(data.deposit) || 0;
     const availableBalance = data.token === "SOL" ? sol : data.token === "USDC" ? usdc : null;
 
@@ -38,10 +36,6 @@ export function PrizeStep({
         onChange({ payoutPreset: preset, payoutEntries: [...PAYOUT_PRESETS[preset].entries] });
     }
 
-    // Snap to WTA if current preset's min_participants exceeds maxParticipants
-    // (e.g. user picked Standard then dropped to 2 players). Mirrors the
-    // program-side check in `create_tournament.rs` — without this snap the user
-    // only sees `PresetExceedsParticipants` after signing.
     useEffect(() => {
         if (PAYOUT_PRESETS[data.payoutPreset].minParticipants > detailsData.maxParticipants) {
             onChange({ payoutPreset: "wta", payoutEntries: [...PAYOUT_PRESETS.wta.entries] });
@@ -70,17 +64,72 @@ export function PrizeStep({
 
     if (!connected) {
         return (
-            <div className="flex flex-col items-center justify-center py-16 gap-4">
-                <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
-                    <Trophy className="w-8 h-8 text-blue-600" />
+            <div
+                style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "64px 0",
+                    gap: 16,
+                    textAlign: "center",
+                }}
+            >
+                <div
+                    style={{
+                        width: 64,
+                        height: 64,
+                        borderRadius: "50%",
+                        background: "rgba(34,212,126,0.08)",
+                        border: "1px solid rgba(34,212,126,0.20)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                    }}
+                >
+                    <Trophy size={28} style={{ color: "#22d47e" }} />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-800">Connect your wallet to continue</h3>
-                <p className="text-sm text-gray-500 text-center max-w-xs">
+                <h3
+                    style={{
+                        fontFamily: "'Syne', sans-serif",
+                        fontWeight: 700,
+                        fontSize: "1.1rem",
+                        color: "#f0f1f5",
+                        letterSpacing: "-0.01em",
+                    }}
+                >
+                    Connect your wallet to continue
+                </h3>
+                <p style={{ fontSize: "0.85rem", color: "rgba(240,241,245,0.4)", maxWidth: 300 }}>
                     You need a connected Solana wallet to configure the prize pool and sign the on-chain transaction.
                 </p>
                 <button
                     onClick={onConnect}
-                    className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
+                    style={{
+                        marginTop: 8,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "12px 28px",
+                        background: "#22d47e",
+                        color: "#06070b",
+                        border: "none",
+                        borderRadius: 8,
+                        fontFamily: "'Inter', sans-serif",
+                        fontWeight: 700,
+                        fontSize: "0.875rem",
+                        cursor: "pointer",
+                        transition: "background 0.15s, box-shadow 0.15s",
+                        boxShadow: "0 0 20px rgba(34,212,126,0.30)",
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#16c062";
+                        e.currentTarget.style.boxShadow = "0 0 32px rgba(34,212,126,0.50)";
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "#22d47e";
+                        e.currentTarget.style.boxShadow = "0 0 20px rgba(34,212,126,0.30)";
+                    }}
                 >
                     Connect Wallet
                 </button>
@@ -135,16 +184,26 @@ export function PrizeStep({
                             value={data.deposit}
                             onChange={e => onChange({ deposit: e.target.value })}
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-500">
+                        <span
+                            style={{
+                                position: "absolute",
+                                right: 12,
+                                top: "50%",
+                                transform: "translateY(-50%)",
+                                fontFamily: "'DM Mono', monospace",
+                                fontSize: "0.72rem",
+                                fontWeight: 500,
+                                color: "rgba(240,241,245,0.35)",
+                            }}
+                        >
                             {data.token}
                         </span>
                     </div>
 
-                    {/* Wallet balance display */}
                     {connected && availableBalance !== null && (
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p style={{ fontSize: "0.72rem", color: "rgba(240,241,245,0.3)", marginTop: 4 }}>
                             Wallet balance:{" "}
-                            <span className="font-mono font-medium text-gray-700">
+                            <span style={{ fontFamily: "'DM Mono', monospace", fontWeight: 500, color: "rgba(240,241,245,0.55)" }}>
                                 {availableBalance.toFixed(2)} {data.token === "custom" ? "tokens" : data.token}
                             </span>
                         </p>
@@ -154,7 +213,6 @@ export function PrizeStep({
                     )}
                 </FieldGroup>
 
-                {/* ── Balance warning ── */}
                 <BalanceWarning
                     token={data.token}
                     required={requiredDeposit}
@@ -164,7 +222,18 @@ export function PrizeStep({
                 />
 
                 <div className="flex flex-col gap-3">
-                    <span className="text-sm font-semibold text-gray-800">Payout Structure</span>
+                    <span
+                        style={{
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: "0.68rem",
+                            fontWeight: 500,
+                            color: "rgba(240,241,245,0.45)",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.08em",
+                        }}
+                    >
+                        Payout Structure
+                    </span>
                     <div className="flex flex-wrap gap-2">
                         {(Object.entries(PAYOUT_PRESETS) as [
                             PayoutPreset,
@@ -173,13 +242,6 @@ export function PrizeStep({
                             const isSelected = data.payoutPreset === key;
                             const tooFewPlayers = minParticipants > detailsData.maxParticipants;
                             const enabled = available && !tooFewPlayers;
-                            const baseCls =
-                                "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all";
-                            const cls = !enabled
-                                ? `${baseCls} bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed`
-                                : isSelected
-                                ? `${baseCls} bg-blue-600 border-blue-600 text-white`
-                                : `${baseCls} bg-white border-gray-300 text-gray-600 hover:border-blue-400`;
                             const title = !available
                                 ? "Coming in V2"
                                 : tooFewPlayers
@@ -191,7 +253,22 @@ export function PrizeStep({
                                     onClick={() => enabled && handlePreset(key)}
                                     disabled={!enabled}
                                     title={title}
-                                    className={cls}
+                                    style={{
+                                        padding: "6px 14px",
+                                        borderRadius: 7,
+                                        fontSize: "0.78rem",
+                                        fontWeight: 600,
+                                        border: "1px solid",
+                                        cursor: enabled ? "pointer" : "not-allowed",
+                                        transition: "all 0.15s",
+                                        fontFamily: "'DM Mono', monospace",
+                                        letterSpacing: "0.02em",
+                                        ...(!enabled
+                                            ? { background: "transparent", borderColor: "rgba(255,255,255,0.05)", color: "rgba(240,241,245,0.2)" }
+                                            : isSelected
+                                            ? { background: "rgba(34,212,126,0.12)", borderColor: "rgba(34,212,126,0.35)", color: "#22d47e" }
+                                            : { background: "transparent", borderColor: "rgba(255,255,255,0.1)", color: "rgba(240,241,245,0.5)" }),
+                                    }}
                                 >
                                     {label}
                                 </button>
@@ -201,8 +278,18 @@ export function PrizeStep({
 
                     <div className="flex flex-col gap-2 mt-1">
                         {data.payoutEntries.map((entry, idx) => (
-                            <div key={idx} className="flex items-center gap-3">
-                                <span className="text-sm text-gray-500 w-10 shrink-0">{entry.label}</span>
+                            <div key={idx} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                <span
+                                    style={{
+                                        fontFamily: "'DM Mono', monospace",
+                                        fontSize: "0.75rem",
+                                        color: "rgba(240,241,245,0.35)",
+                                        width: 36,
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    {entry.label}
+                                </span>
                                 <input
                                     type="number"
                                     min="0"
@@ -211,24 +298,69 @@ export function PrizeStep({
                                     value={entry.pct}
                                     onChange={e => handlePctChange(idx, e.target.value)}
                                     disabled={data.payoutPreset !== "custom"}
-                                    className={`w-24 px-2 py-1.5 rounded border text-sm text-right ${data.payoutPreset === "custom"
-                                        ? "border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-blue-400/40 focus:border-blue-500 outline-none"
-                                        : "border-gray-200 bg-gray-50 text-gray-500"
-                                        }`}
+                                    style={{
+                                        width: 80,
+                                        padding: "6px 8px",
+                                        borderRadius: 6,
+                                        border: "1px solid",
+                                        fontSize: "0.82rem",
+                                        textAlign: "right",
+                                        fontFamily: "'DM Mono', monospace",
+                                        outline: "none",
+                                        transition: "border-color 0.15s",
+                                        ...(data.payoutPreset === "custom"
+                                            ? { background: "rgba(30,33,50,0.9)", borderColor: "rgba(255,255,255,0.1)", color: "#f0f1f5" }
+                                            : { background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.05)", color: "rgba(240,241,245,0.3)" }),
+                                    }}
                                 />
-                                <span className="text-sm text-gray-400">%</span>
-                                <span className="text-sm text-gray-600 ml-auto">
+                                <span style={{ fontSize: "0.8rem", color: "rgba(240,241,245,0.3)" }}>%</span>
+                                <span
+                                    style={{
+                                        fontSize: "0.78rem",
+                                        color: "rgba(240,241,245,0.4)",
+                                        marginLeft: "auto",
+                                        fontFamily: "'DM Mono', monospace",
+                                    }}
+                                >
                                     {afterFee > 0 ? `≈ ${((entry.pct / 100) * afterFee).toFixed(2)} ${data.token}` : ""}
                                 </span>
                                 {data.payoutPreset === "custom" && (
-                                    <button onClick={() => removeCustomRow(idx)} className="text-gray-400 hover:text-red-400 text-xs ml-1">✕</button>
+                                    <button
+                                        onClick={() => removeCustomRow(idx)}
+                                        style={{
+                                            background: "transparent",
+                                            border: "none",
+                                            color: "rgba(240,241,245,0.2)",
+                                            cursor: "pointer",
+                                            fontSize: "0.75rem",
+                                            padding: 2,
+                                            transition: "color 0.15s",
+                                        }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.color = "#f04e66"; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(240,241,245,0.2)"; }}
+                                    >
+                                        ✕
+                                    </button>
                                 )}
                             </div>
                         ))}
                         {data.payoutPreset === "custom" && (
                             <button
                                 onClick={addCustomRow}
-                                className="text-xs text-blue-600 hover:text-blue-700 self-start mt-1"
+                                style={{
+                                    alignSelf: "flex-start",
+                                    background: "transparent",
+                                    border: "none",
+                                    fontSize: "0.75rem",
+                                    color: "rgba(34,212,126,0.6)",
+                                    cursor: "pointer",
+                                    padding: 0,
+                                    marginTop: 4,
+                                    transition: "color 0.15s",
+                                    fontFamily: "'Inter', sans-serif",
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.color = "#22d47e"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(34,212,126,0.6)"; }}
                             >
                                 + Add placement
                             </button>
@@ -236,7 +368,13 @@ export function PrizeStep({
                     </div>
 
                     {data.payoutPreset === "custom" && pctSum !== 100 && (
-                        <p className={`text-xs font-medium ${pctSum > 100 ? "text-red-500" : "text-amber-500"}`}>
+                        <p
+                            style={{
+                                fontSize: "0.75rem",
+                                fontWeight: 500,
+                                color: pctSum > 100 ? "#f04e66" : "#f5a623",
+                            }}
+                        >
                             Percentages sum to {pctSum.toFixed(1)}% — must equal 100%
                         </p>
                     )}
@@ -245,49 +383,126 @@ export function PrizeStep({
                     )}
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-700">
-                    <span className="font-semibold">Protocol fee:</span> 3.5% deducted from total prize pool at payout time. Prize amounts shown above are after-fee estimates.
+                {/* Protocol fee notice */}
+                <div
+                    style={{
+                        background: "rgba(34,212,126,0.05)",
+                        border: "1px solid rgba(34,212,126,0.14)",
+                        borderRadius: 8,
+                        padding: "10px 14px",
+                        fontSize: "0.8rem",
+                        color: "rgba(240,241,245,0.45)",
+                    }}
+                >
+                    <span style={{ fontWeight: 600, color: "rgba(34,212,126,0.8)" }}>Protocol fee:</span>{" "}
+                    3.5% deducted from total prize pool at payout time. Prize amounts shown above are after-fee estimates.
                 </div>
             </div>
 
             {/* Live preview */}
             <div className="lg:sticky lg:top-6 h-fit">
-                <div className="bg-[#0a1929] text-white rounded-xl p-5 flex flex-col gap-4">
-                    <div className="flex items-center gap-2 mb-1">
-                        <Trophy className="w-4 h-4 text-yellow-400" />
-                        <span className="text-sm font-semibold text-gray-300">Prize Pool Preview</span>
+                <div
+                    style={{
+                        background: "rgba(13,15,24,0.9)",
+                        border: "1px solid rgba(34,212,126,0.10)",
+                        borderRadius: 12,
+                        padding: 20,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 16,
+                        boxShadow: "0 0 40px rgba(34,212,126,0.04)",
+                    }}
+                >
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <Trophy size={15} style={{ color: "#f5a623" }} />
+                        <span
+                            style={{
+                                fontFamily: "'DM Mono', monospace",
+                                fontSize: "0.7rem",
+                                color: "rgba(240,241,245,0.35)",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.06em",
+                            }}
+                        >
+                            Prize Pool Preview
+                        </span>
                     </div>
 
-                    <div className="text-4xl font-bold text-white">
-                        {pool.toFixed(2)} <span className="text-lg font-normal text-gray-400">{data.token}</span>
+                    <div>
+                        <span
+                            style={{
+                                fontFamily: "'Syne', sans-serif",
+                                fontWeight: 800,
+                                fontSize: "2.2rem",
+                                color: "#f0f1f5",
+                                letterSpacing: "-0.03em",
+                            }}
+                        >
+                            {pool.toFixed(2)}
+                        </span>{" "}
+                        <span style={{ fontSize: "0.9rem", color: "rgba(240,241,245,0.35)", fontFamily: "'DM Mono', monospace" }}>
+                            {data.token}
+                        </span>
                     </div>
 
-                    <div className="flex flex-col gap-1.5 text-xs text-gray-400 border-t border-white/10 pt-3">
-                        <div className="flex justify-between">
-                            <span>Organizer deposit</span>
-                            <span className="text-white">{parseFloat(data.deposit) || 0} {data.token}</span>
-                        </div>
-                        {!detailsData.freeEntry && (
-                            <div className="flex justify-between">
-                                <span>Entry fees ({detailsData.maxParticipants} × {parseFloat(detailsData.entryFee) || 0})</span>
-                                <span className="text-white">{((parseFloat(detailsData.entryFee) || 0) * detailsData.maxParticipants).toFixed(2)} {data.token}</span>
+                    <div
+                        style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 6,
+                            borderTop: "1px solid rgba(255,255,255,0.07)",
+                            paddingTop: 12,
+                        }}
+                    >
+                        {[
+                            { label: "Organizer deposit", value: `${parseFloat(data.deposit) || 0} ${data.token}`, color: undefined },
+                            ...(!detailsData.freeEntry ? [{
+                                label: `Entry fees (${detailsData.maxParticipants} × ${parseFloat(detailsData.entryFee) || 0})`,
+                                value: `${((parseFloat(detailsData.entryFee) || 0) * detailsData.maxParticipants).toFixed(2)} ${data.token}`,
+                                color: undefined,
+                            }] : []),
+                        ].map((row) => (
+                            <div key={row.label} style={{ display: "flex", justifyContent: "space-between" }}>
+                                <span style={{ fontSize: "0.75rem", color: "rgba(240,241,245,0.3)" }}>{row.label}</span>
+                                <span style={{ fontSize: "0.75rem", color: "rgba(240,241,245,0.7)", fontFamily: "'DM Mono', monospace" }}>{row.value}</span>
                             </div>
-                        )}
-                        <div className="flex justify-between border-t border-white/10 pt-1.5 text-red-400">
-                            <span>Protocol fee (3.5%)</span>
-                            <span>−{(pool * PROTOCOL_FEE).toFixed(2)}</span>
+                        ))}
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                borderTop: "1px solid rgba(255,255,255,0.06)",
+                                paddingTop: 6,
+                            }}
+                        >
+                            <span style={{ fontSize: "0.75rem", color: "#f04e66" }}>Protocol fee (3.5%)</span>
+                            <span style={{ fontSize: "0.75rem", color: "#f04e66", fontFamily: "'DM Mono', monospace" }}>
+                                −{(pool * PROTOCOL_FEE).toFixed(2)}
+                            </span>
                         </div>
-                        <div className="flex justify-between font-semibold text-green-400 text-sm pt-0.5">
-                            <span>Net to winners</span>
-                            <span>{afterFee.toFixed(2)} {data.token}</span>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#22d47e" }}>Net to winners</span>
+                            <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#22d47e", fontFamily: "'DM Mono', monospace" }}>
+                                {afterFee.toFixed(2)} {data.token}
+                            </span>
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-1.5 border-t border-white/10 pt-3">
+                    <div
+                        style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 5,
+                            borderTop: "1px solid rgba(255,255,255,0.07)",
+                            paddingTop: 12,
+                        }}
+                    >
                         {data.payoutEntries.map((e, i) => (
-                            <div key={i} className="flex justify-between text-xs">
-                                <span className="text-gray-400">{e.label} — {e.pct}%</span>
-                                <span className="text-white font-medium">
+                            <div key={i} style={{ display: "flex", justifyContent: "space-between" }}>
+                                <span style={{ fontSize: "0.72rem", color: "rgba(240,241,245,0.3)", fontFamily: "'DM Mono', monospace" }}>
+                                    {e.label} — {e.pct}%
+                                </span>
+                                <span style={{ fontSize: "0.72rem", color: "rgba(240,241,245,0.6)", fontFamily: "'DM Mono', monospace" }}>
                                     {afterFee > 0 ? `${((e.pct / 100) * afterFee).toFixed(2)} ${data.token}` : "—"}
                                 </span>
                             </div>

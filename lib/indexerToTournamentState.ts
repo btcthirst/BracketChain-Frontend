@@ -4,6 +4,9 @@ import {
     findMatchPda,
     findParticipantPda,
     findVaultPda,
+    IndexerMatch,
+    IndexerParticipant,
+    IndexerTournament,
     payoutPreset as makePayoutPreset,
     type MatchNode,
     type MatchNodeWithAddress,
@@ -14,9 +17,6 @@ import {
     type TournamentState,
     type TournamentStatusKind,
     type TournamentStatusVariant,
-    type IndexerTournament,
-    type IndexerParticipant,
-    type IndexerMatch,
 } from "@bracketchain/sdk";
 
 // Shape parity with `payoutPreset()` helper. Constructs

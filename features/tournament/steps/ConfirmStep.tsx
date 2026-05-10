@@ -35,10 +35,6 @@ export function ConfirmStep({
     const [showFinalConfirm, setShowFinalConfirm] = useState(false);
     const { fire: fireConfetti } = useConfetti();
 
-    // Fire confetti once on success — defer to next tick so React finishes its commit
-    // before canvas-confetti mutates document.body. Without the deferral, React 19 +
-    // motion's unmount path can race with confetti's DOM appends and throw
-    // `removeChild` NotFoundError in dev mode.
     useEffect(() => {
         if (txState !== "success") return;
         const t = setTimeout(() => { fireConfetti(); }, 0);
@@ -58,44 +54,141 @@ export function ConfirmStep({
     }
 
     // ── Success screen ────────────────────────────────────────────────────────
-    // Plain div (no MotionDiv) — motion's unmount race with canvas-confetti causes
-    // `removeChild` NotFoundError in React 19 dev mode. CSS fade-in is enough.
     if (txState === "success") {
         return (
-            <div className="flex flex-col items-center gap-5 py-12 text-center animate-in fade-in zoom-in-95 duration-200">
-                <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
-                    <CheckCircle2 className="w-10 h-10 text-green-600" />
+            <div
+                style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 20,
+                    padding: "64px 0",
+                    textAlign: "center",
+                    animation: "fadeIn 0.3s ease",
+                }}
+            >
+                <div
+                    style={{
+                        width: 72,
+                        height: 72,
+                        borderRadius: "50%",
+                        background: "rgba(34,212,126,0.10)",
+                        border: "1px solid rgba(34,212,126,0.30)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: "0 0 32px rgba(34,212,126,0.15)",
+                    }}
+                >
+                    <CheckCircle2 size={36} style={{ color: "#22d47e" }} />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900">Tournament Created!</h2>
-                <p className="text-gray-500 max-w-sm">
+                <h2
+                    style={{
+                        fontFamily: "'Syne', sans-serif",
+                        fontWeight: 700,
+                        fontSize: "clamp(1.4rem, 3vw, 2rem)",
+                        color: "#f0f1f5",
+                        letterSpacing: "-0.02em",
+                    }}
+                >
+                    Tournament Created!
+                </h2>
+                <p style={{ fontSize: "0.9rem", color: "rgba(240,241,245,0.4)", maxWidth: 340 }}>
                     Your tournament is now live on Solana. Share the link with participants.
                 </p>
+
                 {shareUrl && (
-                    <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-4 py-2 font-mono text-xs text-gray-700 max-w-full overflow-hidden">
-                        <span className="truncate">{shareUrl}</span>
-                        <button onClick={copyShareUrl} className="text-gray-400 hover:text-gray-700 shrink-0">
-                            {copied
-                                ? <Check className="w-4 h-4 text-green-500" />
-                                : <Copy className="w-4 h-4" />
-                            }
+                    <div
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            background: "rgba(13,15,24,0.9)",
+                            border: "1px solid rgba(255,255,255,0.08)",
+                            borderRadius: 8,
+                            padding: "10px 14px",
+                            maxWidth: "100%",
+                            overflow: "hidden",
+                        }}
+                    >
+                        <span
+                            style={{
+                                fontFamily: "'DM Mono', monospace",
+                                fontSize: "0.72rem",
+                                color: "rgba(240,241,245,0.45)",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                            }}
+                        >
+                            {shareUrl}
+                        </span>
+                        <button
+                            onClick={copyShareUrl}
+                            style={{
+                                background: "transparent",
+                                border: "none",
+                                cursor: "pointer",
+                                flexShrink: 0,
+                                color: copied ? "#22d47e" : "rgba(240,241,245,0.3)",
+                                transition: "color 0.15s",
+                                padding: 2,
+                            }}
+                        >
+                            {copied ? <Check size={15} /> : <Copy size={15} />}
                         </button>
                     </div>
                 )}
+
                 {txSignature && (
                     <a
                         href={SOLANA.explorerTx(txSignature)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700"
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 5,
+                            fontSize: "0.75rem",
+                            color: "rgba(240,241,245,0.3)",
+                            textDecoration: "none",
+                            transition: "color 0.15s",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(240,241,245,0.6)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(240,241,245,0.3)"; }}
                     >
                         View transaction on Solana Explorer
-                        <ExternalLink className="w-3 h-3" />
+                        <ExternalLink size={11} />
                     </a>
                 )}
+
                 {tournamentAddress && (
                     <a
                         href={ROUTES.tournament(tournamentAddress)}
-                        className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
+                        style={{
+                            marginTop: 8,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "12px 28px",
+                            background: "#22d47e",
+                            color: "#06070b",
+                            borderRadius: 8,
+                            fontWeight: 700,
+                            fontSize: "0.875rem",
+                            textDecoration: "none",
+                            fontFamily: "'Inter', sans-serif",
+                            transition: "background 0.15s, box-shadow 0.15s",
+                            boxShadow: "0 0 20px rgba(34,212,126,0.30)",
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#16c062";
+                            e.currentTarget.style.boxShadow = "0 0 32px rgba(34,212,126,0.50)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "#22d47e";
+                            e.currentTarget.style.boxShadow = "0 0 20px rgba(34,212,126,0.30)";
+                        }}
                     >
                         View Tournament →
                     </a>
@@ -142,16 +235,64 @@ export function ConfirmStep({
     return (
         <div className="flex flex-col gap-6">
             {/* Summary table */}
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <div className="bg-gray-50 border-b border-gray-200 px-5 py-3">
-                    <h3 className="text-sm font-semibold text-gray-700">Tournament Summary</h3>
+            <div
+                style={{
+                    background: "rgba(13,15,24,0.8)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: 12,
+                    overflow: "hidden",
+                }}
+            >
+                <div
+                    style={{
+                        borderBottom: "1px solid rgba(255,255,255,0.06)",
+                        padding: "12px 20px",
+                    }}
+                >
+                    <h3
+                        style={{
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: "0.68rem",
+                            fontWeight: 500,
+                            color: "rgba(240,241,245,0.35)",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.08em",
+                        }}
+                    >
+                        Tournament Summary
+                    </h3>
                 </div>
-                <table className="w-full text-sm">
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <tbody>
-                        {rows.map(([label, value]) => (
-                            <tr key={label} className="border-b border-gray-100 last:border-0">
-                                <td className="px-5 py-3 text-gray-500 w-40">{label}</td>
-                                <td className="px-5 py-3 text-gray-900 font-medium">{value}</td>
+                        {rows.map(([label, value], i) => (
+                            <tr
+                                key={label}
+                                style={{
+                                    borderBottom: i < rows.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                                }}
+                            >
+                                <td
+                                    style={{
+                                        padding: "11px 20px",
+                                        fontSize: "0.78rem",
+                                        color: "rgba(240,241,245,0.35)",
+                                        width: 160,
+                                        fontFamily: "'DM Mono', monospace",
+                                        letterSpacing: "0.02em",
+                                    }}
+                                >
+                                    {label}
+                                </td>
+                                <td
+                                    style={{
+                                        padding: "11px 20px",
+                                        fontSize: "0.85rem",
+                                        color: "#f0f1f5",
+                                        fontWeight: 500,
+                                    }}
+                                >
+                                    {value}
+                                </td>
                             </tr>
                         ))}
                     </tbody>
@@ -159,55 +300,140 @@ export function ConfirmStep({
             </div>
 
             {/* Cost */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl px-5 py-4">
-                <p className="text-sm font-semibold text-blue-800">Cost to create</p>
-                <p className="text-2xl font-bold text-blue-900 mt-0.5">
-                    {cost.toFixed(3)} {prizeData.token}
+            <div
+                style={{
+                    background: "rgba(34,212,126,0.06)",
+                    border: "1px solid rgba(34,212,126,0.16)",
+                    borderRadius: 12,
+                    padding: "16px 20px",
+                }}
+            >
+                <p
+                    style={{
+                        fontFamily: "'DM Mono', monospace",
+                        fontSize: "0.68rem",
+                        color: "rgba(34,212,126,0.7)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                        marginBottom: 6,
+                    }}
+                >
+                    Cost to create
                 </p>
-                <p className="text-xs text-blue-600 mt-1">
+                <p
+                    style={{
+                        fontFamily: "'Syne', sans-serif",
+                        fontWeight: 800,
+                        fontSize: "1.8rem",
+                        color: "#f0f1f5",
+                        letterSpacing: "-0.02em",
+                        marginBottom: 4,
+                    }}
+                >
+                    {cost.toFixed(3)}{" "}
+                    <span style={{ fontSize: "1rem", fontWeight: 500, color: "rgba(240,241,245,0.4)", fontFamily: "'DM Mono', monospace" }}>
+                        {prizeData.token}
+                    </span>
+                </p>
+                <p style={{ fontSize: "0.75rem", color: "rgba(240,241,245,0.35)" }}>
                     {parseFloat(prizeData.deposit) || 0} {prizeData.token} deposit + ~0.001 SOL transaction fee
                 </p>
             </div>
 
             {/* ── MVP scope issues (block Create) ─────────────────────────────── */}
             {isBlocked && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                        <p className="text-sm font-semibold text-amber-800">
+                <div
+                    style={{
+                        background: "rgba(245,166,35,0.06)",
+                        border: "1px solid rgba(245,166,35,0.22)",
+                        borderRadius: 12,
+                        padding: "14px 16px",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 12,
+                    }}
+                >
+                    <AlertCircle size={16} style={{ color: "#f5a623", flexShrink: 0, marginTop: 2 }} />
+                    <div style={{ flex: 1 }}>
+                        <p
+                            style={{
+                                fontSize: "0.85rem",
+                                fontWeight: 600,
+                                color: "#f5a623",
+                                marginBottom: 4,
+                                fontFamily: "'Inter', sans-serif",
+                            }}
+                        >
                             {scopeIssues.length === 1 ? "One thing to fix before you can create" : "A few things to fix before you can create"}
                         </p>
-                        <ul className="text-sm text-amber-700 mt-1 list-disc list-inside space-y-0.5">
+                        <ul
+                            style={{
+                                fontSize: "0.8rem",
+                                color: "rgba(245,166,35,0.75)",
+                                margin: 0,
+                                paddingLeft: 18,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 2,
+                            }}
+                        >
                             {scopeIssues.map(msg => <li key={msg}>{msg}</li>)}
                         </ul>
                     </div>
                 </div>
             )}
 
-            {/* ── Error state ──────────────────────────────────────────────────── */}
+            {/* Error state */}
             {txState === "error" && (
                 <MotionDiv
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 flex items-start gap-3"
+                    style={{
+                        background: "rgba(240,78,102,0.07)",
+                        border: "1px solid rgba(240,78,102,0.25)",
+                        borderRadius: 12,
+                        padding: "14px 16px",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 12,
+                    }}
                 >
-                    <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                        <p className="text-sm font-semibold text-red-800">Transaction failed</p>
-                        <p className="text-sm text-red-700 mt-0.5 break-words">{txError}</p>
+                    <AlertCircle size={16} style={{ color: "#f04e66", flexShrink: 0, marginTop: 2 }} />
+                    <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "#f04e66", marginBottom: 4 }}>
+                            Transaction failed
+                        </p>
+                        <p style={{ fontSize: "0.8rem", color: "rgba(240,78,102,0.75)", wordBreak: "break-word" }}>
+                            {txError}
+                        </p>
                     </div>
-                    {/* Retry button inside the error banner */}
                     <button
                         onClick={onRetry}
-                        className="shrink-0 flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-800 bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors"
+                        style={{
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 5,
+                            fontSize: "0.75rem",
+                            fontWeight: 600,
+                            color: "#f04e66",
+                            background: "rgba(240,78,102,0.10)",
+                            border: "none",
+                            borderRadius: 6,
+                            padding: "6px 10px",
+                            cursor: "pointer",
+                            transition: "background 0.15s",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,78,102,0.18)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,78,102,0.10)"; }}
                     >
-                        <RefreshCw className="w-3.5 h-3.5" />
+                        <RefreshCw size={12} />
                         Retry
                     </button>
                 </MotionDiv>
             )}
 
-            {/* ── Primary action button ─────────────────────────────────────── */}
+            {/* Primary action */}
             <button
                 onClick={
                     txState === "error"
@@ -216,21 +442,51 @@ export function ConfirmStep({
                 }
                 disabled={isProcessing || isBlocked}
                 title={isBlocked ? "Resolve the issues above to continue" : undefined}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-colors"
+                style={{
+                    width: "100%",
+                    padding: "14px 24px",
+                    borderRadius: 10,
+                    border: "none",
+                    fontFamily: "'Inter', sans-serif",
+                    fontWeight: 700,
+                    fontSize: "1rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                    cursor: (isProcessing || isBlocked) ? "not-allowed" : "pointer",
+                    transition: "background 0.15s, box-shadow 0.15s, opacity 0.15s",
+                    background: (isProcessing || isBlocked) ? "rgba(34,212,126,0.4)" : "#22d47e",
+                    color: "#06070b",
+                    boxShadow: (isProcessing || isBlocked) ? "none" : "0 0 24px rgba(34,212,126,0.30)",
+                    opacity: (isProcessing || isBlocked) ? 0.7 : 1,
+                }}
+                onMouseEnter={(e) => {
+                    if (!isProcessing && !isBlocked) {
+                        e.currentTarget.style.background = "#16c062";
+                        e.currentTarget.style.boxShadow = "0 0 36px rgba(34,212,126,0.50)";
+                    }
+                }}
+                onMouseLeave={(e) => {
+                    if (!isProcessing && !isBlocked) {
+                        e.currentTarget.style.background = "#22d47e";
+                        e.currentTarget.style.boxShadow = "0 0 24px rgba(34,212,126,0.30)";
+                    }
+                }}
             >
                 {txState === "signing" && (
-                    <><Loader2 className="w-5 h-5 animate-spin" /> Awaiting wallet approval…</>
+                    <><Loader2 size={18} className="animate-spin" /> Awaiting wallet approval…</>
                 )}
                 {txState === "pending" && (
-                    <><Loader2 className="w-5 h-5 animate-spin" /> Creating tournament on Solana…</>
+                    <><Loader2 size={18} className="animate-spin" /> Creating tournament on Solana…</>
                 )}
                 {txState === "idle" && (isBlocked ? <>Fix issues to continue</> : <>Create Tournament</>)}
                 {txState === "error" && (
-                    <><RefreshCw className="w-5 h-5" /> Try Again</>
+                    <><RefreshCw size={18} /> Try Again</>
                 )}
             </button>
 
-            <p className="text-center text-xs text-gray-400">
+            <p style={{ textAlign: "center", fontSize: "0.75rem", color: "rgba(240,241,245,0.2)" }}>
                 {isBlocked
                     ? "Resolve the issues above, then return here to sign and submit."
                     : "This will open your connected wallet to sign a Solana transaction."}
@@ -238,19 +494,80 @@ export function ConfirmStep({
 
             {/* ── Final pre-sign confirmation ─────────────────────────────── */}
             {showFinalConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-5 p-6">
-                        <h3 className="font-bold text-gray-900">Create this tournament on-chain?</h3>
+                <div
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        zIndex: 50,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 16,
+                        background: "rgba(0,0,0,0.65)",
+                        backdropFilter: "blur(4px)",
+                    }}
+                >
+                    <div
+                        style={{
+                            background: "rgba(13,15,24,0.98)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            borderRadius: 16,
+                            boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
+                            width: "100%",
+                            maxWidth: 384,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 20,
+                            padding: 24,
+                        }}
+                    >
+                        <h3
+                            style={{
+                                fontFamily: "'Syne', sans-serif",
+                                fontWeight: 700,
+                                fontSize: "1rem",
+                                color: "#f0f1f5",
+                                letterSpacing: "-0.01em",
+                                margin: 0,
+                            }}
+                        >
+                            Create this tournament on-chain?
+                        </h3>
 
-                        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                            <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                            <div className="flex flex-col gap-1">
-                                <p className="text-sm font-semibold text-amber-800">
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "flex-start",
+                                gap: 12,
+                                background: "rgba(245,166,35,0.07)",
+                                border: "1px solid rgba(245,166,35,0.22)",
+                                borderRadius: 12,
+                                padding: "12px 14px",
+                            }}
+                        >
+                            <AlertCircle size={18} style={{ color: "#f5a623", flexShrink: 0, marginTop: 2 }} />
+                            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                <p
+                                    style={{
+                                        fontSize: "0.85rem",
+                                        fontWeight: 600,
+                                        color: "#f5a623",
+                                        margin: 0,
+                                        fontFamily: "'Inter', sans-serif",
+                                    }}
+                                >
                                     {depositAmount > 0
                                         ? `You'll deposit ${depositAmount} ${prizeData.token} into the prize vault.`
                                         : "Your tournament will be created on-chain."}
                                 </p>
-                                <p className="text-xs text-amber-700">
+                                <p
+                                    style={{
+                                        fontSize: "0.78rem",
+                                        color: "rgba(245,166,35,0.75)",
+                                        margin: 0,
+                                        lineHeight: 1.5,
+                                    }}
+                                >
                                     Once signed and confirmed, the tournament is live. The vault is unlocked
                                     only by completion or cancellation — both of which require another
                                     on-chain transaction.
@@ -258,10 +575,30 @@ export function ConfirmStep({
                             </div>
                         </div>
 
-                        <div className="flex gap-3">
+                        <div style={{ display: "flex", gap: 12 }}>
                             <button
                                 onClick={() => setShowFinalConfirm(false)}
-                                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                style={{
+                                    flex: 1,
+                                    padding: "10px 0",
+                                    borderRadius: 10,
+                                    border: "1px solid rgba(255,255,255,0.1)",
+                                    background: "transparent",
+                                    color: "rgba(240,241,245,0.5)",
+                                    fontFamily: "'Inter', sans-serif",
+                                    fontWeight: 600,
+                                    fontSize: "0.875rem",
+                                    cursor: "pointer",
+                                    transition: "border-color 0.15s, color 0.15s",
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
+                                    e.currentTarget.style.color = "#f0f1f5";
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+                                    e.currentTarget.style.color = "rgba(240,241,245,0.5)";
+                                }}
                             >
                                 Back
                             </button>
@@ -270,7 +607,28 @@ export function ConfirmStep({
                                     setShowFinalConfirm(false);
                                     onConfirm();
                                 }}
-                                className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+                                style={{
+                                    flex: 1,
+                                    padding: "10px 0",
+                                    borderRadius: 10,
+                                    border: "none",
+                                    background: "#22d47e",
+                                    color: "#06070b",
+                                    fontFamily: "'Inter', sans-serif",
+                                    fontWeight: 700,
+                                    fontSize: "0.875rem",
+                                    cursor: "pointer",
+                                    transition: "background 0.15s, box-shadow 0.15s",
+                                    boxShadow: "0 0 18px rgba(34,212,126,0.28)",
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = "#16c062";
+                                    e.currentTarget.style.boxShadow = "0 0 28px rgba(34,212,126,0.48)";
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = "#22d47e";
+                                    e.currentTarget.style.boxShadow = "0 0 18px rgba(34,212,126,0.28)";
+                                }}
                             >
                                 {depositAmount > 0
                                     ? `Sign & deposit ${depositAmount} ${prizeData.token}`
