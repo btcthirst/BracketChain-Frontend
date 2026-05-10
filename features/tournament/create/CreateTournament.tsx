@@ -5,7 +5,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ROUTES } from "@/constants/links";
+import { NAV_LINKS } from "@/constants/links";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MotionDiv } from "@/components/ui/motion-wraper";
@@ -280,7 +280,7 @@ export function CreateTournament() {
                     }}
                 >
                     <a
-                        href={ROUTES.home}
+                        href={NAV_LINKS[0].href}
                         style={{
                             display: "flex",
                             alignItems: "center",

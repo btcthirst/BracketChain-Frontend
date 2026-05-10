@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { NAV_LINKS } from "@/constants/links";
 import { ConnectButton } from "@/components/ConnectButton";
-import { ROUTES } from "@/constants/links";
 
 export function Navbar() {
     return (
@@ -11,92 +11,71 @@ export function Navbar() {
                 position: "sticky",
                 top: 0,
                 zIndex: 50,
-                background: "rgba(6,7,11,0.85)",
-                backdropFilter: "blur(16px)",
-                borderBottom: "1px solid rgba(255,255,255,0.07)",
+                padding: "12px 24px",
             }}
         >
             <div
                 style={{
                     maxWidth: 1120,
                     margin: "0 auto",
-                    padding: "0 24px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    height: 60,
+                    height: 58,
+                    background: "rgba(10,11,16,0.96)",
+                    backdropFilter: "blur(20px)",
+                    border: "1px solid rgba(255,255,255,0.09)",
+                    borderRadius: 14,
+                    padding: "0 20px",
                 }}
             >
                 {/* Logo */}
                 <Link
-                    href={ROUTES.home}
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        textDecoration: "none",
-                    }}
+                    href={NAV_LINKS[0].href}
+                    style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", flexShrink: 0 }}
                 >
-                    {/* Geometric B mark */}
-                    <img src="/logo.svg" alt="BracketChain" width={32} height={32} />
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                        <span
-                            style={{
-                                fontFamily: "'Syne', sans-serif",
-                                fontWeight: 700,
-                                fontSize: "0.95rem",
-                                color: "#f0f1f5",
-                                letterSpacing: "-0.01em",
-                                lineHeight: 1.15,
-                            }}
-                        >
-                            BracketChain
-                        </span>
-                        <span
-                            style={{
-                                fontSize: "0.55rem",
-                                color: "rgba(240,241,245,0.38)",
-                                letterSpacing: "0.1em",
-                                lineHeight: 1.2,
-                            }}
-                        >
-                            tournament protocol
-                        </span>
-                    </div>
+                    <img src="/logo.svg" alt="BracketChain" width={28} height={28} />
+                    <span
+                        style={{
+                            fontFamily: "'Syne', sans-serif",
+                            fontWeight: 700,
+                            fontSize: "1rem",
+                            color: "#f0f1f5",
+                            letterSpacing: "-0.01em",
+                        }}
+                    >
+                        BracketChain
+                    </span>
                 </Link>
 
-                {/* Nav links */}
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
-                    }}
-                    className="hidden md:flex"
-                >
-                    {[
-                        { label: "Explore", href: ROUTES.explore },
-                        { label: "About", href: ROUTES.about },
-                    ].map((item) => (
+                {/* Nav links — hidden on mobile */}
+                <div className="hidden md:flex" style={{ alignItems: "center", gap: 2 }}>
+                    {NAV_LINKS.filter((l) => l.label !== "HOME").map((item) => (
                         <Link
                             key={item.label}
                             href={item.href}
                             style={{
                                 padding: "6px 14px",
-                                color: "rgba(240,241,245,0.6)",
-                                fontSize: "0.85rem",
+                                color: "rgba(240,241,245,0.5)",
+                                fontSize: "0.7rem",
+                                fontFamily: "'DM Mono', monospace",
                                 fontWeight: 500,
+                                letterSpacing: "0.09em",
                                 textDecoration: "none",
-                                borderRadius: 6,
-                                transition: "color 0.15s, background 0.15s",
+                                borderRadius: 20,
+                                background: "transparent",
+                                transition: "color 0.15s, background 0.15s, font-weight 0.15s",
+                                whiteSpace: "nowrap",
                             }}
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.color = "#f0f1f5";
-                                e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                                e.currentTarget.style.background = "rgba(255,255,255,0.1)";
+                                e.currentTarget.style.fontWeight = "700";
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.color = "rgba(240,241,245,0.6)";
+                                e.currentTarget.style.color = "rgba(240,241,245,0.5)";
                                 e.currentTarget.style.background = "transparent";
+                                e.currentTarget.style.fontWeight = "500";
                             }}
                         >
                             {item.label}
@@ -104,6 +83,7 @@ export function Navbar() {
                     ))}
                 </div>
 
+                {/* CTA */}
                 <ConnectButton />
             </div>
         </nav>
