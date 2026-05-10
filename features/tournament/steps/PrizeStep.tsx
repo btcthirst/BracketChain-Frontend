@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Trophy } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { inputCls, totalPool } from "../utils/utils";
 import { PROTOCOL_FEE, PAYOUT_PRESETS, TOKEN_INFO } from "@/constants/tournament";
 import { DetailsData, PayoutPreset, PrizeData, Token } from "@/types/tournament";
@@ -103,36 +104,9 @@ export function PrizeStep({
                 <p style={{ fontSize: "0.85rem", color: "rgba(240,241,245,0.4)", maxWidth: 300 }}>
                     You need a connected Solana wallet to configure the prize pool and sign the on-chain transaction.
                 </p>
-                <button
-                    onClick={onConnect}
-                    style={{
-                        marginTop: 8,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "12px 28px",
-                        background: "#22d47e",
-                        color: "#06070b",
-                        border: "none",
-                        borderRadius: 8,
-                        fontFamily: "'Inter', sans-serif",
-                        fontWeight: 700,
-                        fontSize: "0.875rem",
-                        cursor: "pointer",
-                        transition: "background 0.15s, box-shadow 0.15s",
-                        boxShadow: "0 0 20px rgba(34,212,126,0.30)",
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#16c062";
-                        e.currentTarget.style.boxShadow = "0 0 32px rgba(34,212,126,0.50)";
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "#22d47e";
-                        e.currentTarget.style.boxShadow = "0 0 20px rgba(34,212,126,0.30)";
-                    }}
-                >
+                <Button variant="primary" onClick={onConnect} className="mt-2 px-7">
                     Connect Wallet
-                </button>
+                </Button>
             </div>
         );
     }

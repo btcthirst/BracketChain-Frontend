@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { TournamentView, TournamentStatus, TournamentFormat } from "@/types/tournament";
 import { CountdownTimer } from "@/components/ui/CountdownTimer";
 import { useDeadlineReached } from "@/hooks/useDeadlineReached";
+import { Button } from "@/components/ui/button";
 
 const STATUS_STYLES: Record<TournamentStatus, React.CSSProperties> = {
     registration: { background: "rgba(34,212,126,0.08)", color: "#22d47e",             border: "1px solid rgba(34,212,126,0.22)" },
@@ -88,31 +89,12 @@ export function TournamentHeader({ tournament }: { tournament: TournamentView })
                         </div>
 
                         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                            <button
-                                onClick={handleShare}
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 6,
-                                    padding: "7px 14px",
-                                    borderRadius: 8,
-                                    border: "1px solid rgba(255,255,255,0.12)",
-                                    background: "transparent",
-                                    color: "rgba(240,241,245,0.55)",
-                                    fontFamily: "'Inter', sans-serif",
-                                    fontWeight: 600,
-                                    fontSize: "0.8rem",
-                                    cursor: "pointer",
-                                    transition: "border-color 0.15s, color 0.15s",
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"; e.currentTarget.style.color = "#f0f1f5"; }}
-                                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = "rgba(240,241,245,0.55)"; }}
-                            >
+                            <Button variant="outline" size="sm" onClick={handleShare}>
                                 {copied
-                                    ? <><Check style={{ width: 14, height: 14, color: "#22d47e" }} /> Copied!</>
-                                    : <><Share2 style={{ width: 14, height: 14 }} /> Share</>
+                                    ? <><Check className="size-[14px] text-accent" /> Copied!</>
+                                    : <><Share2 className="size-[14px]" /> Share</>
                                 }
-                            </button>
+                            </Button>
                             <a
                                 href={`https://twitter.com/intent/tweet?text=${twitterText}`}
                                 target="_blank"

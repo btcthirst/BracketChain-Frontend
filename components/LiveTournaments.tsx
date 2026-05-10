@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Users, Clock, Trophy, RefreshCw, PlusCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { MotionDiv } from "@/components/ui/motion-wraper";
 import { ROUTES } from "@/constants/links";
 import { useTournaments } from "@/hooks/useTournaments";
@@ -71,25 +72,12 @@ function EmptyState() {
                     Be the first to create one and start competing on-chain.
                 </p>
             </div>
-            <Link
-                href={ROUTES.create}
-                style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 7,
-                    padding: "10px 20px",
-                    background: "#22d47e",
-                    color: "#06070b",
-                    borderRadius: 8,
-                    fontWeight: 600,
-                    fontSize: "0.85rem",
-                    textDecoration: "none",
-                    fontFamily: "'Inter', sans-serif",
-                }}
-            >
-                <PlusCircle size={14} />
-                Create the first tournament
-            </Link>
+            <Button variant="primary" asChild>
+                <Link href={ROUTES.create}>
+                    <PlusCircle className="size-[14px]" />
+                    Create the first tournament
+                </Link>
+            </Button>
         </div>
     );
 }

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ROUTES } from "@/constants/links";
 import { ChevronRight, ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { MotionDiv } from "@/components/ui/motion-wraper";
 import { PAYOUT_PRESETS } from "@/constants/tournament";
 import { validateStep1, validateStep2, type Step2Errors } from "../steps/ValidateState";
@@ -365,60 +366,19 @@ export function CreateTournament() {
                             borderTop: "1px solid rgba(255,255,255,0.07)",
                         }}
                     >
-                        <button
-                            onClick={step === 0 ? () => router.push("/") : handleBack}
+                        <Button
+                            variant="ghost"
                             disabled={isProcessing}
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 6,
-                                background: "transparent",
-                                border: "none",
-                                color: "rgba(240,241,245,0.45)",
-                                fontSize: "0.875rem",
-                                fontWeight: 500,
-                                cursor: isProcessing ? "not-allowed" : "pointer",
-                                opacity: isProcessing ? 0.4 : 1,
-                                transition: "color 0.15s",
-                                fontFamily: "'Inter', sans-serif",
-                            }}
-                            onMouseEnter={(e) => { if (!isProcessing) e.currentTarget.style.color = "rgba(240,241,245,0.85)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(240,241,245,0.45)"; }}
+                            onClick={step === 0 ? () => router.push("/") : handleBack}
                         >
-                            <ChevronLeft size={15} />
+                            <ChevronLeft className="size-[15px]" />
                             {step === 0 ? "Cancel" : "Back"}
-                        </button>
+                        </Button>
                         {step < 2 && (
-                            <button
-                                onClick={handleNext}
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 7,
-                                    padding: "10px 22px",
-                                    background: "#22d47e",
-                                    color: "#06070b",
-                                    border: "none",
-                                    borderRadius: 8,
-                                    fontFamily: "'Inter', sans-serif",
-                                    fontWeight: 700,
-                                    fontSize: "0.875rem",
-                                    cursor: "pointer",
-                                    transition: "background 0.15s, box-shadow 0.15s",
-                                    boxShadow: "0 0 18px rgba(34,212,126,0.28)",
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = "#16c062";
-                                    e.currentTarget.style.boxShadow = "0 0 28px rgba(34,212,126,0.48)";
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = "#22d47e";
-                                    e.currentTarget.style.boxShadow = "0 0 18px rgba(34,212,126,0.28)";
-                                }}
-                            >
+                            <Button variant="primary" onClick={handleNext}>
                                 Next
-                                <ChevronRight size={15} />
-                            </button>
+                                <ChevronRight className="size-[15px]" />
+                            </Button>
                         )}
                     </div>
                 )}

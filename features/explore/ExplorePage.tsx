@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import { FilterBar } from "./components/FilterBar";
 import { TournamentCard } from "./components/TournamentCard";
 import { Search, Plus, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useExplore, type ExploreFilters } from "@/hooks/useExplore";
 import Link from "next/link";
 import { ROUTES } from "@/constants/links";
@@ -109,40 +110,15 @@ export function ExplorePage() {
 
                         {state.hasMore && (
                             <div style={{ display: "flex", justifyContent: "center", paddingBottom: 40 }}>
-                                <button
+                                <Button
+                                    variant="outline"
                                     onClick={loadMore}
                                     disabled={state.status === "loading"}
-                                    style={{
-                                        display: "inline-flex",
-                                        alignItems: "center",
-                                        gap: 8,
-                                        padding: "12px 32px",
-                                        background: "transparent",
-                                        border: "1px solid rgba(255,255,255,0.12)",
-                                        borderRadius: 10,
-                                        color: "rgba(240,241,245,0.55)",
-                                        fontFamily: "'Inter', sans-serif",
-                                        fontWeight: 600,
-                                        fontSize: "0.875rem",
-                                        cursor: state.status === "loading" ? "not-allowed" : "pointer",
-                                        transition: "border-color 0.15s, color 0.15s, background 0.15s",
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (state.status !== "loading") {
-                                            e.currentTarget.style.borderColor = "rgba(34,212,126,0.3)";
-                                            e.currentTarget.style.color = "#22d47e";
-                                            e.currentTarget.style.background = "rgba(34,212,126,0.04)";
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)";
-                                        e.currentTarget.style.color = "rgba(240,241,245,0.55)";
-                                        e.currentTarget.style.background = "transparent";
-                                    }}
+                                    className="px-8"
                                 >
                                     {state.status === "loading" && <RefreshCw size={15} className="animate-spin" />}
                                     Load More Tournaments
-                                </button>
+                                </Button>
                             </div>
                         )}
                     </div>
@@ -238,48 +214,16 @@ function EmptyState({ onClear }: { onClear: () => void }) {
                 </p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <button
-                    onClick={onClear}
-                    style={{
-                        padding: "9px 20px",
-                        background: "transparent",
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        borderRadius: 8,
-                        color: "rgba(240,241,245,0.5)",
-                        fontSize: "0.875rem",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        fontFamily: "'Inter', sans-serif",
-                        transition: "border-color 0.15s, color 0.15s",
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"; e.currentTarget.style.color = "#f0f1f5"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = "rgba(240,241,245,0.5)"; }}
-                >
+                <Button variant="outline" onClick={onClear}>
                     Clear Filters
-                </button>
+                </Button>
                 <span style={{ fontSize: "0.78rem", color: "rgba(240,241,245,0.2)" }}>or</span>
-                <Link
-                    href={ROUTES.create}
-                    style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        padding: "9px 20px",
-                        background: "#22d47e",
-                        color: "#06070b",
-                        borderRadius: 8,
-                        fontWeight: 700,
-                        fontSize: "0.875rem",
-                        textDecoration: "none",
-                        fontFamily: "'Inter', sans-serif",
-                        transition: "background 0.15s",
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "#16c062"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "#22d47e"; }}
-                >
-                    <Plus size={14} />
-                    Create one
-                </Link>
+                <Button variant="primary" asChild>
+                    <Link href={ROUTES.create}>
+                        <Plus className="size-[14px]" />
+                        Create one
+                    </Link>
+                </Button>
             </div>
         </div>
     );
@@ -318,26 +262,9 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
                 Unable to load tournaments
             </p>
             <p style={{ fontSize: "0.85rem", color: "rgba(240,241,245,0.35)" }}>Please try again.</p>
-            <button
-                onClick={onRetry}
-                style={{
-                    marginTop: 4,
-                    padding: "9px 24px",
-                    background: "transparent",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    borderRadius: 8,
-                    color: "rgba(240,241,245,0.5)",
-                    fontSize: "0.875rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    fontFamily: "'Inter', sans-serif",
-                    transition: "border-color 0.15s, color 0.15s",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"; e.currentTarget.style.color = "#f0f1f5"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = "rgba(240,241,245,0.5)"; }}
-            >
+            <Button variant="outline" onClick={onRetry} className="mt-1">
                 Retry
-            </button>
+            </Button>
         </div>
     );
 }

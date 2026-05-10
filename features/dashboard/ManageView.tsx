@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArrowLeft, RefreshCw, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useWallet } from "@solana/wallet-adapter-react";
 import type { Match } from "@/types/tournament";
 import { useTournamentView } from "@/hooks/useTournamentView";
@@ -236,25 +237,9 @@ export function ManageView({ tournamentId, onBack }: Props) {
                                                     {match.playerA?.display ?? "TBD"} vs {match.playerB?.display ?? "TBD"}
                                                 </span>
                                             </div>
-                                            <button
-                                                onClick={() => setReportMatch(match)}
-                                                style={{
-                                                    padding: "7px 16px",
-                                                    background: "#22d47e",
-                                                    color: "#06070b",
-                                                    border: "none",
-                                                    borderRadius: 8,
-                                                    fontFamily: "'Inter', sans-serif",
-                                                    fontWeight: 700,
-                                                    fontSize: "0.75rem",
-                                                    cursor: "pointer",
-                                                    transition: "background 0.15s",
-                                                }}
-                                                onMouseEnter={e => (e.currentTarget.style.background = "#16c062")}
-                                                onMouseLeave={e => (e.currentTarget.style.background = "#22d47e")}
-                                            >
+                                            <Button variant="primary" size="sm" onClick={() => setReportMatch(match)}>
                                                 Report Result
-                                            </button>
+                                            </Button>
                                         </div>
                                     ))}
                                 </div>

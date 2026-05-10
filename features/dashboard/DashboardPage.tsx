@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { PlusCircle, RefreshCw, Wallet } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Navbar } from "@/components/Navbar";
@@ -37,12 +38,9 @@ function WalletGate() {
                     Access your personalized tournament dashboard by connecting your Solana wallet.
                 </p>
             </div>
-            <button
-                onClick={() => setVisible(true)}
-                className="bg-[#22d47e] hover:bg-[#16c062] text-[#06070b] px-10 py-4 rounded-xl font-bold transition-all shadow-[0_0_20px_rgba(34,212,126,0.3)] hover:scale-[1.02] active:scale-[0.98]"
-            >
+            <Button variant="primary" size="lg" onClick={() => setVisible(true)} className="px-10">
                 Connect Wallet
-            </button>
+            </Button>
         </div>
     );
 }
@@ -97,29 +95,12 @@ function EmptyState({ filter }: { filter: DashboardFilter }) {
                 </p>
             </div>
             {!isFiltered && (
-                <Link
-                    href={ROUTES.create}
-                    style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 7,
-                        padding: "10px 22px",
-                        background: "#22d47e",
-                        color: "#06070b",
-                        borderRadius: 8,
-                        fontFamily: "'Inter', sans-serif",
-                        fontWeight: 700,
-                        fontSize: "0.875rem",
-                        textDecoration: "none",
-                        boxShadow: "0 0 18px rgba(34,212,126,0.28)",
-                        transition: "background 0.15s, box-shadow 0.15s",
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "#16c062"; e.currentTarget.style.boxShadow = "0 0 28px rgba(34,212,126,0.48)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "#22d47e"; e.currentTarget.style.boxShadow = "0 0 18px rgba(34,212,126,0.28)"; }}
-                >
-                    <PlusCircle style={{ width: 15, height: 15 }} />
-                    Create Your First Tournament
-                </Link>
+                <Button variant="primary" asChild>
+                    <Link href={ROUTES.create}>
+                        <PlusCircle className="size-[15px]" />
+                        Create Your First Tournament
+                    </Link>
+                </Button>
             )}
         </div>
     );
@@ -132,12 +113,9 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
         <div className="flex flex-col items-center justify-center py-16 gap-4 bg-red-500/5 rounded-2xl border border-red-500/20 text-center">
             <RefreshCw className="w-8 h-8 text-red-400 opacity-50" />
             <p className="text-sm text-red-200/60">Failed to synchronize with the blockchain.</p>
-            <button
-                onClick={onRetry}
-                className="flex items-center gap-2 text-sm text-[#22d47e] hover:underline"
-            >
+            <Button variant="link" onClick={onRetry} className="text-sm">
                 <RefreshCw className="w-4 h-4" /> Retry Connection
-            </button>
+            </Button>
         </div>
     );
 }
@@ -200,29 +178,12 @@ function DashboardContent() {
                         <span className="text-xs font-mono uppercase tracking-widest" style={{ color: "rgba(240,241,245,0.3)" }}>{walletDisplay}</span>
                     </div>
                 </div>
-                <Link
-                    href={ROUTES.create}
-                    style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 7,
-                        padding: "10px 22px",
-                        background: "#22d47e",
-                        color: "#06070b",
-                        borderRadius: 8,
-                        fontFamily: "'Inter', sans-serif",
-                        fontWeight: 700,
-                        fontSize: "0.875rem",
-                        textDecoration: "none",
-                        boxShadow: "0 0 18px rgba(34,212,126,0.28)",
-                        transition: "background 0.15s, box-shadow 0.15s",
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "#16c062"; e.currentTarget.style.boxShadow = "0 0 28px rgba(34,212,126,0.48)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "#22d47e"; e.currentTarget.style.boxShadow = "0 0 18px rgba(34,212,126,0.28)"; }}
-                >
-                    <PlusCircle style={{ width: 15, height: 15 }} />
-                    Create Tournament
-                </Link>
+                <Button variant="primary" asChild>
+                    <Link href={ROUTES.create}>
+                        <PlusCircle className="size-[15px]" />
+                        Create Tournament
+                    </Link>
+                </Button>
             </div>
 
             {/* Filter tabs */}
