@@ -273,9 +273,17 @@ type Action =
     | { type: "FETCH_NOT_FOUND" }
     | { type: "FETCH_ERROR" };
 
-function reducer(_: State, action: Action): State {
+function reducer(state: State, action: Action): State {
     switch (action.type) {
-        case "FETCH_START": return { status: "loading" };
+        case "FETCH_START":
+            // Stale-while-revalidate: on refresh (state already success), keep
+            // showing the previous data while the new fetch runs in the
+            // background. Only the initial load — or recovery from
+            // not_found/error — shows the loading skeleton. Without this,
+            // every refresh unmounts TournamentSidebar and resets its local
+            // state (optimisticJoined), causing the post-Join UI to revert
+            // to the Join button until the indexer catches up.
+            return state.status === "success" ? state : { status: "loading" };
         case "FETCH_SUCCESS": return { status: "success", data: action.data };
         case "FETCH_NOT_FOUND": return { status: "not_found" };
         case "FETCH_ERROR": return { status: "error" };
@@ -457,7 +465,23 @@ async function loadView(
                 (m) => (m.status === "Active" || m.status === "Completed")
                     && (!m.playerA || !m.playerB),
             );
-            if (!needsChainForPlayers) {
+
+            // Lean-indexer also never seeds Pending matches — they only enter
+            // the indexer on MatchReported (Completed). For tournaments past
+            // the registration phase the bracket should already exist on-chain
+            // (PendingBracketInit / Active) or have completed (Completed), but
+            // indexer-only data may show 0 matches until the first report.
+            // Without this branch the bracket area renders the generic
+            // "Waiting for players..." empty state even when start_tournament
+            // has already run and match PDAs exist on-chain.
+            const status = bundle.tournament.status;
+            const expectsBracket =
+                status === "PendingBracketInit" ||
+                status === "Active" ||
+                status === "Completed";
+            const indexerMissingBracket = expectsBracket && bundle.matches.length === 0;
+
+            if (!needsChainForPlayers && !indexerMissingBracket) {
                 const adapted = indexerToTournamentState(
                     pda,
                     client.programId,
@@ -468,7 +492,9 @@ async function loadView(
                 return buildView(adapted, bundle.payouts, PROTOCOL_FEE_BPS);
             }
         }
-        // Stale or missing player data — fall through to chain.
+        // Stale, missing player data, or bracket-shaped but empty — fall
+        // through to chain (loadFromChain returns full PDA set including
+        // Pending matches that lean indexer doesn't store).
     }
 
     return loadFromChain(client, pda, signal);

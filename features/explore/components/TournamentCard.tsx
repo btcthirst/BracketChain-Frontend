@@ -5,6 +5,7 @@ import { Gamepad2, Gift, Users, Clock, Trophy } from "lucide-react";
 import { ROUTES } from "@/constants/links";
 import type { Tournament } from "@/lib/tournament";
 import { motion } from "framer-motion";
+import { useDeadlineReached } from "@/hooks/useDeadlineReached";
 
 interface Props {
     tournament: Tournament;
@@ -44,10 +45,11 @@ export function TournamentCard({ tournament }: Props) {
     const isLive = tournament.status === "Active" || tournament.status === "PendingBracketInit";
     const isCancelled = tournament.status === "Cancelled";
     const isCompleted = tournament.status === "Completed";
-    const isRegistrationClosed =
-        tournament.status === "Registration" &&
-        Number.isFinite(new Date(tournament.registrationDeadline).getTime()) &&
-        new Date(tournament.registrationDeadline).getTime() <= Date.now();
+    // useDeadlineReached ticks internally and stays pure-during-render —
+    // direct Date.now() in render is flagged by react-hooks/purity. Hook
+    // handles invalid-date edge case (returns false on NaN deadline).
+    const deadlineReached = useDeadlineReached(tournament.registrationDeadline);
+    const isRegistrationClosed = tournament.status === "Registration" && deadlineReached;
 
     const variant: StatusVariant = isLive
         ? "live"

@@ -222,13 +222,21 @@ function ActionArea({
     currentAddress,
     isOrganizer,
     onJoinSuccess,
+    onStartSuccess,
+    onRefresh,
     onViewPayouts,
     onCancel,
 }: {
     tournament: TournamentView;
     currentAddress: string | null;
     isOrganizer: boolean;
+    // Split into three semantic callbacks so the parent can apply the right
+    // optimistic patch for each: join → patch participants list, start →
+    // patch status to in_progress, refresh → no optimistic patch (used after
+    // failed join when our cached view is stale).
     onJoinSuccess: () => void;
+    onStartSuccess: () => void;
+    onRefresh: () => void;
     onViewPayouts: () => void;
     onCancel: () => void;
 }) {
@@ -283,9 +291,12 @@ function ActionArea({
             }
             // RegistrationClosed / TournamentFull / status-mismatch errors mean
             // our cached view is stale. Refresh so the disabled-state branches
-            // below pick up the current on-chain truth on next render.
+            // below pick up the current on-chain truth on next render. Note:
+            // this is a refresh-only path (join failed) — we deliberately call
+            // onRefresh, not onJoinSuccess, so the parent doesn't apply the
+            // optimistic-participant patch for a join that didn't happen.
             if (/registration|closed|full|status/i.test(sdkErr.message)) {
-                onJoinSuccess();
+                onRefresh();
             }
             console.error("Join failed:", err);
         } finally { setJoining(false); }
@@ -297,7 +308,7 @@ function ActionArea({
         try {
             await startTournament(sdk, { tournamentPda: new PublicKey(tournament.id) });
             toast.success("Tournament started! Bracket is being initialized.");
-            onJoinSuccess();
+            onStartSuccess();
         } catch (err) {
             const sdkErr = mapError(err);
             toast.error(sdkErr.message);
@@ -493,11 +504,15 @@ export function TournamentSidebar({
     tournament,
     currentAddress,
     onJoinSuccess,
+    onStartSuccess,
+    onRefresh,
     onCancel,
 }: {
     tournament: TournamentView;
     currentAddress: string | null;
     onJoinSuccess: () => void;
+    onStartSuccess: () => void;
+    onRefresh: () => void;
     onCancel: () => void;
 }) {
     const isOrganizer = tournament.organizer.address === currentAddress;
@@ -534,6 +549,8 @@ export function TournamentSidebar({
                 currentAddress={currentAddress}
                 isOrganizer={isOrganizer}
                 onJoinSuccess={onJoinSuccess}
+                onStartSuccess={onStartSuccess}
+                onRefresh={onRefresh}
                 onViewPayouts={handleViewPayouts}
                 onCancel={onCancel}
             />

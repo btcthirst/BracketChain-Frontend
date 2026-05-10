@@ -61,10 +61,23 @@ export function useTournaments() {
             return () => ac.abort();
         }
 
-        indexer.listTournaments({ status: "Registration", limit: 4, signal: ac.signal })
+        // "Live now" = anything that isn't terminal. Includes Registration
+        // (open for join), PendingBracketInit (just started, chunked init),
+        // and Active (matches happening). Server returns newest-first by
+        // createdAt; we over-fetch (limit 20) and client-side filter to live
+        // statuses so the homepage doesn't go empty when all open-for-join
+        // tournaments have just started.
+        indexer.listTournaments({ limit: 20, signal: ac.signal })
             .then(async (rows) => {
                 if (ac.signal.aborted) return;
-                const tournaments = rows.map(r => toUiTournament(r));
+                const tournaments = rows
+                    .map(r => toUiTournament(r))
+                    .filter(t =>
+                        t.status === "Registration" ||
+                        t.status === "PendingBracketInit" ||
+                        t.status === "Active"
+                    )
+                    .slice(0, 4);
                 dispatch({ type: "FETCH_SUCCESS", data: tournaments });
 
                 // Enrich with live blockchain data for participant counts using SDK
@@ -88,9 +101,16 @@ export function useTournaments() {
                             }
                         }));
 
-                        // Filter out tournaments that are no longer in Registration
-                        // (e.g. indexer returned a cancelled tournament because it hasn't caught up)
-                        const validTournaments = tournaments.filter(t => t.status === "Registration");
+                        // Filter out tournaments that are no longer live after
+                        // chain-side reconciliation (e.g. indexer returned a
+                        // Registration row but chain shows it just transitioned
+                        // to Completed/Cancelled). Keep all three live statuses
+                        // — Registration / PendingBracketInit / Active.
+                        const validTournaments = tournaments.filter(t =>
+                            t.status === "Registration" ||
+                            t.status === "PendingBracketInit" ||
+                            t.status === "Active"
+                        );
 
                         if (!ac.signal.aborted) {
                             dispatch({ type: "ENRICH_DATA", data: validTournaments });

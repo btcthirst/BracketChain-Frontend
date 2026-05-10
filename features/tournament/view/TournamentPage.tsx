@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { RefreshCw, AlertTriangle, ExternalLink } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -14,7 +14,7 @@ import { BracketView, BracketSkeleton, BracketEmpty } from "./BracketView";
 import { TournamentSidebar, SidebarSkeleton } from "./TournamentSidebar";
 import { ReportResultModal } from "./ReportResultModal";
 import { CancelModal } from "./CancelModal";
-import type { Match } from "@/types/tournament";
+import type { Match, Player } from "@/types/tournament";
 
 const darkPanel: React.CSSProperties = {
     background: "rgba(13,15,24,0.85)",
@@ -146,6 +146,43 @@ export function TournamentPage({ id }: { id: string }) {
     const [reportingMatch, setReportingMatch] = useState<Match | null>(null);
     const [showCancel, setShowCancel] = useState(false);
 
+    // Optimistic participant — covers the gap between "join tx confirmed" and
+    // "indexer caught up." Patched into tournament.participants below so all
+    // descendants (sidebar list, BracketEmpty.isRegistered, ActionArea
+    // isParticipant, header counts) see a unified view.
+    const [optimisticJoiner, setOptimisticJoiner] = useState<Player | null>(null);
+
+    // Optimistic "tournament started" — flips status from "registration" to
+    // "in_progress" immediately after the organizer's start tx confirms, so
+    // the status badge, sidebar action area (organizer view), and header all
+    // update without waiting for the indexer / next refetch.
+    const [optimisticStarted, setOptimisticStarted] = useState(false);
+
+    const handleJoinSuccess = useCallback(() => {
+        if (currentAddress) {
+            setOptimisticJoiner({
+                address: currentAddress,
+                display: `${currentAddress.slice(0, 4)}…${currentAddress.slice(-4)}`,
+                isOrganizer: false,
+            });
+        }
+        refresh();
+    }, [currentAddress, refresh]);
+
+    const handleStartSuccess = useCallback(() => {
+        setOptimisticStarted(true);
+        refresh();
+    }, [refresh]);
+
+    // No auto-clear effect for either optimistic flag — React 19's
+    // react-hooks/set-state-in-effect rule flags setState-in-useEffect as
+    // cascading renders. Instead, the patch logic in the IIFE below
+    // self-guards: optimisticJoiner only adds to participants if the user
+    // isn't already there (`!t.participants.some(...)`), and optimisticStarted
+    // only flips status if it's still "registration." Once real data catches
+    // up, both patches become no-ops — the stale state stays in memory but
+    // is functionally inert until next mount or next setOptimistic* call.
+
     // Hook must run unconditionally; empty-string deadline → NaN → false until
     // success state arrives with a real timestamp, then it auto-flips on the
     // deadline tick.
@@ -167,7 +204,26 @@ export function TournamentPage({ id }: { id: string }) {
                 {state.status === "error"     && <ErrorState onRetry={refresh} />}
 
                 {state.status === "success" && (() => {
-                    const t = state.data;
+                    const rawT = state.data;
+                    // Optimistic patches — applied in order so each builds on
+                    // the previous. (1) splice just-joined participant into
+                    // the list. (2) flip status to in_progress when the
+                    // organizer just clicked Start. Both are guarded against
+                    // duplicates / no-op cases.
+                    let t = rawT;
+                    if (
+                        optimisticJoiner &&
+                        !t.participants.some((p) => p.address === optimisticJoiner.address)
+                    ) {
+                        t = { ...t, participants: [...t.participants, optimisticJoiner] };
+                    }
+                    if (optimisticStarted && t.status === "registration") {
+                        // Flip to in_progress; bracketReady=false signals
+                        // chunked init still happening so the sidebar shows
+                        // the "Bracket initializing" panel (organizer view)
+                        // until the real status + bracket data land.
+                        t = { ...t, status: "in_progress", bracketReady: false };
+                    }
                     const hasBracket = t.matches && t.matches.length > 0;
                     const registrationClosed =
                         t.status === "registration" && deadlineReached;
@@ -215,7 +271,9 @@ export function TournamentPage({ id }: { id: string }) {
                                     <TournamentSidebar
                                         tournament={t}
                                         currentAddress={currentAddress}
-                                        onJoinSuccess={refresh}
+                                        onJoinSuccess={handleJoinSuccess}
+                                        onStartSuccess={handleStartSuccess}
+                                        onRefresh={refresh}
                                         onCancel={() => setShowCancel(true)}
                                     />
                                 </div>

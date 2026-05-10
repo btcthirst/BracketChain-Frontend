@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ConnectButton } from "@/components/ConnectButton";
-import { ROUTES, EXTERNAL_LINKS } from "@/constants/links";
+import { ROUTES } from "@/constants/links";
 
 export function Navbar() {
     return (
@@ -79,60 +79,31 @@ export function Navbar() {
                 >
                     {[
                         { label: "Explore", href: ROUTES.explore },
-                        { label: "Docs", href: EXTERNAL_LINKS.docs, external: true },
                         { label: "About", href: ROUTES.about },
                     ].map((item) => (
-                        item.external ? (
-                            <a
-                                key={item.label}
-                                href={item.href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                    padding: "6px 14px",
-                                    color: "rgba(240,241,245,0.6)",
-                                    fontSize: "0.85rem",
-                                    fontWeight: 500,
-                                    textDecoration: "none",
-                                    borderRadius: 6,
-                                    transition: "color 0.15s, background 0.15s",
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.color = "#f0f1f5";
-                                    e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.color = "rgba(240,241,245,0.6)";
-                                    e.currentTarget.style.background = "transparent";
-                                }}
-                            >
-                                {item.label}
-                            </a>
-                        ) : (
-                            <Link
-                                key={item.label}
-                                href={item.href}
-                                style={{
-                                    padding: "6px 14px",
-                                    color: "rgba(240,241,245,0.6)",
-                                    fontSize: "0.85rem",
-                                    fontWeight: 500,
-                                    textDecoration: "none",
-                                    borderRadius: 6,
-                                    transition: "color 0.15s, background 0.15s",
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.color = "#f0f1f5";
-                                    e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.color = "rgba(240,241,245,0.6)";
-                                    e.currentTarget.style.background = "transparent";
-                                }}
-                            >
-                                {item.label}
-                            </Link>
-                        )
+                        <Link
+                            key={item.label}
+                            href={item.href}
+                            style={{
+                                padding: "6px 14px",
+                                color: "rgba(240,241,245,0.6)",
+                                fontSize: "0.85rem",
+                                fontWeight: 500,
+                                textDecoration: "none",
+                                borderRadius: 6,
+                                transition: "color 0.15s, background 0.15s",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.color = "#f0f1f5";
+                                e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.color = "rgba(240,241,245,0.6)";
+                                e.currentTarget.style.background = "transparent";
+                            }}
+                        >
+                            {item.label}
+                        </Link>
                     ))}
                 </div>
 
