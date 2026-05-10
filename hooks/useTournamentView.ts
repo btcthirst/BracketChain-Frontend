@@ -91,14 +91,16 @@ function makePlayer(address: string, organizerAddress: string): Player {
 
 function findPlayerByAddress(
     pk: PublicKey,
-    participants: ParticipantWithAddress[],
+    _participants: ParticipantWithAddress[],
     organizerAddress: string,
 ): Player | null {
+    // Why: the Match PDA is the source of truth for who played in this slot —
+    // start_tournament writes both pubkeys at bracket-init time. Cross-checking
+    // against the participants list was defensive code that broke completed
+    // tournaments: after claim_prize closes Participant PDAs, the list is
+    // empty even though the Match still has valid playerA/playerB pubkeys.
     if (isZeroPubkey(pk)) return null;
-    const addr = pk.toBase58();
-    const known = participants.find((p) => p.account.wallet.equals(pk));
-    if (!known) return null;
-    return makePlayer(addr, organizerAddress);
+    return makePlayer(pk.toBase58(), organizerAddress);
 }
 
 function buildMatch(
@@ -444,16 +446,28 @@ async function loadView(
         const isFresh = bundle.chainSlotAtWrite > 0n && slotGap < BigInt(STALE_SLOT_THRESHOLD);
 
         if (isFresh) {
-            const adapted = indexerToTournamentState(
-                pda,
-                client.programId,
-                bundle.tournament,
-                bundle.participants,
-                bundle.matches,
+            // Lean indexer doesn't capture playerA/playerB on Match rows
+            // (MatchReported events don't carry them; the reconciliation cron
+            // that would backfill is currently disabled). For active/completed
+            // tournaments, that produces TBD/TBD bracket cells. Detect missing
+            // player data and fall through to chain — the on-chain Match PDA
+            // always has both pubkeys populated by start_tournament.
+            const needsChainForPlayers = bundle.matches.some(
+                (m) => (m.status === "Active" || m.status === "Completed")
+                    && (!m.playerA || !m.playerB),
             );
-            return buildView(adapted, bundle.payouts, PROTOCOL_FEE_BPS);
+            if (!needsChainForPlayers) {
+                const adapted = indexerToTournamentState(
+                    pda,
+                    client.programId,
+                    bundle.tournament,
+                    bundle.participants,
+                    bundle.matches,
+                );
+                return buildView(adapted, bundle.payouts, PROTOCOL_FEE_BPS);
+            }
         }
-        // Stale — fall through to chain.
+        // Stale or missing player data — fall through to chain.
     }
 
     return loadFromChain(client, pda, signal);

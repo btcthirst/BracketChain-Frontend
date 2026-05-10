@@ -29,6 +29,10 @@ export function ConfirmStep({
     const pool = totalPool(prizeData.deposit, detailsData.entryFee, detailsData.maxParticipants, detailsData.freeEntry);
     const cost = (parseFloat(prizeData.deposit) || 0) + 0.001;
     const [copied, setCopied] = useState(false);
+    // Hoisted above the success-screen early return to keep hook order stable
+    // across renders (React errors with "Rendered fewer hooks than expected"
+    // otherwise, since txState transitions idle → success in-place).
+    const [showFinalConfirm, setShowFinalConfirm] = useState(false);
     const { fire: fireConfetti } = useConfetti();
 
     // Fire confetti once on success — defer to next tick so React finishes its commit
@@ -100,6 +104,23 @@ export function ConfirmStep({
         );
     }
 
+    // ── Scope guards ──────────────────────────────────────────────────────────
+    // The MVP program only supports SE + USDC. The wizard's earlier steps let
+    // the user pick other options because the UI is V1-aware; here we surface
+    // the gap *before* the wallet popup so they can fix it without burning a
+    // signing intent. handleConfirm in the parent keeps the same checks as
+    // defense-in-depth in case this banner is somehow bypassed.
+    const scopeIssues: string[] = [];
+    if (detailsData.format !== "SE") {
+        scopeIssues.push("Only Single Elimination is supported in MVP. Go back and switch the format to SE.");
+    }
+    if (prizeData.token !== "USDC") {
+        scopeIssues.push("Only USDC is supported in MVP. Go back and switch the prize token to USDC.");
+    }
+    if (prizeData.payoutPreset === "custom") {
+        scopeIssues.push("Custom payout splits are not supported in MVP. Pick WTA, Standard, or Deep.");
+    }
+
     // ── Summary rows ──────────────────────────────────────────────────────────
     const rows: [string, string][] = [
         ["Name", detailsData.name || "—"],
@@ -115,6 +136,8 @@ export function ConfirmStep({
     ];
 
     const isProcessing = txState === "signing" || txState === "pending";
+    const isBlocked = scopeIssues.length > 0;
+    const depositAmount = parseFloat(prizeData.deposit) || 0;
 
     return (
         <div className="flex flex-col gap-6">
@@ -146,6 +169,21 @@ export function ConfirmStep({
                 </p>
             </div>
 
+            {/* ── MVP scope issues (block Create) ─────────────────────────────── */}
+            {isBlocked && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                        <p className="text-sm font-semibold text-amber-800">
+                            {scopeIssues.length === 1 ? "One thing to fix before you can create" : "A few things to fix before you can create"}
+                        </p>
+                        <ul className="text-sm text-amber-700 mt-1 list-disc list-inside space-y-0.5">
+                            {scopeIssues.map(msg => <li key={msg}>{msg}</li>)}
+                        </ul>
+                    </div>
+                </div>
+            )}
+
             {/* ── Error state ──────────────────────────────────────────────────── */}
             {txState === "error" && (
                 <MotionDiv
@@ -171,9 +209,14 @@ export function ConfirmStep({
 
             {/* ── Primary action button ─────────────────────────────────────── */}
             <button
-                onClick={txState === "error" ? onRetry : onConfirm}
-                disabled={isProcessing}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-colors"
+                onClick={
+                    txState === "error"
+                        ? onRetry
+                        : () => setShowFinalConfirm(true)
+                }
+                disabled={isProcessing || isBlocked}
+                title={isBlocked ? "Resolve the issues above to continue" : undefined}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-colors"
             >
                 {txState === "signing" && (
                     <><Loader2 className="w-5 h-5 animate-spin" /> Awaiting wallet approval…</>
@@ -181,15 +224,62 @@ export function ConfirmStep({
                 {txState === "pending" && (
                     <><Loader2 className="w-5 h-5 animate-spin" /> Creating tournament on Solana…</>
                 )}
-                {txState === "idle" && <>Create Tournament</>}
+                {txState === "idle" && (isBlocked ? <>Fix issues to continue</> : <>Create Tournament</>)}
                 {txState === "error" && (
                     <><RefreshCw className="w-5 h-5" /> Try Again</>
                 )}
             </button>
 
             <p className="text-center text-xs text-gray-400">
-                This will open your connected wallet to sign a Solana transaction.
+                {isBlocked
+                    ? "Resolve the issues above, then return here to sign and submit."
+                    : "This will open your connected wallet to sign a Solana transaction."}
             </p>
+
+            {/* ── Final pre-sign confirmation ─────────────────────────────── */}
+            {showFinalConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-5 p-6">
+                        <h3 className="font-bold text-gray-900">Create this tournament on-chain?</h3>
+
+                        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                            <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                            <div className="flex flex-col gap-1">
+                                <p className="text-sm font-semibold text-amber-800">
+                                    {depositAmount > 0
+                                        ? `You'll deposit ${depositAmount} ${prizeData.token} into the prize vault.`
+                                        : "Your tournament will be created on-chain."}
+                                </p>
+                                <p className="text-xs text-amber-700">
+                                    Once signed and confirmed, the tournament is live. The vault is unlocked
+                                    only by completion or cancellation — both of which require another
+                                    on-chain transaction.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowFinalConfirm(false)}
+                                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                                Back
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowFinalConfirm(false);
+                                    onConfirm();
+                                }}
+                                className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+                            >
+                                {depositAmount > 0
+                                    ? `Sign & deposit ${depositAmount} ${prizeData.token}`
+                                    : "Sign & create"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

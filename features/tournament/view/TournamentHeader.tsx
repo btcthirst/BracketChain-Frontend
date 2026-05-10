@@ -42,7 +42,7 @@ export function TournamentHeader({ tournament }: { tournament: TournamentView })
     }
 
     const twitterText = encodeURIComponent(
-        `Join "${tournament.name}" — ${tournament.prizePool.toLocaleString()} ${tournament.token} prize pool on @BracketChain!\n${window.location.href}`
+        `Join "${tournament.name}" — ${tournament.prizePool.toLocaleString("en-US")} ${tournament.token} prize pool on @BracketChain!\n${window.location.href}`
     );
 
     return (
@@ -91,7 +91,7 @@ export function TournamentHeader({ tournament }: { tournament: TournamentView })
 
                 {/* Info strip */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8 pt-6 border-t border-white/10">
-                    <InfoMetric label="Prize Pool" value={`$${tournament.prizePool.toLocaleString()} ${tournament.token}`} />
+                    <InfoMetric label="Prize Pool" value={`$${tournament.prizePool.toLocaleString("en-US")} ${tournament.token}`} />
                     <InfoMetric label="Participants" value={`${tournament.participants.length}/${tournament.maxParticipants}`} />
                     <InfoMetric label="Entry Fee" value={tournament.entryFee === 0 ? "Free" : `$${tournament.entryFee} ${tournament.token}`} />
                     <InfoMetric

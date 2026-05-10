@@ -3,6 +3,7 @@ import { Trophy } from "lucide-react";
 import { inputCls, totalPool } from "../utils/utils";
 import { PROTOCOL_FEE, PAYOUT_PRESETS, TOKEN_INFO } from "@/constants/tournament";
 import { DetailsData, PayoutPreset, PrizeData, Token } from "@/types/tournament";
+import type { Step2Errors } from "./ValidateState";
 import { FieldGroup } from "./FieldGroup";
 import { BalanceWarning } from "./BalanceWarning";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
@@ -13,12 +14,14 @@ export function PrizeStep({
     onChange,
     connected,
     onConnect,
+    errors = {},
 }: {
     data: PrizeData;
     detailsData: DetailsData;
     onChange: (d: Partial<PrizeData>) => void;
     connected: boolean;
     onConnect: () => void;
+    errors?: Step2Errors;
 }) {
     const pool = totalPool(data.deposit, detailsData.entryFee, detailsData.maxParticipants, detailsData.freeEntry);
     const afterFee = pool * (1 - PROTOCOL_FEE);
@@ -104,12 +107,17 @@ export function PrizeStep({
                         ))}
                     </select>
                     {data.token === "custom" && (
-                        <input
-                            className={inputCls() + " mt-2"}
-                            placeholder="Token mint address"
-                            value={data.customToken}
-                            onChange={e => onChange({ customToken: e.target.value })}
-                        />
+                        <>
+                            <input
+                                className={inputCls() + " mt-2"}
+                                placeholder="Token mint address"
+                                value={data.customToken}
+                                onChange={e => onChange({ customToken: e.target.value })}
+                            />
+                            {errors.customToken && (
+                                <p className="mt-1 text-xs text-red-600">{errors.customToken}</p>
+                            )}
+                        </>
                     )}
                 </FieldGroup>
 
@@ -140,6 +148,9 @@ export function PrizeStep({
                                 {availableBalance.toFixed(2)} {data.token === "custom" ? "tokens" : data.token}
                             </span>
                         </p>
+                    )}
+                    {errors.deposit && (
+                        <p className="mt-1 text-xs text-red-600">{errors.deposit}</p>
                     )}
                 </FieldGroup>
 
@@ -228,6 +239,9 @@ export function PrizeStep({
                         <p className={`text-xs font-medium ${pctSum > 100 ? "text-red-500" : "text-amber-500"}`}>
                             Percentages sum to {pctSum.toFixed(1)}% — must equal 100%
                         </p>
+                    )}
+                    {errors.payoutEntries && (
+                        <p className="text-xs font-medium text-red-600">{errors.payoutEntries}</p>
                     )}
                 </div>
 

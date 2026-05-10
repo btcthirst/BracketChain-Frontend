@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ExternalLink, CheckCircle2, Loader2, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { ExternalLink, CheckCircle2, Loader2, ChevronDown, ChevronUp, Clock, Wallet } from "lucide-react";
 import { PublicKey } from "@solana/web3.js";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { joinTournament, startTournament, mapError } from "@bracketchain/sdk";
 import { toast } from "sonner";
 import type { TournamentView, Player } from "@/types/tournament";
@@ -103,7 +104,7 @@ function EscrowPanel({
             <div className="bg-[#0a1929] rounded-xl p-4 flex flex-col gap-3">
                 <div className="flex justify-between items-baseline">
                     <span className="text-2xl font-bold text-white">
-                        {total.toLocaleString()}
+                        {total.toLocaleString("en-US")}
                     </span>
                     <span className="text-sm text-gray-400">{tournament.token}</span>
                 </div>
@@ -115,7 +116,7 @@ function EscrowPanel({
                             <div className="flex justify-between text-xs text-gray-400">
                                 <span>{entry.label} — {entry.pct}%</span>
                                 <span className="text-white font-medium">
-                                    {entry.amount.toLocaleString()} {tournament.token}
+                                    {entry.amount.toLocaleString("en-US")} {tournament.token}
                                 </span>
                             </div>
                             <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
@@ -129,7 +130,7 @@ function EscrowPanel({
                 </div>
 
                 <p className="text-[10px] text-gray-500 border-t border-white/10 pt-2">
-                    Net to winners after 3.5% protocol fee: {afterFee.toLocaleString()} {tournament.token}
+                    Net to winners after 3.5% protocol fee: {afterFee.toLocaleString("en-US")} {tournament.token}
                 </p>
             </div>
 
@@ -240,6 +241,7 @@ function ActionArea({
     const [optimisticJoined, setOptimisticJoined] = useState(false);
 
     const sdk = useBracketChainClient();
+    const { setVisible: setWalletModalVisible } = useWalletModal();
     const { fire } = useConfetti();
     const { usdc: walletUsdc, refresh: refreshBalance } = useWalletBalance();
 
@@ -439,6 +441,30 @@ function ActionArea({
                         Tournament is full! Waiting for organizer to start…
                     </p>
                 )}
+            </div>
+        );
+    }
+
+    // ── Wallet not connected ─────────────────────────────────────────────────
+    // Without an address we can't tell if the viewer is a participant, can't
+    // estimate balance, and can't sign a join tx. Show a single Connect CTA
+    // instead of a disabled Join button (whose label "Join — X USDC" reads as
+    // "you can't afford it" rather than "you're not signed in").
+    if (!currentAddress) {
+        return (
+            <div className="flex flex-col gap-2">
+                <button
+                    onClick={() => setWalletModalVisible(true)}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors"
+                >
+                    <Wallet className="w-4 h-4" />
+                    Connect to Join
+                </button>
+                <p className="text-[11px] text-center text-gray-500">
+                    {tournament.entryFee > 0
+                        ? `Entry fee ${tournament.entryFee} ${tournament.token}. Connect a Solana wallet to register.`
+                        : "Free entry. Connect a Solana wallet to register."}
+                </p>
             </div>
         );
     }

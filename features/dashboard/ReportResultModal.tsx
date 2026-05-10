@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Loader2, AlertCircle } from "lucide-react";
+import { X, Loader2, AlertCircle, AlertTriangle } from "lucide-react";
 import { PublicKey } from "@solana/web3.js";
 import { reportResult, mapError } from "@bracketchain/sdk";
 import { toast } from "sonner";
@@ -157,6 +157,24 @@ export function ReportResultModal({
                                 <span className="text-sm font-mono text-gray-700">{p.display}</span>
                             </button>
                         ))}
+                    </div>
+                </div>
+
+                {/* Irreversibility warning — same intent as the player-side
+                    ReportResultModal: the program writes results to Match PDAs
+                    with no amend instruction, so once a tx confirms there is
+                    no UI path back. Surface this before the wallet popup. */}
+                <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="flex flex-col gap-0.5">
+                        <p className="text-xs font-semibold text-amber-800">
+                            Reporting is final
+                        </p>
+                        <p className="text-[11px] text-amber-700 leading-relaxed">
+                            {isFinal
+                                ? "Once signed, prize payouts are distributed on-chain and cannot be reversed."
+                                : "Once signed, the winner advances on-chain. Scores cannot be changed."}
+                        </p>
                     </div>
                 </div>
 

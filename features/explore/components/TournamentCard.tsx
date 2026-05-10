@@ -67,7 +67,7 @@ export function TournamentCard({ tournament }: Props) {
                             {tournament.name}
                         </h3>
                         <div className="flex items-baseline gap-2">
-                            <div className="text-2xl font-black text-green-600">${tournament.prizePool.toLocaleString()}</div>
+                            <div className="text-2xl font-black text-green-600">${tournament.prizePool.toLocaleString("en-US")}</div>
                             <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Prize Pool</div>
                         </div>
                     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, Trophy, X } from "lucide-react";
+import { AlertTriangle, Loader2, Trophy, X } from "lucide-react";
 import { PublicKey } from "@solana/web3.js";
 import {
     reportResult,
@@ -346,6 +346,24 @@ export function ReportResultModal({
                         </p>
                     </div>
                 )}
+
+                {/* Irreversibility warning — applies to both final and non-final
+                    matches. The program writes match results to a Match PDA and
+                    has no instruction to amend or rewind, so once confirmed the
+                    bracket cannot be edited from the UI. */}
+                <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="flex flex-col gap-0.5">
+                        <p className="text-xs font-semibold text-amber-800">
+                            Reporting is final
+                        </p>
+                        <p className="text-[11px] text-amber-700 leading-relaxed">
+                            {isFinal
+                                ? "Once signed, prize payouts are distributed on-chain and cannot be reversed."
+                                : "Once signed, the winner advances on-chain. Scores cannot be changed."}
+                        </p>
+                    </div>
+                </div>
 
                 {/* Actions */}
                 <div className="flex gap-2">

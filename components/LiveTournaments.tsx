@@ -118,7 +118,7 @@ function TournamentCard({ tournament, index }: { tournament: Tournament; index: 
                         <Trophy className="w-5 h-5 text-yellow-500" />
                         <div>
                             <div className="text-sm text-gray-500">Prize Pool</div>
-                            <div className="font-bold text-gray-900">${tournament.prizePool.toLocaleString()}</div>
+                            <div className="font-bold text-gray-900">${tournament.prizePool.toLocaleString("en-US")}</div>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">

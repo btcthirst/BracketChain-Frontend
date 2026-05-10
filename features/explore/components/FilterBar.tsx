@@ -35,7 +35,7 @@ export function FilterBar({ filters, onFilterChange, onClear, totalCount }: Prop
     if (filters.minPrize > 0 || filters.maxPrize < 10000) {
         activeTags.push({ 
             id: "prize", 
-            label: `$${filters.minPrize.toLocaleString()} - $${filters.maxPrize.toLocaleString()}${filters.maxPrize >= 10000 ? "+" : ""}`, 
+            label: `$${filters.minPrize.toLocaleString("en-US")} - $${filters.maxPrize.toLocaleString("en-US")}${filters.maxPrize >= 10000 ? "+" : ""}`, 
             clear: () => onFilterChange({ ...filters, minPrize: 0, maxPrize: 10000 }) 
         });
     }
@@ -127,7 +127,7 @@ export function FilterBar({ filters, onFilterChange, onClear, totalCount }: Prop
                         thumbClassName={filters.minPrize > 0 || filters.maxPrize < 10000 ? "border-blue-500 bg-blue-500" : "border-gray-400 bg-gray-400 hover:ring-gray-200 focus-visible:ring-gray-200"}
                     />
                     <span className={`text-sm font-medium whitespace-nowrap ${filters.minPrize > 0 || filters.maxPrize < 10000 ? "text-blue-600" : "text-gray-400"}`}>
-                        ${filters.minPrize.toLocaleString()} - ${filters.maxPrize.toLocaleString()}{filters.maxPrize >= 10000 ? "+" : ""}
+                        ${filters.minPrize.toLocaleString("en-US")} - ${filters.maxPrize.toLocaleString("en-US")}{filters.maxPrize >= 10000 ? "+" : ""}
                     </span>
                 </div>
 
