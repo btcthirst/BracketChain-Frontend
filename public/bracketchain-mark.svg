@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68 58" fill="currentColor">
-  <!-- Upper arrow — top bump of B -->
-  <path d="M3,3 L38,3 L56,16 L38,25 L14,25 L3,14 Z"/>
-  <!-- Lower arrow — bottom bump of B, extends further right -->
-  <path d="M3,40 L14,29 L42,29 L63,45 L42,55 L3,55 Z"/>
-</svg>
