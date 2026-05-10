@@ -3,6 +3,7 @@ import { DM_Sans, DM_Mono } from "next/font/google";
 import "./globals.css";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import Providers from "@/components/Providers";
+import { Toaster } from "@/components/ui/sonner";
 import { BackgroundGlow } from "@/components/ui/background-glow";
 
 const dmSans = DM_Sans({
@@ -43,6 +44,7 @@ export default function RootLayout({
             {children}
           </AppRouterCacheProvider>
         </Providers>
+        <Toaster richColors position="top-right" />
       </body>
     </html>
   );

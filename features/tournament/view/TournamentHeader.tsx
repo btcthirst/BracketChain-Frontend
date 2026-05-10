@@ -2,6 +2,7 @@ import { ExternalLink, Share2, Check } from "lucide-react";
 import { useState } from "react";
 import type { TournamentView, TournamentStatus, TournamentFormat } from "@/types/tournament";
 import { CountdownTimer } from "@/components/ui/CountdownTimer";
+import { useDeadlineReached } from "@/hooks/useDeadlineReached";
 
 const STATUS_STYLES: Record<TournamentStatus, React.CSSProperties> = {
     registration: { background: "rgba(34,212,126,0.08)", color: "#22d47e",             border: "1px solid rgba(34,212,126,0.22)" },
@@ -15,6 +16,19 @@ const STATUS_LABELS: Record<TournamentStatus, string> = {
     in_progress:  "In Progress",
     completed:    "Completed",
     cancelled:    "Cancelled",
+};
+
+// Used when on-chain status is still `registration` but the deadline has passed
+// (program flips status only on the next interaction). Without this the header
+// badge and the countdown disagree — see screenshot of /t/<pda> showing both
+// "Registration Open" and "Registration Closed".
+const REGISTRATION_CLOSED_BADGE: { label: string; style: React.CSSProperties } = {
+    label: "Registration Closed",
+    style: {
+        background: "rgba(245,166,35,0.10)",
+        color: "#f5a623",
+        border: "1px solid rgba(245,166,35,0.25)",
+    },
 };
 
 const FORMAT_LABEL: Record<TournamentFormat, string> = {
@@ -32,6 +46,9 @@ const badgeBase: React.CSSProperties = {
 
 export function TournamentHeader({ tournament }: { tournament: TournamentView }) {
     const [copied, setCopied] = useState(false);
+    const deadlineReached = useDeadlineReached(tournament.registrationDeadline);
+    const registrationClosed =
+        tournament.status === "registration" && deadlineReached;
 
     function handleShare() {
         navigator.clipboard.writeText(window.location.href);
@@ -40,7 +57,7 @@ export function TournamentHeader({ tournament }: { tournament: TournamentView })
     }
 
     const twitterText = encodeURIComponent(
-        `Join "${tournament.name}" — ${tournament.prizePool.toLocaleString()} ${tournament.token} prize pool on @BracketChain!\n${window.location.href}`
+        `Join "${tournament.name}" — ${tournament.prizePool.toLocaleString("en-US")} ${tournament.token} prize pool on @BracketChain!\n${window.location.href}`
     );
 
     return (
@@ -51,9 +68,15 @@ export function TournamentHeader({ tournament }: { tournament: TournamentView })
                     {/* Top row: badges + share */}
                     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-                            <span style={{ ...badgeBase, ...STATUS_STYLES[tournament.status] }}>
-                                {STATUS_LABELS[tournament.status]}
-                            </span>
+                            {registrationClosed ? (
+                                <span style={{ ...badgeBase, ...REGISTRATION_CLOSED_BADGE.style }}>
+                                    {REGISTRATION_CLOSED_BADGE.label}
+                                </span>
+                            ) : (
+                                <span style={{ ...badgeBase, ...STATUS_STYLES[tournament.status] }}>
+                                    {STATUS_LABELS[tournament.status]}
+                                </span>
+                            )}
                             <span style={{ ...badgeBase, background: "rgba(255,255,255,0.05)", color: "rgba(240,241,245,0.45)", border: "1px solid rgba(255,255,255,0.1)" }}>
                                 {FORMAT_LABEL[tournament.format]}
                             </span>
@@ -146,10 +169,22 @@ export function TournamentHeader({ tournament }: { tournament: TournamentView })
                         <InfoMetric label="Participants"  value={`${tournament.participants.length}/${tournament.maxParticipants}`} />
                         <InfoMetric label="Entry Fee"     value={tournament.entryFee === 0 ? "Free" : `$${tournament.entryFee} ${tournament.token}`} />
                         <InfoMetric
-                            label={tournament.status === "registration" ? "Registration closes in" : "Started"}
-                            value={tournament.status === "registration"
-                                ? <CountdownTimer deadline={tournament.registrationDeadline} />
-                                : new Date(tournament.startTime).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                            // Counts down to `registration_deadline`, NOT to a tournament
+                            // start time — start is organizer-triggered and there is no
+                            // on-chain auto-start.
+                            label={
+                                tournament.status === "cancelled"
+                                    ? "Refunds"
+                                    : tournament.status === "registration"
+                                        ? registrationClosed ? "Registration" : "Registration closes in"
+                                        : "Started"
+                            }
+                            value={
+                                tournament.status === "cancelled"
+                                    ? `${tournament.refundTxSignatures.length} issued`
+                                    : tournament.status === "registration"
+                                        ? <CountdownTimer deadline={tournament.registrationDeadline} />
+                                        : new Date(tournament.startTime).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
                             }
                         />
                     </div>
