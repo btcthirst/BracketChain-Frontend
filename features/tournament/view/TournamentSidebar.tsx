@@ -33,25 +33,6 @@ const darkRow: React.CSSProperties = {
     border: "1px solid rgba(255,255,255,0.06)",
 };
 
-const sectionLabel: React.CSSProperties = {
-    fontFamily: "'DM Mono', monospace",
-    fontSize: "0.65rem",
-    fontWeight: 500,
-    color: "rgba(240,241,245,0.3)",
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
-};
-
-const darkRow: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "8px 12px",
-    borderRadius: 8,
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid rgba(255,255,255,0.06)",
-};
-
 // ── Participant list ───────────────────────────────────────────────────────────
 
 function ParticipantList({ participants, currentAddress, maxParticipants }: { participants: Player[]; currentAddress: string | null; maxParticipants: number }) {
