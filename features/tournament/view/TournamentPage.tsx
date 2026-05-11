@@ -190,9 +190,9 @@ export function TournamentPage({ id }: { id: string }) {
             <Navbar />
 
             <main style={{ flex: 1 }}>
-                {state.status === "loading"   && <LoadingSkeleton />}
+                {state.status === "loading" && <LoadingSkeleton />}
                 {state.status === "not_found" && <NotFound />}
-                {state.status === "error"     && <ErrorState onRetry={refresh} />}
+                {state.status === "error" && <ErrorState onRetry={refresh} />}
 
                 {state.status === "success" && (() => {
                     const rawT = state.data;

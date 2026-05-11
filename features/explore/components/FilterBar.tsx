@@ -18,13 +18,13 @@ const STATUSES: {
     label: string;
     indicator?: { color: string; pulse?: boolean };
 }[] = [
-    { value: "All", label: "All" },
-    { value: "Active", label: "Live", indicator: { color: "#f04e66", pulse: true } },
-    { value: "Registration", label: "Upcoming" },
-    { value: "RegistrationClosed", label: "Closed", indicator: { color: "#f5a623" } },
-    { value: "Completed", label: "Completed" },
-    { value: "Cancelled", label: "Cancelled" },
-];
+        { value: "All", label: "All" },
+        { value: "Active", label: "Live", indicator: { color: "#f04e66", pulse: true } },
+        { value: "Registration", label: "Upcoming" },
+        { value: "RegistrationClosed", label: "Closed", indicator: { color: "#f5a623" } },
+        { value: "Completed", label: "Completed" },
+        { value: "Cancelled", label: "Cancelled" },
+    ];
 
 const FORMATS = ["All", "SE", "DE", "Swiss", "RR"];
 const GAMES = ["All", "Counter-Strike 2", "Dota 2", "League of Legends", "Valorant", "StarCraft II"];

@@ -6,17 +6,17 @@ import { useDeadlineReached } from "@/hooks/useDeadlineReached";
 import { Button } from "@/components/ui/button";
 
 const STATUS_STYLES: Record<TournamentStatus, React.CSSProperties> = {
-    registration: { background: "rgba(34,212,126,0.08)", color: "#22d47e",             border: "1px solid rgba(34,212,126,0.22)" },
-    in_progress:  { background: "rgba(34,212,126,0.08)", color: "#22d47e",             border: "1px solid rgba(34,212,126,0.22)" },
-    completed:    { background: "rgba(255,255,255,0.05)", color: "rgba(240,241,245,0.45)", border: "1px solid rgba(255,255,255,0.1)" },
-    cancelled:    { background: "rgba(240,78,102,0.08)", color: "#f04e66",             border: "1px solid rgba(240,78,102,0.22)" },
+    registration: { background: "rgba(34,212,126,0.08)", color: "#22d47e", border: "1px solid rgba(34,212,126,0.22)" },
+    in_progress: { background: "rgba(34,212,126,0.08)", color: "#22d47e", border: "1px solid rgba(34,212,126,0.22)" },
+    completed: { background: "rgba(255,255,255,0.05)", color: "rgba(240,241,245,0.45)", border: "1px solid rgba(255,255,255,0.1)" },
+    cancelled: { background: "rgba(240,78,102,0.08)", color: "#f04e66", border: "1px solid rgba(240,78,102,0.22)" },
 };
 
 const STATUS_LABELS: Record<TournamentStatus, string> = {
     registration: "Registration Open",
-    in_progress:  "In Progress",
-    completed:    "Completed",
-    cancelled:    "Cancelled",
+    in_progress: "In Progress",
+    completed: "Completed",
+    cancelled: "Cancelled",
 };
 
 // Used when on-chain status is still `registration` but the deadline has passed
@@ -147,9 +147,9 @@ export function TournamentHeader({ tournament }: { tournament: TournamentView })
                             borderTop: "1px solid rgba(255,255,255,0.07)",
                         }}
                     >
-                        <InfoMetric label="Prize Pool"    value={`$${tournament.prizePool.toLocaleString()} ${tournament.token}`} accent />
-                        <InfoMetric label="Participants"  value={`${tournament.participants.length}/${tournament.maxParticipants}`} />
-                        <InfoMetric label="Entry Fee"     value={tournament.entryFee === 0 ? "Free" : `$${tournament.entryFee} ${tournament.token}`} />
+                        <InfoMetric label="Prize Pool" value={`$${tournament.prizePool.toLocaleString()} ${tournament.token}`} accent />
+                        <InfoMetric label="Participants" value={`${tournament.participants.length}/${tournament.maxParticipants}`} />
+                        <InfoMetric label="Entry Fee" value={tournament.entryFee === 0 ? "Free" : `$${tournament.entryFee} ${tournament.token}`} />
                         <InfoMetric
                             // Counts down to `registration_deadline`, NOT to a tournament
                             // start time — start is organizer-triggered and there is no

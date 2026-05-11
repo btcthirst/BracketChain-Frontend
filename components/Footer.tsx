@@ -8,9 +8,9 @@ const FOOTER_NAV = NAV_LINKS.filter((l) =>
 );
 
 const RESOURCE_LINKS = [
-    { label: "WHITEPAPER", href: EXTERNAL_LINKS.docs,   external: true },
-    { label: "GITHUB",     href: EXTERNAL_LINKS.github, external: true },
-    { label: "CONTACT",    href: EXTERNAL_LINKS.twitter, external: true },
+    { label: "WHITEPAPER", href: EXTERNAL_LINKS.docs, external: true },
+    { label: "GITHUB", href: EXTERNAL_LINKS.github, external: true },
+    { label: "CONTACT", href: EXTERNAL_LINKS.twitter, external: true },
 ];
 
 const linkStyle: React.CSSProperties = {
