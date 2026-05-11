@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { DashboardTournament } from "@/hooks/useDashboard";
 import { ROUTES, SOLANA } from "@/constants/links";
 import Link from "next/link";
@@ -16,11 +17,11 @@ type SortKey =
 type SortDir = "asc" | "desc";
 
 const STATUS_STYLES: Record<string, React.CSSProperties> = {
-    Registration:        { background: "rgba(34,212,126,0.08)", color: "#22d47e",             border: "1px solid rgba(34,212,126,0.2)" },
-    PendingBracketInit:  { background: "rgba(245,166,35,0.08)", color: "#f5a623",             border: "1px solid rgba(245,166,35,0.2)" },
-    Active:              { background: "rgba(34,212,126,0.08)", color: "#22d47e",             border: "1px solid rgba(34,212,126,0.2)" },
-    Completed:           { background: "rgba(255,255,255,0.05)", color: "rgba(240,241,245,0.35)", border: "1px solid rgba(255,255,255,0.08)" },
-    Cancelled:           { background: "rgba(240,78,102,0.08)", color: "#f04e66",             border: "1px solid rgba(240,78,102,0.2)" },
+    Registration: { background: "rgba(34,212,126,0.08)", color: "#22d47e", border: "1px solid rgba(34,212,126,0.2)" },
+    PendingBracketInit: { background: "rgba(245,166,35,0.08)", color: "#f5a623", border: "1px solid rgba(245,166,35,0.2)" },
+    Active: { background: "rgba(34,212,126,0.08)", color: "#22d47e", border: "1px solid rgba(34,212,126,0.2)" },
+    Completed: { background: "rgba(255,255,255,0.05)", color: "rgba(240,241,245,0.35)", border: "1px solid rgba(255,255,255,0.08)" },
+    Cancelled: { background: "rgba(240,78,102,0.08)", color: "#f04e66", border: "1px solid rgba(240,78,102,0.2)" },
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -45,19 +46,19 @@ function formatMoney(value: number) {
 
 function getSortableValue(t: DashboardTournament, key: SortKey) {
     switch (key) {
-        case "createdAt":       return new Date(t.createdAt).getTime();
-        case "name":            return t.name.toLowerCase();
-        case "status":          return t.status;
-        case "participantCount":return t.participantCount;
-        case "prizePoolUsdc":   return t.prizePoolUsdc;
-        default:                return "";
+        case "createdAt": return new Date(t.createdAt).getTime();
+        case "name": return t.name.toLowerCase();
+        case "status": return t.status;
+        case "participantCount": return t.participantCount;
+        case "prizePoolUsdc": return t.prizePoolUsdc;
+        default: return "";
     }
 }
 
 function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
     if (col !== sortKey) return <ArrowUpDown style={{ width: 12, height: 12, opacity: 0.25 }} />;
     return sortDir === "asc"
-        ? <ArrowUp   style={{ width: 12, height: 12, color: "#22d47e" }} />
+        ? <ArrowUp style={{ width: 12, height: 12, color: "#22d47e" }} />
         : <ArrowDown style={{ width: 12, height: 12, color: "#22d47e" }} />;
 }
 
@@ -127,12 +128,12 @@ export function TournamentTable({ tournaments, onManage }: Props) {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                         <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
-                            <ColHeader label="Name"         col="name"             onSort={toggleSort} sortKey={sortKey} sortDir={sortDir} />
+                            <ColHeader label="Name" col="name" onSort={toggleSort} sortKey={sortKey} sortDir={sortDir} />
                             <th style={{ padding: "10px 16px", textAlign: "left", fontSize: "0.68rem", fontFamily: "'DM Mono', monospace", fontWeight: 500, color: "rgba(240,241,245,0.3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Format</th>
-                            <ColHeader label="Status"       col="status"           onSort={toggleSort} sortKey={sortKey} sortDir={sortDir} />
-                            <ColHeader label="Participants"  col="participantCount" onSort={toggleSort} sortKey={sortKey} sortDir={sortDir} />
-                            <ColHeader label="Prize Pool"   col="prizePoolUsdc"    onSort={toggleSort} sortKey={sortKey} sortDir={sortDir} />
-                            <ColHeader label="Created"      col="createdAt"        onSort={toggleSort} sortKey={sortKey} sortDir={sortDir} />
+                            <ColHeader label="Status" col="status" onSort={toggleSort} sortKey={sortKey} sortDir={sortDir} />
+                            <ColHeader label="Participants" col="participantCount" onSort={toggleSort} sortKey={sortKey} sortDir={sortDir} />
+                            <ColHeader label="Prize Pool" col="prizePoolUsdc" onSort={toggleSort} sortKey={sortKey} sortDir={sortDir} />
+                            <ColHeader label="Created" col="createdAt" onSort={toggleSort} sortKey={sortKey} sortDir={sortDir} />
                             <th style={{ padding: "10px 16px", textAlign: "right", fontSize: "0.68rem", fontFamily: "'DM Mono', monospace", fontWeight: 500, color: "rgba(240,241,245,0.3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Actions</th>
                         </tr>
                     </thead>
@@ -189,23 +190,12 @@ export function TournamentTable({ tournaments, onManage }: Props) {
 
                                 <td style={{ padding: "12px 16px", textAlign: "right" }}>
                                     <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                                        <Link
-                                            href={ROUTES.tournament(t.address)}
-                                            target="_blank"
-                                            style={{ fontSize: "0.75rem", fontFamily: "'Inter', sans-serif", fontWeight: 600, color: "rgba(240,241,245,0.4)", border: "1px solid rgba(255,255,255,0.1)", padding: "5px 12px", borderRadius: 8, textDecoration: "none", transition: "border-color 0.15s, color 0.15s" }}
-                                            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = "#f0f1f5"; }}
-                                            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(240,241,245,0.4)"; }}
-                                        >
-                                            View
-                                        </Link>
-                                        <button
-                                            onClick={() => onManage(t.address)}
-                                            style={{ fontSize: "0.75rem", fontFamily: "'Inter', sans-serif", fontWeight: 700, color: "#06070b", background: "#22d47e", border: "none", padding: "5px 12px", borderRadius: 8, cursor: "pointer", transition: "background 0.15s" }}
-                                            onMouseEnter={e => (e.currentTarget.style.background = "#16c062")}
-                                            onMouseLeave={e => (e.currentTarget.style.background = "#22d47e")}
-                                        >
+                                        <Button variant="outline" size="sm" asChild>
+                                            <Link href={ROUTES.tournament(t.address)} target="_blank">View</Link>
+                                        </Button>
+                                        <Button variant="primary" size="sm" onClick={() => onManage(t.address)}>
                                             Manage
-                                        </button>
+                                        </Button>
                                     </div>
                                 </td>
                             </tr>
@@ -244,18 +234,12 @@ export function TournamentTable({ tournaments, onManage }: Props) {
                                 <span style={{ color: "#f0f1f5", fontWeight: 600 }}>{t.participantCount}</span>/{t.maxParticipants} players
                             </span>
                             <div style={{ display: "flex", gap: 8 }}>
-                                <Link
-                                    href={ROUTES.tournament(t.address)}
-                                    style={{ fontSize: "0.75rem", fontFamily: "'Inter', sans-serif", fontWeight: 600, color: "rgba(240,241,245,0.4)", border: "1px solid rgba(255,255,255,0.1)", padding: "6px 14px", borderRadius: 8, textDecoration: "none" }}
-                                >
-                                    View
-                                </Link>
-                                <button
-                                    onClick={() => onManage(t.address)}
-                                    style={{ fontSize: "0.75rem", fontFamily: "'Inter', sans-serif", fontWeight: 700, color: "#06070b", background: "#22d47e", border: "none", padding: "6px 14px", borderRadius: 8, cursor: "pointer" }}
-                                >
+                                <Button variant="outline" size="sm" asChild>
+                                    <Link href={ROUTES.tournament(t.address)}>View</Link>
+                                </Button>
+                                <Button variant="primary" size="sm" onClick={() => onManage(t.address)}>
                                     Manage
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     </div>

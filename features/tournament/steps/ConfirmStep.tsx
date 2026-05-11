@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { MotionDiv } from "@/components/ui/motion-wraper";
 import { AlertCircle, Check, CheckCircle2, Copy, ExternalLink, Loader2, RefreshCw } from "lucide-react";
 import { ROUTES, SOLANA } from "@/constants/links";
+import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { DetailsData, PrizeData, TxState } from "@/types/tournament";
 import { totalPool } from "@/features/tournament/utils/utils";
 import { FORMAT_INFO, PAYOUT_PRESETS } from "@/constants/tournament";
@@ -29,6 +31,10 @@ export function ConfirmStep({
     const pool = totalPool(prizeData.deposit, detailsData.entryFee, detailsData.maxParticipants, detailsData.freeEntry);
     const cost = (parseFloat(prizeData.deposit) || 0) + 0.001;
     const [copied, setCopied] = useState(false);
+    // Hoisted above the success-screen early return to keep hook order stable
+    // across renders (React errors with "Rendered fewer hooks than expected"
+    // otherwise, since txState transitions idle → success in-place).
+    const [showFinalConfirm, setShowFinalConfirm] = useState(false);
     const { fire: fireConfetti } = useConfetti();
 
     useEffect(() => {
@@ -159,38 +165,31 @@ export function ConfirmStep({
                 )}
 
                 {tournamentAddress && (
-                    <a
-                        href={ROUTES.tournament(tournamentAddress)}
-                        style={{
-                            marginTop: 8,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 8,
-                            padding: "12px 28px",
-                            background: "#22d47e",
-                            color: "#06070b",
-                            borderRadius: 8,
-                            fontWeight: 700,
-                            fontSize: "0.875rem",
-                            textDecoration: "none",
-                            fontFamily: "'Inter', sans-serif",
-                            transition: "background 0.15s, box-shadow 0.15s",
-                            boxShadow: "0 0 20px rgba(34,212,126,0.30)",
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "#16c062";
-                            e.currentTarget.style.boxShadow = "0 0 32px rgba(34,212,126,0.50)";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "#22d47e";
-                            e.currentTarget.style.boxShadow = "0 0 20px rgba(34,212,126,0.30)";
-                        }}
-                    >
-                        View Tournament →
-                    </a>
+                    <Button variant="primary" size="lg" asChild className="mt-2">
+                        <a href={ROUTES.tournament(tournamentAddress)}>
+                            View Tournament →
+                        </a>
+                    </Button>
                 )}
             </div>
         );
+    }
+
+    // ── Scope guards ──────────────────────────────────────────────────────────
+    // The MVP program only supports SE + USDC. The wizard's earlier steps let
+    // the user pick other options because the UI is V1-aware; here we surface
+    // the gap *before* the wallet popup so they can fix it without burning a
+    // signing intent. handleConfirm in the parent keeps the same checks as
+    // defense-in-depth in case this banner is somehow bypassed.
+    const scopeIssues: string[] = [];
+    if (detailsData.format !== "SE") {
+        scopeIssues.push("Only Single Elimination is supported in MVP. Go back and switch the format to SE.");
+    }
+    if (prizeData.token !== "USDC") {
+        scopeIssues.push("Only USDC is supported in MVP. Go back and switch the prize token to USDC.");
+    }
+    if (prizeData.payoutPreset === "custom") {
+        scopeIssues.push("Custom payout splits are not supported in MVP. Pick WTA, Standard, or Deep.");
     }
 
     // ── Summary rows ──────────────────────────────────────────────────────────
@@ -208,6 +207,8 @@ export function ConfirmStep({
     ];
 
     const isProcessing = txState === "signing" || txState === "pending";
+    const isBlocked = scopeIssues.length > 0;
+    const depositAmount = parseFloat(prizeData.deposit) || 0;
 
     return (
         <div className="flex flex-col gap-6">
@@ -317,6 +318,49 @@ export function ConfirmStep({
                 </p>
             </div>
 
+            {/* ── MVP scope issues (block Create) ─────────────────────────────── */}
+            {isBlocked && (
+                <div
+                    style={{
+                        background: "rgba(245,166,35,0.06)",
+                        border: "1px solid rgba(245,166,35,0.22)",
+                        borderRadius: 12,
+                        padding: "14px 16px",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 12,
+                    }}
+                >
+                    <AlertCircle size={16} style={{ color: "#f5a623", flexShrink: 0, marginTop: 2 }} />
+                    <div style={{ flex: 1 }}>
+                        <p
+                            style={{
+                                fontSize: "0.85rem",
+                                fontWeight: 600,
+                                color: "#f5a623",
+                                marginBottom: 4,
+                                fontFamily: "'Inter', sans-serif",
+                            }}
+                        >
+                            {scopeIssues.length === 1 ? "One thing to fix before you can create" : "A few things to fix before you can create"}
+                        </p>
+                        <ul
+                            style={{
+                                fontSize: "0.8rem",
+                                color: "rgba(245,166,35,0.75)",
+                                margin: 0,
+                                paddingLeft: 18,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 2,
+                            }}
+                        >
+                            {scopeIssues.map(msg => <li key={msg}>{msg}</li>)}
+                        </ul>
+                    </div>
+                </div>
+            )}
+
             {/* Error state */}
             {txState === "error" && (
                 <MotionDiv
@@ -341,67 +385,21 @@ export function ConfirmStep({
                             {txError}
                         </p>
                     </div>
-                    <button
-                        onClick={onRetry}
-                        style={{
-                            flexShrink: 0,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 5,
-                            fontSize: "0.75rem",
-                            fontWeight: 600,
-                            color: "#f04e66",
-                            background: "rgba(240,78,102,0.10)",
-                            border: "none",
-                            borderRadius: 6,
-                            padding: "6px 10px",
-                            cursor: "pointer",
-                            transition: "background 0.15s",
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(240,78,102,0.18)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(240,78,102,0.10)"; }}
-                    >
-                        <RefreshCw size={12} />
+                    <Button variant="destructive" size="sm" onClick={onRetry} className="shrink-0">
+                        <RefreshCw className="size-3" />
                         Retry
-                    </button>
+                    </Button>
                 </MotionDiv>
             )}
 
             {/* Primary action */}
-            <button
-                onClick={txState === "error" ? onRetry : onConfirm}
-                disabled={isProcessing}
-                style={{
-                    width: "100%",
-                    padding: "14px 24px",
-                    borderRadius: 10,
-                    border: "none",
-                    fontFamily: "'Inter', sans-serif",
-                    fontWeight: 700,
-                    fontSize: "1rem",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 10,
-                    cursor: isProcessing ? "not-allowed" : "pointer",
-                    transition: "background 0.15s, box-shadow 0.15s, opacity 0.15s",
-                    background: isProcessing ? "rgba(34,212,126,0.4)" : "#22d47e",
-                    color: "#06070b",
-                    boxShadow: isProcessing ? "none" : "0 0 24px rgba(34,212,126,0.30)",
-                    opacity: isProcessing ? 0.7 : 1,
-                }}
-                onMouseEnter={(e) => {
-                    if (!isProcessing) {
-                        e.currentTarget.style.background = "#16c062";
-                        e.currentTarget.style.boxShadow = "0 0 36px rgba(34,212,126,0.50)";
-                    }
-                }}
-                onMouseLeave={(e) => {
-                    if (!isProcessing) {
-                        e.currentTarget.style.background = "#22d47e";
-                        e.currentTarget.style.boxShadow = "0 0 24px rgba(34,212,126,0.30)";
-                    }
-                }}
+            <Button
+                variant="primary"
+                size="lg"
+                className="w-full text-base py-[14px] h-auto"
+                onClick={txState === "error" ? onRetry : () => setShowFinalConfirm(true)}
+                disabled={isProcessing || isBlocked}
+                title={isBlocked ? "Resolve the issues above to continue" : undefined}
             >
                 {txState === "signing" && (
                     <><Loader2 size={18} className="animate-spin" /> Awaiting wallet approval…</>
@@ -409,15 +407,75 @@ export function ConfirmStep({
                 {txState === "pending" && (
                     <><Loader2 size={18} className="animate-spin" /> Creating tournament on Solana…</>
                 )}
-                {txState === "idle" && <>Create Tournament</>}
+                {txState === "idle" && (isBlocked ? <>Fix issues to continue</> : <>Create Tournament</>)}
                 {txState === "error" && (
                     <><RefreshCw size={18} /> Try Again</>
                 )}
-            </button>
+            </Button>
 
             <p style={{ textAlign: "center", fontSize: "0.75rem", color: "rgba(240,241,245,0.2)" }}>
-                This will open your connected wallet to sign a Solana transaction.
+                {isBlocked
+                    ? "Resolve the issues above, then return here to sign and submit."
+                    : "This will open your connected wallet to sign a Solana transaction."}
             </p>
+
+            {/* ── Final pre-sign confirmation ─────────────────────────────── */}
+            <Modal open={showFinalConfirm} onClose={() => setShowFinalConfirm(false)} maxWidth={384}>
+                <Modal.Header onClose={() => setShowFinalConfirm(false)}>
+                    <h3
+                        style={{
+                            fontFamily: "'Syne', sans-serif",
+                            fontWeight: 700,
+                            fontSize: "1rem",
+                            color: "#f0f1f5",
+                            letterSpacing: "-0.01em",
+                        }}
+                    >
+                        Create this tournament on-chain?
+                    </h3>
+                </Modal.Header>
+
+                <div
+                    style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 12,
+                        background: "rgba(245,166,35,0.07)",
+                        border: "1px solid rgba(245,166,35,0.22)",
+                        borderRadius: 12,
+                        padding: "12px 14px",
+                    }}
+                >
+                    <AlertCircle size={18} style={{ color: "#f5a623", flexShrink: 0, marginTop: 2 }} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "#f5a623", fontFamily: "'Inter', sans-serif" }}>
+                            {depositAmount > 0
+                                ? `You'll deposit ${depositAmount} ${prizeData.token} into the prize vault.`
+                                : "Your tournament will be created on-chain."}
+                        </p>
+                        <p style={{ fontSize: "0.78rem", color: "rgba(245,166,35,0.75)", lineHeight: 1.5 }}>
+                            Once signed and confirmed, the tournament is live. The vault is unlocked
+                            only by completion or cancellation — both of which require another
+                            on-chain transaction.
+                        </p>
+                    </div>
+                </div>
+
+                <Modal.Actions>
+                    <Button variant="outline" className="flex-1" onClick={() => setShowFinalConfirm(false)}>
+                        Back
+                    </Button>
+                    <Button
+                        variant="primary"
+                        className="flex-1"
+                        onClick={() => { setShowFinalConfirm(false); onConfirm(); }}
+                    >
+                        {depositAmount > 0
+                            ? `Sign & deposit ${depositAmount} ${prizeData.token}`
+                            : "Sign & create"}
+                    </Button>
+                </Modal.Actions>
+            </Modal>
         </div>
     );
 }

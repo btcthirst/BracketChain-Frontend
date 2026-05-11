@@ -123,9 +123,9 @@ function MatchNode({ match, onClick, organizerActionable }: { match: Match; onCl
     const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const borderStyle = {
-        completed:   "2px solid rgba(34,212,126,0.3)",
+        completed: "2px solid rgba(34,212,126,0.3)",
         in_progress: organizerActionable ? "2px solid rgba(34,212,126,0.7)" : "2px solid rgba(34,212,126,0.4)",
-        pending:     "2px solid rgba(255,255,255,0.1)",
+        pending: "2px solid rgba(255,255,255,0.1)",
     }[match.status];
 
     const glowStyle = match.status === "in_progress"
@@ -259,7 +259,23 @@ export function BracketSkeleton() {
 
 // ── Empty bracket ─────────────────────────────────────────────────────────────
 
-export function BracketEmpty({ onJoin, isRegistered = false }: { onJoin?: () => void; isRegistered?: boolean }) {
+export function BracketEmpty({
+    onJoin,
+    isRegistered = false,
+    registrationClosed = false,
+    cancelled = false,
+}: {
+    onJoin?: () => void;
+    isRegistered?: boolean;
+    // True when registration deadline has passed. When set, the not-registered
+    // branch hides the Join CTA (the on-chain program would reject) and the
+    // copy reflects waiting on organizer rather than waiting on players.
+    registrationClosed?: boolean;
+    // True when tournament was cancelled before any bracket was initialized.
+    // The CancelledBanner above already explains what happened — this branch
+    // just keeps the empty bracket panel from misleadingly inviting joins.
+    cancelled?: boolean;
+}) {
     return (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "64px 24px", gap: 16, textAlign: "center" }}>
             <svg viewBox="0 0 200 120" style={{ width: 192, height: 112, color: "rgba(34,212,126,0.12)" }} fill="none">
@@ -275,11 +291,25 @@ export function BracketEmpty({ onJoin, isRegistered = false }: { onJoin?: () => 
                 <rect x="148" y="62" width="44" height="18" rx="4" stroke="currentColor" strokeWidth="2" strokeDasharray="5 3" />
             </svg>
 
-            {isRegistered ? (
+            {cancelled ? (
+                <>
+                    <p className="text-lg font-semibold text-gray-600">Tournament cancelled</p>
+                    <p className="text-sm text-gray-400 max-w-xs">
+                        This tournament was cancelled before it started. No bracket will be played.
+                    </p>
+                </>
+            ) : isRegistered ? (
                 <>
                     <p style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "1rem", color: "#f0f1f5" }}>You&apos;re registered!</p>
                     <p style={{ fontSize: "0.85rem", color: "rgba(240,241,245,0.35)", maxWidth: 280 }}>
                         Waiting for the organizer to start the tournament. The bracket will appear here once it begins.
+                    </p>
+                </>
+            ) : registrationClosed ? (
+                <>
+                    <p className="text-lg font-semibold text-gray-600">Registration closed</p>
+                    <p className="text-sm text-gray-400 max-w-xs">
+                        The deadline has passed. Waiting for the organizer to start the bracket.
                     </p>
                 </>
             ) : (

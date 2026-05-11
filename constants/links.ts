@@ -2,6 +2,15 @@
 
 // ─── Internal routes ──────────────────────────────────────────────────────────
 
+export const NAV_LINKS = [
+    { label: "HOME", href: "https://bracketchain.xyz/#top" },
+    { label: "PROTOCOL", href: "https://bracketchain.xyz/#protocol" },
+    { label: "LIVE DEMO", href: "https://bracketchain.xyz/#action" },
+    { label: "ECOSYSTEM", href: "https://bracketchain.xyz/#ecosystem" },
+    { label: "MARKET", href: "https://bracketchain.xyz/#market" },
+    { label: "ROADMAP", href: "https://bracketchain.xyz/#roadmap" },
+];
+
 export const ROUTES = {
     home: "/",
     explore: "/explore",
