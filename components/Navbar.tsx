@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { NAV_LINKS } from "@/constants/links";
 import { ConnectButton } from "@/components/ConnectButton";
+import Image from "next/image";
 
 export function Navbar() {
     return (
@@ -34,7 +35,7 @@ export function Navbar() {
                     href={NAV_LINKS[0].href}
                     style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", flexShrink: 0 }}
                 >
-                    <img src="/logo.svg" alt="BracketChain" width={28} height={28} />
+                    <Image src="/logo.svg" alt="BracketChain" width={28} height={28} />
                     <span
                         style={{
                             fontFamily: "'Syne', sans-serif",
