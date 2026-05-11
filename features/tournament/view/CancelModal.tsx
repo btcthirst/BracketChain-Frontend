@@ -47,7 +47,7 @@ export function CancelModal({ tournamentId, tournamentName, onClose, onSuccess }
     }
 
     return (
-        <Modal open={true} onClose={submitting ? () => {} : onClose}>
+        <Modal open={true} onClose={submitting ? () => { } : onClose}>
             <Modal.Header onClose={onClose} disabled={submitting}>
                 <h3 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "1rem", color: "#f0f1f5" }}>
                     Cancel Tournament

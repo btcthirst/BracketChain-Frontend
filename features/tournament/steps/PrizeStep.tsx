@@ -219,8 +219,8 @@ export function PrizeStep({
                             const title = !available
                                 ? "Coming in V2"
                                 : tooFewPlayers
-                                ? `Requires ≥${minParticipants} players (currently ${detailsData.maxParticipants})`
-                                : undefined;
+                                    ? `Requires ≥${minParticipants} players (currently ${detailsData.maxParticipants})`
+                                    : undefined;
                             return (
                                 <button
                                     key={key}
@@ -240,8 +240,8 @@ export function PrizeStep({
                                         ...(!enabled
                                             ? { background: "transparent", borderColor: "rgba(255,255,255,0.05)", color: "rgba(240,241,245,0.2)" }
                                             : isSelected
-                                            ? { background: "rgba(34,212,126,0.12)", borderColor: "rgba(34,212,126,0.35)", color: "#22d47e" }
-                                            : { background: "transparent", borderColor: "rgba(255,255,255,0.1)", color: "rgba(240,241,245,0.5)" }),
+                                                ? { background: "rgba(34,212,126,0.12)", borderColor: "rgba(34,212,126,0.35)", color: "#22d47e" }
+                                                : { background: "transparent", borderColor: "rgba(255,255,255,0.1)", color: "rgba(240,241,245,0.5)" }),
                                     }}
                                 >
                                     {label}

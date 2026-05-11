@@ -123,9 +123,9 @@ function MatchNode({ match, onClick, organizerActionable }: { match: Match; onCl
     const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const borderStyle = {
-        completed:   "2px solid rgba(34,212,126,0.3)",
+        completed: "2px solid rgba(34,212,126,0.3)",
         in_progress: organizerActionable ? "2px solid rgba(34,212,126,0.7)" : "2px solid rgba(34,212,126,0.4)",
-        pending:     "2px solid rgba(255,255,255,0.1)",
+        pending: "2px solid rgba(255,255,255,0.1)",
     }[match.status];
 
     const glowStyle = match.status === "in_progress"

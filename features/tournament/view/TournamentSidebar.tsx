@@ -33,6 +33,25 @@ const darkRow: React.CSSProperties = {
     border: "1px solid rgba(255,255,255,0.06)",
 };
 
+const sectionLabel: React.CSSProperties = {
+    fontFamily: "'DM Mono', monospace",
+    fontSize: "0.65rem",
+    fontWeight: 500,
+    color: "rgba(240,241,245,0.3)",
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+};
+
+const darkRow: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "8px 12px",
+    borderRadius: 8,
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(255,255,255,0.06)",
+};
+
 // ── Participant list ───────────────────────────────────────────────────────────
 
 function ParticipantList({ participants, currentAddress, maxParticipants }: { participants: Player[]; currentAddress: string | null; maxParticipants: number }) {
@@ -293,6 +312,9 @@ function ActionArea({
             console.error("Start failed:", err);
         } finally { setStarting(false); }
     }
+
+    const btnGreen: React.CSSProperties = { width: "100%", padding: "12px 0", borderRadius: 10, background: "#22d47e", color: "#06070b", border: "none", fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer", boxShadow: "0 0 18px rgba(34,212,126,0.28)", transition: "background 0.15s, box-shadow 0.15s", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 };
+    const btnDisabled: React.CSSProperties = { ...btnGreen, background: "rgba(255,255,255,0.06)", color: "rgba(240,241,245,0.25)", boxShadow: "none", cursor: "not-allowed" };
 
     if (tournament.status === "cancelled") return null;
 

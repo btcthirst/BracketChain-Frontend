@@ -145,7 +145,7 @@ export function CreateTournament() {
     const { sol, usdc } = useWalletBalance();
     const balanceForToken = prizeData.token === "USDC" ? usdc
         : prizeData.token === "SOL" ? sol
-        : null;
+            : null;
 
     const handleNext = useCallback(() => {
         if (step === 0) {

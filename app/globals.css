@@ -5,17 +5,17 @@
    To add a new theme, override these variables in [data-theme="..."] selector.
    ──────────────────────────────────────────────────────────────────────── */
 @theme {
-  --color-accent:       #22d47e;
+  --color-accent: #22d47e;
   --color-accent-hover: #16c062;
-  --color-red:          #f04e66;
-  --color-amber:        #f5a623;
-  --color-surface:      #0d0f18;
-  --color-surface-2:    #12141f;
-  --color-text:         #f0f1f5;
-  --color-text-muted:   #7b7e96;
+  --color-red: #f04e66;
+  --color-amber: #f5a623;
+  --color-surface: #0d0f18;
+  --color-surface-2: #12141f;
+  --color-text: #f0f1f5;
+  --color-text-muted: #7b7e96;
 
-  --font-mono:    'DM Mono', monospace;
-  --font-sans:    'Inter', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+  --font-sans: 'Inter', sans-serif;
   --font-display: 'Syne', sans-serif;
 }
 
@@ -54,6 +54,7 @@
 }
 
 @layer base {
+
   *,
   *::before,
   *::after {
@@ -212,6 +213,7 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   min-height: unset;
   padding: 0;
 }
+
 .range-slider input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   pointer-events: all;
@@ -223,9 +225,11 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   box-shadow: 0 0 8px rgba(34, 212, 126, 0.4);
   cursor: grab;
 }
+
 .range-slider input[type="range"]::-webkit-slider-thumb:active {
   cursor: grabbing;
 }
+
 .range-slider input[type="range"]::-moz-range-thumb {
   pointer-events: all;
   width: 14px;
