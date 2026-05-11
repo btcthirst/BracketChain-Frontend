@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, Trophy, X } from "lucide-react";
+import { AlertTriangle, Loader2, Trophy } from "lucide-react";
 import { PublicKey } from "@solana/web3.js";
 import {
     reportResult,
@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { useBracketChainClient } from "@/lib/sdk";
 import { useConfetti } from "@/hooks/useConfetti";
 import type { Match, Player, TournamentView } from "@/types/tournament";
+import { Modal } from "@/components/ui/modal";
+import { Button } from "@/components/ui/button";
 
 // ── Preset derivation ─────────────────────────────────────────────────────────
 //
@@ -247,119 +249,112 @@ export function ReportResultModal({
     };
 
     return (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}>
-            <div style={{ background: "rgba(13,15,24,0.98)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, boxShadow: "0 24px 80px rgba(0,0,0,0.6)", width: "100%", maxWidth: 440, display: "flex", flexDirection: "column", gap: 20, padding: 24 }}>
+        <Modal open={true} onClose={onClose} maxWidth={440}>
+            <Modal.Header onClose={onClose}>
+                <Trophy style={{ width: 16, height: 16, color: "#22d47e" }} />
+                <h3 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "1rem", color: "#f0f1f5" }}>
+                    {isFinal ? "Report Final Result" : `Report — Round ${match.round}, Match ${match.position + 1}`}
+                </h3>
+            </Modal.Header>
 
-                {/* Header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <Trophy style={{ width: 16, height: 16, color: "#22d47e" }} />
-                        <h3 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "1rem", color: "#f0f1f5" }}>
-                            {isFinal ? "Report Final Result" : `Report — Round ${match.round}, Match ${match.position + 1}`}
-                        </h3>
-                    </div>
-                    <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(240,241,245,0.3)", padding: 4, transition: "color 0.15s" }}
-                        onMouseEnter={e => (e.currentTarget.style.color = "rgba(240,241,245,0.7)")}
-                        onMouseLeave={e => (e.currentTarget.style.color = "rgba(240,241,245,0.3)")}
-                    >
-                        <X style={{ width: 18, height: 18 }} />
-                    </button>
-                </div>
+            {/* Winner picker */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <label style={sectionLabel}>Winner</label>
+                {[match.playerA, match.playerB].map((p) => {
+                    const sel = winner?.address === p?.address;
+                    return (
+                        <button key={p?.address ?? "tbd"} disabled={!p || submitting} onClick={() => p && setWinner(p)} style={{ ...playerPickBtn(sel), opacity: !p ? 0.4 : 1, cursor: !p || submitting ? "not-allowed" : "pointer" }}>
+                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.82rem", color: sel ? "#22d47e" : "rgba(240,241,245,0.6)" }}>{p?.display ?? "TBD"}</span>
+                            {sel && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.62rem", fontWeight: 600, color: "#22d47e", background: "rgba(34,212,126,0.1)", border: "1px solid rgba(34,212,126,0.2)", padding: "1px 7px", borderRadius: 999 }}>Selected</span>}
+                        </button>
+                    );
+                })}
+            </div>
 
-                {/* Winner picker */}
+            {/* 3rd place */}
+            {needsThird && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <label style={sectionLabel}>Winner</label>
-                    {[match.playerA, match.playerB].map((p) => {
-                        const sel = winner?.address === p?.address;
-                        return (
-                            <button key={p?.address ?? "tbd"} disabled={!p || submitting} onClick={() => p && setWinner(p)} style={{ ...playerPickBtn(sel), opacity: !p ? 0.4 : 1, cursor: !p || submitting ? "not-allowed" : "pointer" }}>
-                                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.82rem", color: sel ? "#22d47e" : "rgba(240,241,245,0.6)" }}>{p?.display ?? "TBD"}</span>
-                                {sel && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.62rem", fontWeight: 600, color: "#22d47e", background: "rgba(34,212,126,0.1)", border: "1px solid rgba(34,212,126,0.2)", padding: "1px 7px", borderRadius: 999 }}>Selected</span>}
-                            </button>
-                        );
-                    })}
+                    <label style={sectionLabel}>3rd Place</label>
+                    {sfLosers.length === 0 ? (
+                        <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "rgba(245,166,35,0.7)", background: "rgba(245,166,35,0.07)", border: "1px solid rgba(245,166,35,0.2)", padding: "10px 12px", borderRadius: 8, lineHeight: 1.5 }}>
+                            Waiting for semifinal results — both SF matches must be reported before the final can be finalized.
+                        </p>
+                    ) : (
+                        sfLosers.map((p) => {
+                            const sel = thirdPlace?.address === p.address;
+                            return (
+                                <button key={p.address} disabled={submitting} onClick={() => setThirdPlace(p)} style={{ ...playerPickBtn(sel), cursor: submitting ? "not-allowed" : "pointer" }}>
+                                    <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.82rem", color: sel ? "#22d47e" : "rgba(240,241,245,0.6)" }}>{p.display}</span>
+                                    {sel && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.62rem", fontWeight: 600, color: "#22d47e" }}>3rd</span>}
+                                </button>
+                            );
+                        })
+                    )}
+                    <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.62rem", color: "rgba(240,241,245,0.25)", fontStyle: "italic" }}>
+                        Pick one of the two semifinal losers. Position 3 is organizer-trusted on-chain (MVP).
+                    </p>
                 </div>
+            )}
 
-                {/* 3rd place */}
-                {needsThird && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <label style={sectionLabel}>3rd Place</label>
-                        {sfLosers.length === 0 ? (
-                            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "rgba(245,166,35,0.7)", background: "rgba(245,166,35,0.07)", border: "1px solid rgba(245,166,35,0.2)", padding: "10px 12px", borderRadius: 8, lineHeight: 1.5 }}>
-                                Waiting for semifinal results — both SF matches must be reported before the final can be finalized.
-                            </p>
-                        ) : (
-                            sfLosers.map((p) => {
-                                const sel = thirdPlace?.address === p.address;
-                                return (
-                                    <button key={p.address} disabled={submitting} onClick={() => setThirdPlace(p)} style={{ ...playerPickBtn(sel), cursor: submitting ? "not-allowed" : "pointer" }}>
-                                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.82rem", color: sel ? "#22d47e" : "rgba(240,241,245,0.6)" }}>{p.display}</span>
-                                        {sel && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.62rem", fontWeight: 600, color: "#22d47e" }}>3rd</span>}
-                                    </button>
-                                );
-                            })
-                        )}
-                        <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.62rem", color: "rgba(240,241,245,0.25)", fontStyle: "italic" }}>
-                            Pick one of the two semifinal losers. Position 3 is organizer-trusted on-chain (MVP).
+            {/* Deep: 5-8 auto-derived */}
+            {isFinal && preset === "deep" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <label style={sectionLabel}>5th–8th (auto: quarterfinal losers)</label>
+                    {qfLosers.length !== 4 ? (
+                        <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "rgba(245,166,35,0.7)", background: "rgba(245,166,35,0.07)", border: "1px solid rgba(245,166,35,0.2)", padding: "10px 12px", borderRadius: 8 }}>
+                            Need 4 completed quarterfinals — found {qfLosers.length}.
                         </p>
-                    </div>
-                )}
+                    ) : (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            {qfLosers.map((p) => (
+                                <span key={p.address} style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "rgba(240,241,245,0.55)", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", padding: "3px 10px", borderRadius: 6 }}>
+                                    {p.display}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
-                {/* Deep: 5-8 auto-derived */}
-                {isFinal && preset === "deep" && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <label style={sectionLabel}>5th–8th (auto: quarterfinal losers)</label>
-                        {qfLosers.length !== 4 ? (
-                            <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "rgba(245,166,35,0.7)", background: "rgba(245,166,35,0.07)", border: "1px solid rgba(245,166,35,0.2)", padding: "10px 12px", borderRadius: 8 }}>
-                                Need 4 completed quarterfinals — found {qfLosers.length}.
-                            </p>
-                        ) : (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                                {qfLosers.map((p) => (
-                                    <span key={p.address} style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.7rem", color: "rgba(240,241,245,0.55)", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", padding: "3px 10px", borderRadius: 6 }}>
-                                        {p.display}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
+            {/* Final payout summary */}
+            {isFinal && (
+                <div style={{ background: "rgba(34,212,126,0.05)", border: "1px solid rgba(34,212,126,0.12)", borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 5 }}>
+                    <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.62rem", fontWeight: 500, color: "rgba(34,212,126,0.45)", textTransform: "uppercase", letterSpacing: "0.08em" }}>On Confirm</p>
+                    <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", color: "rgba(240,241,245,0.55)", lineHeight: 1.5 }}>
+                        Prize pool of <span style={{ fontWeight: 700, color: "#22d47e" }}>{tournament.prizePool} {tournament.token}</span> will be distributed on-chain in a single transaction (3.5% fee to protocol).
+                    </p>
+                </div>
+            )}
 
-                {/* Final payout summary */}
-                {isFinal && (
-                    <div style={{ background: "rgba(34,212,126,0.05)", border: "1px solid rgba(34,212,126,0.12)", borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 5 }}>
-                        <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.62rem", fontWeight: 500, color: "rgba(34,212,126,0.45)", textTransform: "uppercase", letterSpacing: "0.08em" }}>On Confirm</p>
-                        <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.8rem", color: "rgba(240,241,245,0.55)", lineHeight: 1.5 }}>
-                            Prize pool of <span style={{ fontWeight: 700, color: "#22d47e" }}>{tournament.prizePool} {tournament.token}</span> will be distributed on-chain in a single transaction (3.5% fee to protocol).
-                        </p>
-                    </div>
-                )}
-
-                {/* Actions */}
-                <div style={{ display: "flex", gap: 10 }}>
-                    <button
-                        onClick={onClose}
-                        disabled={submitting}
-                        style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(240,241,245,0.5)", fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: "0.875rem", cursor: submitting ? "not-allowed" : "pointer", opacity: submitting ? 0.4 : 1, transition: "border-color 0.15s, color 0.15s" }}
-                        onMouseEnter={e => { if (!submitting) { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = "#f0f1f5"; } }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(240,241,245,0.5)"; }}
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={!canSubmit || submitting}
-                        style={{ flex: 1, padding: "10px 0", borderRadius: 10, background: (!canSubmit || submitting) ? "rgba(255,255,255,0.06)" : "#22d47e", border: "none", color: (!canSubmit || submitting) ? "rgba(240,241,245,0.25)" : "#06070b", fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: "0.875rem", cursor: (!canSubmit || submitting) ? "not-allowed" : "pointer", transition: "background 0.15s", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-                        onMouseEnter={e => { if (canSubmit && !submitting) e.currentTarget.style.background = "#16c062"; }}
-                        onMouseLeave={e => { if (canSubmit && !submitting) e.currentTarget.style.background = "#22d47e"; }}
-                    >
-                        {submitting
-                            ? <><Loader2 style={{ width: 15, height: 15, animation: "spin 1s linear infinite" }} />{isFinal ? "Distributing…" : "Reporting…"}</>
-                            : isFinal ? "Confirm & Distribute" : "Confirm Winner"
-                        }
-                    </button>
+            {/* Irreversibility warning — applies to both final and non-final
+                matches. The program writes match results to a Match PDA and
+                has no instruction to amend or rewind, so once confirmed the
+                bracket cannot be edited from the UI. */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "rgba(245,166,35,0.07)", border: "1px solid rgba(245,166,35,0.2)", borderRadius: 8, padding: "10px 12px" }}>
+                <AlertTriangle style={{ width: 16, height: 16, color: "#f5a623", flexShrink: 0, marginTop: 1 }} />
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <p style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "0.8rem", color: "#f5a623" }}>
+                        Reporting is final
+                    </p>
+                    <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(245,166,35,0.7)", lineHeight: 1.5 }}>
+                        {isFinal
+                            ? "Once signed, prize payouts are distributed on-chain and cannot be reversed."
+                            : "Once signed, the winner advances on-chain. Scores cannot be changed."}
+                    </p>
                 </div>
             </div>
-        </div>
+
+            <Modal.Actions>
+                <Button variant="outline" className="flex-1" onClick={onClose} disabled={submitting}>
+                    Cancel
+                </Button>
+                <Button variant="primary" className="flex-1" onClick={handleSubmit} disabled={!canSubmit || submitting}>
+                    {submitting
+                        ? <><Loader2 className="animate-spin size-[15px]" />{isFinal ? "Distributing…" : "Reporting…"}</>
+                        : isFinal ? "Confirm & Distribute" : "Confirm Winner"
+                    }
+                </Button>
+            </Modal.Actions>
+        </Modal>
     );
 }

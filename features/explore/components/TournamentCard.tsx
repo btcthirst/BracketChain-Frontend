@@ -5,15 +5,82 @@ import { Gamepad2, Gift, Users, Clock, Trophy } from "lucide-react";
 import { ROUTES } from "@/constants/links";
 import type { Tournament } from "@/lib/tournament";
 import { motion } from "framer-motion";
+import { useDeadlineReached } from "@/hooks/useDeadlineReached";
 
 interface Props {
     tournament: Tournament;
 }
 
+// Five-state badge variants. Distinguishing Cancelled from Completed and
+// surfacing "registration deadline passed but on-chain status hasn't caught
+// up yet" matter at the card level — those tournaments cannot accept new
+// joins, and showing them as "Upcoming" misleads the user.
+type StatusVariant = "live" | "cancelled" | "completed" | "closed" | "upcoming";
+
+const STATUS_BADGE: Record<StatusVariant, { label: string; style: React.CSSProperties; pulse?: boolean }> = {
+    live: {
+        label: "LIVE",
+        style: { background: "rgba(240,78,102,0.08)", border: "1px solid rgba(240,78,102,0.20)", color: "#f04e66" },
+        pulse: true,
+    },
+    cancelled: {
+        label: "Cancelled",
+        style: { background: "rgba(240,78,102,0.06)", border: "1px solid rgba(240,78,102,0.18)", color: "rgba(240,78,102,0.85)" },
+    },
+    completed: {
+        label: "Ended",
+        style: { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(240,241,245,0.45)" },
+    },
+    closed: {
+        label: "Closed",
+        style: { background: "rgba(245,166,35,0.08)", border: "1px solid rgba(245,166,35,0.22)", color: "#f5a623" },
+    },
+    upcoming: {
+        label: "Upcoming",
+        style: { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(240,241,245,0.35)" },
+    },
+};
+
 export function TournamentCard({ tournament }: Props) {
     const isLive = tournament.status === "Active" || tournament.status === "PendingBracketInit";
-    const isCompleted = tournament.status === "Completed" || tournament.status === "Cancelled";
+    const isCancelled = tournament.status === "Cancelled";
+    const isCompleted = tournament.status === "Completed";
+    // useDeadlineReached ticks internally and stays pure-during-render —
+    // direct Date.now() in render is flagged by react-hooks/purity. Hook
+    // handles invalid-date edge case (returns false on NaN deadline).
+    const deadlineReached = useDeadlineReached(tournament.registrationDeadline);
+    const isRegistrationClosed = tournament.status === "Registration" && deadlineReached;
+
+    const variant: StatusVariant = isLive
+        ? "live"
+        : isCancelled
+            ? "cancelled"
+            : isCompleted
+                ? "completed"
+                : isRegistrationClosed
+                    ? "closed"
+                    : "upcoming";
+
+    const badge = STATUS_BADGE[variant];
     const fillPct = Math.round((tournament.participants / tournament.maxParticipants) * 100);
+
+    const timeText = isLive
+        ? "In Progress"
+        : isCancelled
+            ? "Cancelled"
+            : isCompleted
+                ? "Ended"
+                : isRegistrationClosed
+                    ? "Awaiting start"
+                    : tournament.startsIn;
+
+    const timeColor = isLive
+        ? "#f04e66"
+        : isCancelled
+            ? "rgba(240,78,102,0.85)"
+            : isRegistrationClosed
+                ? "#f5a623"
+                : "rgba(240,241,245,0.35)";
 
     return (
         <motion.div
@@ -63,50 +130,33 @@ export function TournamentCard({ tournament }: Props) {
                             {tournament.format}
                         </span>
 
-                        {/* Status badge */}
-                        {isLive ? (
-                            <span
-                                style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 4,
-                                    padding: "2px 8px",
-                                    background: "rgba(240,78,102,0.08)",
-                                    border: "1px solid rgba(240,78,102,0.20)",
-                                    borderRadius: 999,
-                                    fontFamily: "'DM Mono', monospace",
-                                    fontSize: "0.65rem",
-                                    color: "#f04e66",
-                                    letterSpacing: "0.04em",
-                                }}
-                            >
+                        {/* Status badge — 5 variants */}
+                        <span
+                            style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                padding: "2px 8px",
+                                borderRadius: 999,
+                                fontFamily: "'DM Mono', monospace",
+                                fontSize: "0.65rem",
+                                letterSpacing: "0.04em",
+                                ...badge.style,
+                            }}
+                        >
+                            {badge.pulse && (
                                 <span
                                     style={{
                                         width: 5,
                                         height: 5,
                                         borderRadius: "50%",
-                                        background: "#f04e66",
+                                        background: "currentColor",
                                         animation: "pulse 1.2s ease-in-out infinite",
                                     }}
                                 />
-                                LIVE
-                            </span>
-                        ) : (
-                            <span
-                                style={{
-                                    padding: "2px 8px",
-                                    background: "rgba(255,255,255,0.05)",
-                                    border: "1px solid rgba(255,255,255,0.08)",
-                                    borderRadius: 999,
-                                    fontFamily: "'DM Mono', monospace",
-                                    fontSize: "0.65rem",
-                                    color: "rgba(240,241,245,0.35)",
-                                    letterSpacing: "0.04em",
-                                }}
-                            >
-                                {isCompleted ? "Ended" : "Upcoming"}
-                            </span>
-                        )}
+                            )}
+                            {badge.label}
+                        </span>
                     </div>
 
                     {/* Game */}
@@ -186,8 +236,8 @@ export function TournamentCard({ tournament }: Props) {
                         {/* Time */}
                         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                             <Clock size={12} style={{ color: "rgba(240,241,245,0.3)" }} />
-                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.72rem", color: isLive ? "#f04e66" : "rgba(240,241,245,0.35)" }}>
-                                {isLive ? "In Progress" : isCompleted ? "Ended" : tournament.startsIn}
+                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.72rem", color: timeColor }}>
+                                {timeText}
                             </span>
                         </div>
                     </div>

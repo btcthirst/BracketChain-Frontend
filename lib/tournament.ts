@@ -12,6 +12,10 @@ export interface Tournament {
     maxParticipants: number;
     entryFee: number;
     startsIn: string;
+    // ISO timestamp from indexer. Kept on the UI type so explore-page filters
+    // can split "Registration" rows into still-open (Upcoming) vs deadline-
+    // passed (Reg Closed) without re-fetching per filter change.
+    registrationDeadline: string;
 }
 
 const USDC_DECIMALS = 1_000_000;
@@ -65,5 +69,6 @@ export function toUiTournament(t: IndexerTournament, now: number = Date.now()): 
         maxParticipants,
         entryFee: Number(entryFeeMicro) / USDC_DECIMALS,
         startsIn: formatStartsIn(t.registrationDeadline || new Date().toISOString(), now),
+        registrationDeadline: t.registrationDeadline || new Date().toISOString(),
     };
 }

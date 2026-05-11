@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArrowLeft, RefreshCw, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useWallet } from "@solana/wallet-adapter-react";
 import type { Match } from "@/types/tournament";
 import { useTournamentView } from "@/hooks/useTournamentView";
@@ -45,27 +46,10 @@ export function ManageView({ tournamentId, onBack }: Props) {
 
             {/* Sub-page top bar */}
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <button
-                    onClick={onBack}
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        background: "none",
-                        border: "none",
-                        color: "rgba(240,241,245,0.4)",
-                        fontSize: "0.875rem",
-                        fontFamily: "'Inter', sans-serif",
-                        fontWeight: 500,
-                        cursor: "pointer",
-                        transition: "color 0.15s",
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.color = "#f0f1f5")}
-                    onMouseLeave={e => (e.currentTarget.style.color = "rgba(240,241,245,0.4)")}
-                >
-                    <ArrowLeft style={{ width: 16, height: 16 }} />
+                <Button variant="ghost" onClick={onBack}>
+                    <ArrowLeft className="size-4" />
                     Back to Dashboard
-                </button>
+                </Button>
 
                 {state.status === "success" && (
                     <>
@@ -92,24 +76,9 @@ export function ManageView({ tournamentId, onBack }: Props) {
                         >
                             {STATUS_LABELS[state.data.status] ?? state.data.status}
                         </span>
-                        <button
-                            onClick={refresh}
-                            title="Refresh"
-                            style={{
-                                marginLeft: "auto",
-                                padding: 8,
-                                background: "none",
-                                border: "none",
-                                color: "rgba(240,241,245,0.3)",
-                                cursor: "pointer",
-                                borderRadius: 8,
-                                transition: "color 0.15s, background 0.15s",
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.color = "#22d47e"; e.currentTarget.style.background = "rgba(34,212,126,0.06)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.color = "rgba(240,241,245,0.3)"; e.currentTarget.style.background = "none"; }}
-                        >
-                            <RefreshCw style={{ width: 16, height: 16 }} />
-                        </button>
+                        <Button variant="ghost" size="icon" onClick={refresh} title="Refresh" className="ml-auto">
+                            <RefreshCw className="size-4" />
+                        </Button>
                     </>
                 )}
             </div>
@@ -185,7 +154,13 @@ export function ManageView({ tournamentId, onBack }: Props) {
                                     <span style={{ color: "#f0f1f5", fontWeight: 600 }}>{t.participants.length}</span>/{t.maxParticipants} participants
                                 </span>
                             </div>
-                            {!hasBracket ? <BracketEmpty /> : <BracketView matches={t.matches} />}
+                            {!hasBracket
+                                ? <BracketEmpty
+                                    isRegistered={isOrganizer}
+                                    cancelled={t.status === "cancelled"}
+                                />
+                                : <BracketView matches={t.matches} />
+                            }
                         </div>
 
                         {/* Active matches */}
@@ -230,25 +205,9 @@ export function ManageView({ tournamentId, onBack }: Props) {
                                                     {match.playerA?.display ?? "TBD"} vs {match.playerB?.display ?? "TBD"}
                                                 </span>
                                             </div>
-                                            <button
-                                                onClick={() => setReportMatch(match)}
-                                                style={{
-                                                    padding: "7px 16px",
-                                                    background: "#22d47e",
-                                                    color: "#06070b",
-                                                    border: "none",
-                                                    borderRadius: 8,
-                                                    fontFamily: "'Inter', sans-serif",
-                                                    fontWeight: 700,
-                                                    fontSize: "0.75rem",
-                                                    cursor: "pointer",
-                                                    transition: "background 0.15s",
-                                                }}
-                                                onMouseEnter={e => (e.currentTarget.style.background = "#16c062")}
-                                                onMouseLeave={e => (e.currentTarget.style.background = "#22d47e")}
-                                            >
+                                            <Button variant="primary" size="sm" onClick={() => setReportMatch(match)}>
                                                 Report Result
-                                            </button>
+                                            </Button>
                                         </div>
                                     ))}
                                 </div>
@@ -278,26 +237,9 @@ export function ManageView({ tournamentId, onBack }: Props) {
                                         All entry fees will be refunded. This cannot be undone.
                                     </p>
                                 </div>
-                                <button
-                                    onClick={() => setShowCancel(true)}
-                                    style={{
-                                        padding: "8px 18px",
-                                        background: "rgba(240,78,102,0.12)",
-                                        color: "#f04e66",
-                                        border: "1px solid rgba(240,78,102,0.3)",
-                                        borderRadius: 8,
-                                        fontFamily: "'Inter', sans-serif",
-                                        fontWeight: 700,
-                                        fontSize: "0.78rem",
-                                        cursor: "pointer",
-                                        flexShrink: 0,
-                                        transition: "background 0.15s",
-                                    }}
-                                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(240,78,102,0.2)")}
-                                    onMouseLeave={e => (e.currentTarget.style.background = "rgba(240,78,102,0.12)")}
-                                >
+                                <Button variant="destructive" size="sm" onClick={() => setShowCancel(true)} className="shrink-0">
                                     Cancel Tournament
-                                </button>
+                                </Button>
                             </div>
                         )}
 

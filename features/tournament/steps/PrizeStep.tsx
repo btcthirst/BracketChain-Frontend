@@ -1,8 +1,10 @@
 import { useEffect } from "react";
 import { Trophy } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { inputCls, totalPool } from "../utils/utils";
 import { PROTOCOL_FEE, PAYOUT_PRESETS, TOKEN_INFO } from "@/constants/tournament";
 import { DetailsData, PayoutPreset, PrizeData, Token } from "@/types/tournament";
+import type { Step2Errors } from "./ValidateState";
 import { FieldGroup } from "./FieldGroup";
 import { BalanceWarning } from "./BalanceWarning";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
@@ -13,12 +15,14 @@ export function PrizeStep({
     onChange,
     connected,
     onConnect,
+    errors = {},
 }: {
     data: PrizeData;
     detailsData: DetailsData;
     onChange: (d: Partial<PrizeData>) => void;
     connected: boolean;
     onConnect: () => void;
+    errors?: Step2Errors;
 }) {
     const pool = totalPool(data.deposit, detailsData.entryFee, detailsData.maxParticipants, detailsData.freeEntry);
     const afterFee = pool * (1 - PROTOCOL_FEE);
@@ -100,36 +104,9 @@ export function PrizeStep({
                 <p style={{ fontSize: "0.85rem", color: "rgba(240,241,245,0.4)", maxWidth: 300 }}>
                     You need a connected Solana wallet to configure the prize pool and sign the on-chain transaction.
                 </p>
-                <button
-                    onClick={onConnect}
-                    style={{
-                        marginTop: 8,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "12px 28px",
-                        background: "#22d47e",
-                        color: "#06070b",
-                        border: "none",
-                        borderRadius: 8,
-                        fontFamily: "'Inter', sans-serif",
-                        fontWeight: 700,
-                        fontSize: "0.875rem",
-                        cursor: "pointer",
-                        transition: "background 0.15s, box-shadow 0.15s",
-                        boxShadow: "0 0 20px rgba(34,212,126,0.30)",
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#16c062";
-                        e.currentTarget.style.boxShadow = "0 0 32px rgba(34,212,126,0.50)";
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "#22d47e";
-                        e.currentTarget.style.boxShadow = "0 0 20px rgba(34,212,126,0.30)";
-                    }}
-                >
+                <Button variant="primary" onClick={onConnect} className="mt-2 px-7">
                     Connect Wallet
-                </button>
+                </Button>
             </div>
         );
     }
@@ -153,12 +130,17 @@ export function PrizeStep({
                         ))}
                     </select>
                     {data.token === "custom" && (
-                        <input
-                            className={inputCls() + " mt-2"}
-                            placeholder="Token mint address"
-                            value={data.customToken}
-                            onChange={e => onChange({ customToken: e.target.value })}
-                        />
+                        <>
+                            <input
+                                className={inputCls() + " mt-2"}
+                                placeholder="Token mint address"
+                                value={data.customToken}
+                                onChange={e => onChange({ customToken: e.target.value })}
+                            />
+                            {errors.customToken && (
+                                <p className="mt-1 text-xs text-red-600">{errors.customToken}</p>
+                            )}
+                        </>
                     )}
                 </FieldGroup>
 
@@ -200,6 +182,9 @@ export function PrizeStep({
                             </span>
                         </p>
                     )}
+                    {errors.deposit && (
+                        <p className="mt-1 text-xs text-red-600">{errors.deposit}</p>
+                    )}
                 </FieldGroup>
 
                 <BalanceWarning
@@ -234,8 +219,8 @@ export function PrizeStep({
                             const title = !available
                                 ? "Coming in V2"
                                 : tooFewPlayers
-                                ? `Requires ≥${minParticipants} players (currently ${detailsData.maxParticipants})`
-                                : undefined;
+                                    ? `Requires ≥${minParticipants} players (currently ${detailsData.maxParticipants})`
+                                    : undefined;
                             return (
                                 <button
                                     key={key}
@@ -255,8 +240,8 @@ export function PrizeStep({
                                         ...(!enabled
                                             ? { background: "transparent", borderColor: "rgba(255,255,255,0.05)", color: "rgba(240,241,245,0.2)" }
                                             : isSelected
-                                            ? { background: "rgba(34,212,126,0.12)", borderColor: "rgba(34,212,126,0.35)", color: "#22d47e" }
-                                            : { background: "transparent", borderColor: "rgba(255,255,255,0.1)", color: "rgba(240,241,245,0.5)" }),
+                                                ? { background: "rgba(34,212,126,0.12)", borderColor: "rgba(34,212,126,0.35)", color: "#22d47e" }
+                                                : { background: "transparent", borderColor: "rgba(255,255,255,0.1)", color: "rgba(240,241,245,0.5)" }),
                                     }}
                                 >
                                     {label}
@@ -366,6 +351,9 @@ export function PrizeStep({
                         >
                             Percentages sum to {pctSum.toFixed(1)}% — must equal 100%
                         </p>
+                    )}
+                    {errors.payoutEntries && (
+                        <p className="text-xs font-medium text-red-600">{errors.payoutEntries}</p>
                     )}
                 </div>
 

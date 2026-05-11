@@ -4,11 +4,14 @@ import { useState, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useRouter } from "next/navigation";
-import { ROUTES } from "@/constants/links";
+import { toast } from "sonner";
+import { NAV_LINKS } from "@/constants/links";
 import { ChevronRight, ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { MotionDiv } from "@/components/ui/motion-wraper";
 import { PAYOUT_PRESETS } from "@/constants/tournament";
-import { validateStep1 } from "../steps/ValidateState";
+import { validateStep1, validateStep2, type Step2Errors } from "../steps/ValidateState";
+import { useWalletBalance } from "@/hooks/useWalletBalance";
 import { DetailsStep } from "../steps/DetailsStep";
 import { PrizeStep } from "../steps/PrizeStep";
 import { ConfirmStep } from "../steps/ConfirmStep";
@@ -17,6 +20,19 @@ import { DetailsData, PayoutPreset, PrizeData, TxState } from "@/types/tournamen
 import { useBracketChainClient } from "@/lib/sdk";
 import {
     BracketChainSDKError,
+    InsufficientFundsError,
+    InsufficientBalanceError,
+    RegistrationClosedError,
+    TournamentNameTakenError,
+    NameTooLongError,
+    InvalidPayoutPresetError,
+    InvalidTokenMintError,
+    ProtocolNotInitializedError,
+    TransactionFailedError,
+    UnknownProgramError,
+    MaxParticipantsExceededError,
+    MinParticipantsNotMetError,
+    mapError,
     createTournament,
     payoutPreset,
     type PayoutPresetVariant,
@@ -47,10 +63,50 @@ function unixSecondsFromForm(date: string, time: string): number {
     return Math.floor(new Date(`${date}T${time}:00Z`).getTime() / 1000);
 }
 
+// Map raw tx errors to user-friendly text. Raw `.message` from the program
+// often reads like "RegistrationClosed: registration deadline passed" — fine
+// for logs, but useless to a non-technical user. We branch on the typed SDK
+// errors (defined in @bracketchain/sdk) and fall back to the raw message
+// only when no specific case matches. `instanceof` survives minification —
+// `constructor.name` would not.
 function describeError(err: unknown): string {
-    if (err instanceof BracketChainSDKError) return err.message;
-    if (err instanceof Error) return err.message;
-    return String(err);
+    const sdkErr = err instanceof BracketChainSDKError ? err : mapError(err);
+
+    if (sdkErr instanceof InsufficientFundsError || sdkErr instanceof InsufficientBalanceError) {
+        return "Your wallet doesn't have enough USDC to fund this deposit. Top up the connected wallet and try again.";
+    }
+    if (sdkErr instanceof RegistrationClosedError) {
+        return "Registration deadline passed before the transaction landed. Pick a deadline a few minutes further out.";
+    }
+    if (sdkErr instanceof TournamentNameTakenError) {
+        return "You already have a tournament with this name. Choose a different name.";
+    }
+    if (sdkErr instanceof NameTooLongError) {
+        return "Tournament name exceeds the 32-byte on-chain limit. Shorten the name.";
+    }
+    if (sdkErr instanceof InvalidPayoutPresetError) {
+        return "Selected payout preset isn't compatible with this participant count. Pick WTA, Standard, or Deep.";
+    }
+    if (sdkErr instanceof InvalidTokenMintError) {
+        return "The selected prize token isn't accepted by the protocol. MVP supports USDC only.";
+    }
+    if (sdkErr instanceof ProtocolNotInitializedError) {
+        return "BracketChain protocol isn't initialized on this cluster. Check your wallet's network.";
+    }
+    if (sdkErr instanceof MaxParticipantsExceededError) {
+        return "Max participants exceeds the protocol cap. Pick a smaller bracket size.";
+    }
+    if (sdkErr instanceof MinParticipantsNotMetError) {
+        return "Tournaments require at least 2 participants.";
+    }
+    if (sdkErr instanceof TransactionFailedError) {
+        return "Transaction didn't confirm. Devnet congestion is common — try again in a moment.";
+    }
+    if (sdkErr instanceof UnknownProgramError) {
+        return "On-chain check failed unexpectedly. Verify the cluster matches your wallet (devnet vs mainnet).";
+    }
+
+    return sdkErr.message || (err instanceof Error ? err.message : String(err));
 }
 
 export function CreateTournament() {
@@ -79,8 +135,17 @@ export function CreateTournament() {
         payoutEntries: [...PAYOUT_PRESETS.standard.entries],
     });
     const [errors1, setErrors1] = useState<Partial<Record<keyof DetailsData, string>>>({});
+    const [errors2, setErrors2] = useState<Step2Errors>({});
     const [txState, setTxState] = useState<TxState>("idle");
     const [txError, setTxError] = useState("");
+
+    // Step 2 guard needs current wallet balance. PrizeStep already calls this
+    // hook for its own warning UI; lifting it up here keeps a single source
+    // of truth and avoids a second RPC poll.
+    const { sol, usdc } = useWalletBalance();
+    const balanceForToken = prizeData.token === "USDC" ? usdc
+        : prizeData.token === "SOL" ? sol
+            : null;
 
     const handleNext = useCallback(() => {
         if (step === 0) {
@@ -88,8 +153,13 @@ export function CreateTournament() {
             if (Object.keys(errs).length > 0) { setErrors1(errs); return; }
             setErrors1({});
         }
+        if (step === 1) {
+            const errs = validateStep2(prizeData, detailsData, balanceForToken);
+            if (Object.keys(errs).length > 0) { setErrors2(errs); return; }
+            setErrors2({});
+        }
         setStep(s => s + 1);
-    }, [step, detailsData]);
+    }, [step, detailsData, prizeData, balanceForToken]);
 
     const handleBack = () => {
         setTxError("");
@@ -100,20 +170,29 @@ export function CreateTournament() {
         setTxError("");
 
         if (!client) {
-            setTxError("Connect your wallet first.");
+            const msg = "Connect your wallet first.";
+            setTxError(msg);
             setTxState("error");
+            toast.error(msg);
             return;
         }
 
-        // MVP scope guards — UI still exposes options the program rejects.
+        // MVP scope guards — defense-in-depth. ConfirmStep already disables the
+        // Create button when these conditions hold, so reaching this point is
+        // unexpected. We still toast so a forced click (devtools, automation)
+        // surfaces a clear reason.
         if (detailsData.format !== "SE") {
-            setTxError("Only Single Elimination is supported in MVP.");
+            const msg = "Only Single Elimination is supported in MVP.";
+            setTxError(msg);
             setTxState("error");
+            toast.error(msg);
             return;
         }
         if (prizeData.token !== "USDC") {
-            setTxError("Only USDC is supported in MVP.");
+            const msg = "Only USDC is supported in MVP.";
+            setTxError(msg);
             setTxState("error");
+            toast.error(msg);
             return;
         }
 
@@ -121,8 +200,10 @@ export function CreateTournament() {
         try {
             presetVariant = buildPayoutPresetVariant(prizeData.payoutPreset);
         } catch (err) {
-            setTxError(describeError(err));
+            const msg = describeError(err);
+            setTxError(msg);
             setTxState("error");
+            toast.error(msg);
             return;
         }
 
@@ -147,9 +228,20 @@ export function CreateTournament() {
             setTournamentAddress(result.tournamentPda.toBase58());
             setTxSignature(result.txSignature);
             setTxState("success");
+            toast.success("Tournament created on-chain!");
         } catch (err) {
-            setTxError(describeError(err));
+            const msg = describeError(err);
+            // Wallet-rejected cases shouldn't read as a hard failure. Sonner's
+            // info variant matches the convention used by Sidebar for the same
+            // event ("Request cancelled").
+            if (msg.toLowerCase().includes("rejected") || msg.toLowerCase().includes("user rejected")) {
+                toast.info("Request cancelled");
+            } else {
+                toast.error(msg);
+            }
+            setTxError(msg);
             setTxState("error");
+            console.error("CreateTournament failed:", err);
         }
     }, [client, detailsData, prizeData]);
 
@@ -188,7 +280,7 @@ export function CreateTournament() {
                     }}
                 >
                     <a
-                        href={ROUTES.home}
+                        href={NAV_LINKS[0].href}
                         style={{
                             display: "flex",
                             alignItems: "center",
@@ -239,9 +331,14 @@ export function CreateTournament() {
                         <PrizeStep
                             data={prizeData}
                             detailsData={detailsData}
-                            onChange={d => setPrizeData(s => ({ ...s, ...d }))}
+                            onChange={d => {
+                                setPrizeData(s => ({ ...s, ...d }));
+                                // Clear errors as user edits — same UX as Step 1.
+                                if (Object.keys(errors2).length > 0) setErrors2({});
+                            }}
                             connected={connected}
                             onConnect={() => setVisible(true)}
+                            errors={errors2}
                         />
                     )}
                     {step === 2 && (
@@ -269,60 +366,19 @@ export function CreateTournament() {
                             borderTop: "1px solid rgba(255,255,255,0.07)",
                         }}
                     >
-                        <button
-                            onClick={step === 0 ? () => router.push("/") : handleBack}
+                        <Button
+                            variant="ghost"
                             disabled={isProcessing}
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 6,
-                                background: "transparent",
-                                border: "none",
-                                color: "rgba(240,241,245,0.45)",
-                                fontSize: "0.875rem",
-                                fontWeight: 500,
-                                cursor: isProcessing ? "not-allowed" : "pointer",
-                                opacity: isProcessing ? 0.4 : 1,
-                                transition: "color 0.15s",
-                                fontFamily: "'Inter', sans-serif",
-                            }}
-                            onMouseEnter={(e) => { if (!isProcessing) e.currentTarget.style.color = "rgba(240,241,245,0.85)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(240,241,245,0.45)"; }}
+                            onClick={step === 0 ? () => router.push("/") : handleBack}
                         >
-                            <ChevronLeft size={15} />
+                            <ChevronLeft className="size-[15px]" />
                             {step === 0 ? "Cancel" : "Back"}
-                        </button>
+                        </Button>
                         {step < 2 && (
-                            <button
-                                onClick={handleNext}
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 7,
-                                    padding: "10px 22px",
-                                    background: "#22d47e",
-                                    color: "#06070b",
-                                    border: "none",
-                                    borderRadius: 8,
-                                    fontFamily: "'Inter', sans-serif",
-                                    fontWeight: 700,
-                                    fontSize: "0.875rem",
-                                    cursor: "pointer",
-                                    transition: "background 0.15s, box-shadow 0.15s",
-                                    boxShadow: "0 0 18px rgba(34,212,126,0.28)",
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = "#16c062";
-                                    e.currentTarget.style.boxShadow = "0 0 28px rgba(34,212,126,0.48)";
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = "#22d47e";
-                                    e.currentTarget.style.boxShadow = "0 0 18px rgba(34,212,126,0.28)";
-                                }}
-                            >
+                            <Button variant="primary" onClick={handleNext}>
                                 Next
-                                <ChevronRight size={15} />
-                            </button>
+                                <ChevronRight className="size-[15px]" />
+                            </Button>
                         )}
                     </div>
                 )}

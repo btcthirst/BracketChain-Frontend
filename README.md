@@ -13,10 +13,11 @@ BracketChain is a decentralized tournament platform that enables organizers to c
 | Framework | Next.js 16 (App Router) |
 | Language | TypeScript 5 |
 | Styling | Tailwind CSS v4 |
-| UI Components | shadcn/ui + Radix UI |
+| UI Components | shadcn/ui + Radix UI + MUI v7 |
 | Animations | Motion (Framer Motion) |
-| Blockchain | Solana — `@solana/wallet-adapter` |
+| Blockchain | Solana — `@solana/wallet-adapter` + `@bracketchain/sdk` |
 | Wallet UI | Phantom / Backpack / Solflare |
+| Testing | Jest + ts-jest |
 | Package Manager | npm |
 | Deployment | Vercel |
 
@@ -26,8 +27,9 @@ BracketChain is a decentralized tournament platform that enables organizers to c
 bracketchain-frontend/
 ├── app/                        # Next.js App Router
 │   ├── create/                 # /create — tournament creation wizard
+│   ├── dashboard/              # /dashboard — organizer dashboard
 │   ├── t/[id]/                 # /t/:id — public tournament view
-│   ├── explore/                # /explore — placeholder
+│   ├── explore/                # /explore — tournament browser
 │   ├── about/                  # /about — placeholder
 │   ├── layout.tsx
 │   └── page.tsx                # Landing page
@@ -45,30 +47,54 @@ bracketchain-frontend/
 │   ├── ConnectButton.tsx
 │   └── Providers.tsx           # Solana wallet context
 │
-├── features/tournament/        # Tournament feature module
-│   ├── create/
-│   │   └── CreateTournament.tsx  # 3-step creation wizard
-│   ├── view/
-│   │   ├── TournamentPage.tsx    # /t/[id] page shell
-│   │   ├── TournamentHeader.tsx  # Name, badges, info strip, share
-│   │   ├── BracketView.tsx       # Bracket tree + match modal
-│   │   └── TournamentSidebar.tsx # Participants, escrow, actions
-│   └── steps/                    # Create wizard steps
-│       ├── DetailsStep.tsx
-│       ├── PrizeStep.tsx
-│       ├── ConfirmStep.tsx
-│       ├── Stepper.tsx
-│       ├── FieldGroup.tsx
-│       ├── BalanceWarning.tsx
-│       ├── DuplicateNameWarning.tsx
-│       └── ValidateState.ts
+├── features/
+│   ├── dashboard/              # Organizer dashboard
+│   │   ├── DashboardPage.tsx   # Page shell — wallet gate, tabs
+│   │   ├── TournamentTable.tsx # Table of owned tournaments
+│   │   ├── ManageView.tsx      # Per-tournament management panel
+│   │   └── AnalyticsSection.tsx
+│   ├── explore/                # Tournament browser
+│   │   ├── ExplorePage.tsx
+│   │   └── components/
+│   │       ├── FilterBar.tsx
+│   │       └── TournamentCard.tsx
+│   └── tournament/             # Tournament feature module
+│       ├── create/
+│       │   └── CreateTournament.tsx  # 3-step creation wizard
+│       ├── view/
+│       │   ├── TournamentPage.tsx    # /t/[id] page shell
+│       │   ├── TournamentHeader.tsx  # Name, badges, info strip, share
+│       │   ├── BracketView.tsx       # SE/DE bracket tree + match modal
+│       │   ├── RoundRobinBracket.tsx # Round Robin standings view
+│       │   ├── SwissBracket.tsx      # Swiss bracket view
+│       │   ├── TournamentSidebar.tsx # Participants, escrow, actions
+│       │   ├── ReportResultModal.tsx
+│       │   └── CancelModal.tsx
+│       ├── steps/                    # Create wizard steps
+│       │   ├── DetailsStep.tsx
+│       │   ├── PrizeStep.tsx
+│       │   ├── ConfirmStep.tsx
+│       │   ├── Stepper.tsx
+│       │   ├── FieldGroup.tsx
+│       │   ├── BalanceWarning.tsx
+│       │   ├── DuplicateNameWarning.tsx
+│       │   └── ValidateState.ts
+│       └── utils/utils.ts
 │
 ├── hooks/                      # Custom React hooks
 │   ├── useWalletBalance.ts     # SOL + USDC balance fetcher
 │   ├── useStats.ts             # Landing page stats
 │   ├── useTournaments.ts       # Live tournaments list
 │   ├── useTournamentView.ts    # Single tournament detail
+│   ├── useDashboard.ts         # Dashboard data
+│   ├── useExplore.ts           # Explore page data + filters
+│   ├── useDeadlineReached.ts   # Registration deadline watcher
 │   └── useConfetti.ts          # Success animation
+│
+├── lib/                        # Utilities and SDK wrappers
+│   ├── sdk.ts                  # @bracketchain/sdk hook wrapper
+│   ├── tournament.ts           # Tournament helpers
+│   └── indexerToTournamentState.ts
 │
 ├── constants/
 │   ├── links.ts                # ROUTES, EXTERNAL_LINKS, SOLANA
@@ -76,6 +102,9 @@ bracketchain-frontend/
 │
 ├── types/
 │   └── tournament.ts           # All shared TypeScript types
+│
+├── tests/
+│   └── tournament.test.ts
 │
 └── public/
 ```
@@ -133,26 +162,33 @@ make preview      # build + start production server
 ## Available Commands
 
 ```bash
-make help         # show all commands
+make help           # show all commands
 
-make install      # install dependencies (npm ci)
-make install-fix  # install with --legacy-peer-deps
+make install        # install dependencies (npm ci)
+make install-fix    # install with --legacy-peer-deps
+make install-clean  # clean node_modules and reinstall
 
-make dev          # development server
-make dev-turbo    # development with Turbopack
-make build        # production build
-make preview      # build + serve
+make dev            # development server
+make dev-turbo      # development with Turbopack
+make dev-https      # development with HTTPS (requires mkcert)
+make build          # production build
+make build-analyze  # build and open bundle analyzer
+make start          # start production server (requires build first)
+make preview        # build + start production server
 
-make lint         # ESLint
-make type-check   # TypeScript check (no emit)
-make check        # lint + type-check
+make lint           # ESLint
+make lint-fix       # ESLint with auto-fix
+make type-check     # TypeScript check (no emit)
+make check          # lint + type-check
+make format         # Prettier (if installed)
 
-make clean        # remove .next/ out/
-make clean-all    # remove everything including node_modules
+make clean          # remove .next/ out/
+make clean-modules  # remove node_modules
+make clean-all      # remove everything including node_modules
 
-make env          # create .env.local from .env.example
-make ci           # full CI pipeline
-make info         # show Node/npm/Next.js versions
+make env            # create .env.local from .env.example
+make ci             # full CI pipeline (install → lint → type-check → build)
+make info           # show Node/npm/Next.js versions
 ```
 
 ## Architecture
@@ -211,7 +247,8 @@ const { connection } = useConnection();
 | `/` | ✅ Live | Landing — hero, stats, how it works, live tournaments |
 | `/create` | ✅ Live | 3-step tournament creation wizard |
 | `/t/[id]` | ✅ Live | Public bracket view, participants, escrow |
-| `/explore` | 🚧 Placeholder | Tournament browser |
+| `/dashboard` | ✅ Live | Organizer dashboard — manage tournaments, report results, analytics |
+| `/explore` | ✅ Live | Tournament browser with filters |
 | `/about` | 🚧 Placeholder | About page |
 
 ## Edge States
@@ -230,8 +267,7 @@ Every data-fetching component handles:
 - Real Solana transactions — all blockchain interactions are simulated with `setTimeout`
 - API layer — all data is mock/hardcoded
 - WebSocket subscriptions — no real-time bracket updates
-- Result reporting — organizer "Report Result" button is UI-only
-- `/explore` and `/about` pages are placeholders
+- `/about` page is a placeholder
 
 ## Contributing
 

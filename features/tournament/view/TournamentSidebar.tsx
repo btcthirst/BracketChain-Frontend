@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ExternalLink, CheckCircle2, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { ExternalLink, CheckCircle2, Loader2, ChevronDown, ChevronUp, Clock, Wallet } from "lucide-react";
 import { PublicKey } from "@solana/web3.js";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { joinTournament, startTournament, mapError } from "@bracketchain/sdk";
 import { toast } from "sonner";
 import type { TournamentView, Player } from "@/types/tournament";
@@ -10,6 +11,8 @@ import { SOLANA } from "@/constants/links";
 import { useBracketChainClient } from "@/lib/sdk";
 import { useConfetti } from "@/hooks/useConfetti";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
+import { useDeadlineReached } from "@/hooks/useDeadlineReached";
+import { Button } from "@/components/ui/button";
 
 const sectionLabel: React.CSSProperties = {
     fontFamily: "'DM Mono', monospace",
@@ -45,7 +48,6 @@ function ParticipantList({ participants, currentAddress, maxParticipants }: { pa
                 </span>
             </div>
 
-            {/* Progress bar */}
             <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 999, overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${fillPct}%`, background: "linear-gradient(90deg, #22d47e, #4ade80)", borderRadius: 999, transition: "width 0.4s ease" }} />
             </div>
@@ -89,7 +91,6 @@ function ParticipantList({ participants, currentAddress, maxParticipants }: { pa
                     );
                 })}
 
-                {/* Empty slots */}
                 {Array.from({ length: Math.max(0, maxParticipants - participants.length) }).map((_, i) => (
                     <div key={`empty-${i}`} style={{ ...darkRow, border: "1px dashed rgba(255,255,255,0.07)", opacity: 0.5 }}>
                         <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.72rem", color: "rgba(240,241,245,0.2)", fontStyle: "italic" }}>Open slot</span>
@@ -137,7 +138,6 @@ function EscrowPanel({ tournament, payoutsExpanded, setPayoutsExpanded, payoutsR
                 </p>
             </div>
 
-            {/* Completed payouts expander */}
             {tournament.status === "completed" && (
                 <div ref={payoutsRef} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <button
@@ -199,17 +199,12 @@ function OrganizerPanel({ organizer }: { organizer: Player }) {
 }
 
 // ── Cancel danger zone ────────────────────────────────────────────────────────
-// Surfaced only in organizer branches where SDK `cancelTournament` accepts the
-// status: Registration + PendingBracketInit. Active/Completed reject on-chain.
 
 function CancelDangerZone({ onCancel }: { onCancel: () => void }) {
     return (
-        <button
-            onClick={onCancel}
-            className="w-full py-2.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 text-xs font-semibold transition-colors"
-        >
+        <Button variant="destructive" className="w-full" onClick={onCancel}>
             Cancel Tournament & Refund
-        </button>
+        </Button>
     );
 }
 
@@ -220,6 +215,8 @@ function ActionArea({
     currentAddress,
     isOrganizer,
     onJoinSuccess,
+    onStartSuccess,
+    onRefresh,
     onViewPayouts,
     onCancel,
 }: {
@@ -227,6 +224,8 @@ function ActionArea({
     currentAddress: string | null;
     isOrganizer: boolean;
     onJoinSuccess: () => void;
+    onStartSuccess: () => void;
+    onRefresh: () => void;
     onViewPayouts: () => void;
     onCancel: () => void;
 }) {
@@ -235,11 +234,13 @@ function ActionArea({
     const [optimisticJoined, setOptimisticJoined] = useState(false);
 
     const sdk = useBracketChainClient();
+    const { setVisible: setWalletModalVisible } = useWalletModal();
     const { fire } = useConfetti();
     const { usdc: walletUsdc, refresh: refreshBalance } = useWalletBalance();
 
     const isParticipant = optimisticJoined || tournament.participants.some(p => p.address === currentAddress);
     const hasEnough = walletUsdc !== null && walletUsdc >= tournament.entryFee;
+    const registrationClosed = useDeadlineReached(tournament.registrationDeadline);
 
     async function handleJoin() {
         if (!sdk) { toast.error("Connect your wallet to join"); return; }
@@ -256,8 +257,25 @@ function ActionArea({
             if (error.message?.toLowerCase().includes("rejected")) { toast.info("Request cancelled"); return; }
             const sdkErr = mapError(err);
             if (sdkErr.message.includes("balance") || sdkErr.constructor.name === "InsufficientBalanceError") {
-                toast.error(<div className="flex flex-col gap-1"><span className="font-semibold">Insufficient Balance</span><span className="text-xs opacity-90">{sdkErr.message}</span><a href="https://spl-token-faucet.com" target="_blank" className="mt-1 text-[10px] font-bold uppercase tracking-wider text-blue-200 hover:text-white underline">Get Devnet USDC →</a></div>);
-            } else { toast.error(sdkErr.message); }
+                toast.error(
+                    <div className="flex flex-col gap-1">
+                        <span className="font-semibold">Insufficient Balance</span>
+                        <span className="text-xs opacity-90">{sdkErr.message}</span>
+                        <a
+                            href="https://spl-token-faucet.com"
+                            target="_blank"
+                            className="mt-1 text-[10px] font-bold uppercase tracking-wider text-blue-200 hover:text-white underline"
+                        >
+                            Get Devnet USDC →
+                        </a>
+                    </div>
+                );
+            } else {
+                toast.error(sdkErr.message);
+            }
+            if (/registration|closed|full|status/i.test(sdkErr.message)) {
+                onRefresh();
+            }
             console.error("Join failed:", err);
         } finally { setJoining(false); }
     }
@@ -268,7 +286,7 @@ function ActionArea({
         try {
             await startTournament(sdk, { tournamentPda: new PublicKey(tournament.id) });
             toast.success("Tournament started! Bracket is being initialized.");
-            onJoinSuccess();
+            onStartSuccess();
         } catch (err) {
             const sdkErr = mapError(err);
             toast.error(sdkErr.message);
@@ -276,21 +294,13 @@ function ActionArea({
         } finally { setStarting(false); }
     }
 
-    const btnGreen: React.CSSProperties = { width: "100%", padding: "12px 0", borderRadius: 10, background: "#22d47e", color: "#06070b", border: "none", fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer", boxShadow: "0 0 18px rgba(34,212,126,0.28)", transition: "background 0.15s, box-shadow 0.15s", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 };
-    const btnDisabled: React.CSSProperties = { ...btnGreen, background: "rgba(255,255,255,0.06)", color: "rgba(240,241,245,0.25)", boxShadow: "none", cursor: "not-allowed" };
-
     if (tournament.status === "cancelled") return null;
 
     if (tournament.status === "completed") {
         return (
-            <button
-                onClick={onViewPayouts}
-                style={{ width: "100%", padding: "12px 0", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(240,241,245,0.5)", fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", transition: "border-color 0.15s, color 0.15s" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(34,212,126,0.3)"; e.currentTarget.style.color = "#22d47e"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(240,241,245,0.5)"; }}
-            >
+            <Button variant="outline" size="lg" className="w-full" onClick={onViewPayouts}>
                 View Payouts →
-            </button>
+            </Button>
         );
     }
 
@@ -298,24 +308,22 @@ function ActionArea({
         if (tournament.status === "registration") {
             const isFull = tournament.participants.length >= tournament.maxParticipants;
             const canStart = tournament.participants.length >= 2;
+            const isDisabled = starting || !canStart;
 
             return (
-                <div className="flex flex-col gap-3">
-                    <button
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <Button
                         onClick={handleStart}
-                        disabled={starting || !canStart}
-                        className={`w-full py-3 rounded-xl font-bold text-sm transition-colors ${isFull
-                            ? "bg-green-600 hover:bg-green-700 text-white"
-                            : "bg-purple-600 hover:bg-purple-700 text-white"
-                            } disabled:bg-gray-100 disabled:text-gray-400`}
+                        disabled={isDisabled}
+                        variant={isFull ? "primary" : "warning"}
+                        size="lg"
+                        className="w-full"
                     >
                         {starting
-                            ? <span className="flex items-center justify-center gap-2">
-                                <Loader2 className="w-4 h-4 animate-spin" /> Initializing...
-                            </span>
+                            ? <><Loader2 className="animate-spin" /> Initializing…</>
                             : isFull ? "Start Tournament" : "Start Early (Lock Bracket)"
                         }
-                    </button>
+                    </Button>
                     <CancelDangerZone onCancel={onCancel} />
                 </div>
             );
@@ -334,13 +342,15 @@ function ActionArea({
                             <div style={{ height: "100%", width: `${pct}%`, background: "#f5a623", borderRadius: 999, transition: "width 0.5s ease" }} />
                         </div>
                     </div>
-                    <button
+                    <Button
                         onClick={handleStart}
                         disabled={starting}
-                        style={{ width: "100%", padding: "12px 0", borderRadius: 10, background: "rgba(245,166,35,0.1)", border: "1px solid rgba(245,166,35,0.3)", color: "#f5a623", fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: "0.875rem", cursor: starting ? "not-allowed" : "pointer", transition: "background 0.15s", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                        variant="warning"
+                        size="lg"
+                        className="w-full"
                     >
-                        {starting ? <><Loader2 style={{ width: 15, height: 15, animation: "spin 1s linear infinite" }} /> Continuing…</> : "Continue Bracket Init"}
-                    </button>
+                        {starting ? <><Loader2 className="animate-spin" /> Continuing…</> : "Continue Bracket Init"}
+                    </Button>
                     <CancelDangerZone onCancel={onCancel} />
                 </div>
             );
@@ -361,15 +371,50 @@ function ActionArea({
     if (isParticipant) {
         return (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <button disabled style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 0", borderRadius: 10, background: "rgba(34,212,126,0.07)", border: "1px solid rgba(34,212,126,0.2)", color: "#22d47e", fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: "0.875rem", cursor: "default" }}>
-                    <CheckCircle2 style={{ width: 16, height: 16 }} />
+                <Button
+                    disabled
+                    variant="primary"
+                    size="lg"
+                    className="w-full border border-accent/20 bg-accent/[0.07] text-accent shadow-none cursor-default"
+                >
+                    <CheckCircle2 />
                     Registered
-                </button>
+                </Button>
                 {tournament.participants.length >= tournament.maxParticipants && (
                     <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", textAlign: "center", color: "rgba(240,241,245,0.3)", fontStyle: "italic" }}>
                         Tournament is full! Waiting for organizer to start…
                     </p>
                 )}
+            </div>
+        );
+    }
+
+    if (!currentAddress) {
+        return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <Button variant="primary" size="lg" className="w-full" onClick={() => setWalletModalVisible(true)}>
+                    <Wallet />
+                    Connect to Join
+                </Button>
+                <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", textAlign: "center", color: "rgba(240,241,245,0.3)" }}>
+                    {tournament.entryFee > 0
+                        ? `Entry fee ${tournament.entryFee} ${tournament.token}. Connect a Solana wallet to register.`
+                        : "Free entry. Connect a Solana wallet to register."}
+                </p>
+            </div>
+        );
+    }
+
+    if (registrationClosed) {
+        return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <Button variant="primary" size="lg" className="w-full" disabled>
+                    <Clock />
+                    Registration Closed
+                </Button>
+                <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", textAlign: "center", color: "rgba(240,241,245,0.3)", fontStyle: "italic" }}>
+                    The deadline has passed. Waiting for organizer to start the bracket.
+                </p>
             </div>
         );
     }
@@ -385,21 +430,21 @@ function ActionArea({
                     <span style={{ fontWeight: 700, color: "#f5a623" }}>Low balance:</span> Your wallet has {walletUsdc?.toFixed(2) ?? "0"} USDC.
                 </div>
             )}
-            <button
+            <Button
                 id="join-btn"
+                variant="primary"
+                size="lg"
+                className="w-full"
                 onClick={handleJoin}
                 disabled={joinDisabled}
-                style={joinDisabled ? btnDisabled : btnGreen}
-                onMouseEnter={e => { if (!joinDisabled) { e.currentTarget.style.background = "#16c062"; e.currentTarget.style.boxShadow = "0 0 28px rgba(34,212,126,0.48)"; } }}
-                onMouseLeave={e => { if (!joinDisabled) { e.currentTarget.style.background = "#22d47e"; e.currentTarget.style.boxShadow = "0 0 18px rgba(34,212,126,0.28)"; } }}
             >
                 {joining
-                    ? <><Loader2 style={{ width: 15, height: 15, animation: "spin 1s linear infinite" }} /> Awaiting wallet…</>
+                    ? <><Loader2 className="animate-spin" /> Awaiting wallet…</>
                     : isFull ? "Tournament Full"
                         : insufficient ? "Insufficient Balance"
                             : <>Join Tournament {tournament.entryFee > 0 ? `— ${tournament.entryFee} ${tournament.token}` : "— Free"}</>
                 }
-            </button>
+            </Button>
         </div>
     );
 }
@@ -422,11 +467,15 @@ export function TournamentSidebar({
     tournament,
     currentAddress,
     onJoinSuccess,
+    onStartSuccess,
+    onRefresh,
     onCancel,
 }: {
     tournament: TournamentView;
     currentAddress: string | null;
     onJoinSuccess: () => void;
+    onStartSuccess: () => void;
+    onRefresh: () => void;
     onCancel: () => void;
 }) {
     const isOrganizer = tournament.organizer.address === currentAddress;
@@ -463,6 +512,8 @@ export function TournamentSidebar({
                 currentAddress={currentAddress}
                 isOrganizer={isOrganizer}
                 onJoinSuccess={onJoinSuccess}
+                onStartSuccess={onStartSuccess}
+                onRefresh={onRefresh}
                 onViewPayouts={handleViewPayouts}
                 onCancel={onCancel}
             />

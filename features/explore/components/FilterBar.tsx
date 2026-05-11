@@ -1,8 +1,7 @@
 "use client";
 
 import { Search, X, LayoutGrid, Gamepad2 } from "lucide-react";
-import type { ExploreFilters } from "@/hooks/useExplore";
-import type { IndexerTournamentStatus } from "@bracketchain/sdk";
+import type { ExploreFilters, ExploreStatus } from "@/hooks/useExplore";
 
 interface Props {
     filters: ExploreFilters;
@@ -11,12 +10,21 @@ interface Props {
     totalCount?: number;
 }
 
-const STATUSES: { value: IndexerTournamentStatus | "All"; label: string }[] = [
-    { value: "All", label: "All" },
-    { value: "Active", label: "Live" },
-    { value: "Registration", label: "Upcoming" },
-    { value: "Completed", label: "Completed" },
-];
+// Six filter buckets. `RegistrationClosed` is synthetic — see useExplore.ts.
+// LIVE pulses (most active state); Closed shows a static amber dot to flag
+// "deadline passed but program hasn't transitioned the on-chain status yet."
+const STATUSES: {
+    value: ExploreStatus;
+    label: string;
+    indicator?: { color: string; pulse?: boolean };
+}[] = [
+        { value: "All", label: "All" },
+        { value: "Active", label: "Live", indicator: { color: "#f04e66", pulse: true } },
+        { value: "Registration", label: "Upcoming" },
+        { value: "RegistrationClosed", label: "Closed", indicator: { color: "#f5a623" } },
+        { value: "Completed", label: "Completed" },
+        { value: "Cancelled", label: "Cancelled" },
+    ];
 
 const FORMATS = ["All", "SE", "DE", "Swiss", "RR"];
 const GAMES = ["All", "Counter-Strike 2", "Dota 2", "League of Legends", "Valorant", "StarCraft II"];
@@ -51,7 +59,7 @@ export function FilterBar({ filters, onFilterChange, onClear, totalCount }: Prop
     if (filters.minPrize > 0 || filters.maxPrize < 10000) {
         activeTags.push({
             id: "prize",
-            label: `$${filters.minPrize.toLocaleString()} – $${filters.maxPrize.toLocaleString()}`,
+            label: `$${filters.minPrize.toLocaleString()} – $${filters.maxPrize.toLocaleString()}${filters.maxPrize >= 10000 ? "+" : ""}`,
             clear: () => onFilterChange({ ...filters, minPrize: 0, maxPrize: 10000 }),
         });
     }
@@ -110,10 +118,11 @@ export function FilterBar({ filters, onFilterChange, onClear, totalCount }: Prop
                     />
                 </div>
 
-                {/* Status tabs */}
+                {/* Status tabs — six buckets driven by STATUSES const */}
                 <div
                     style={{
                         display: "flex",
+                        flexWrap: "wrap",
                         gap: 2,
                         background: "rgba(255,255,255,0.04)",
                         border: "1px solid rgba(255,255,255,0.07)",
@@ -121,7 +130,7 @@ export function FilterBar({ filters, onFilterChange, onClear, totalCount }: Prop
                         padding: 3,
                     }}
                 >
-                    {STATUSES.map(({ value, label }) => {
+                    {STATUSES.map(({ value, label, indicator }) => {
                         const active = filters.status === value;
                         return (
                             <button
@@ -144,15 +153,15 @@ export function FilterBar({ filters, onFilterChange, onClear, totalCount }: Prop
                                         : { background: "transparent", color: "rgba(240,241,245,0.4)" }),
                                 }}
                             >
-                                {value === "Active" && (
+                                {indicator && (
                                     <span
                                         style={{
                                             width: 6,
                                             height: 6,
                                             borderRadius: "50%",
-                                            background: active ? "#22d47e" : "#f04e66",
+                                            background: active ? "#22d47e" : indicator.color,
                                             flexShrink: 0,
-                                            ...(active ? {} : { animation: "pulse 1.5s ease-in-out infinite" }),
+                                            ...(indicator.pulse && !active ? { animation: "pulse 1.5s ease-in-out infinite" } : {}),
                                         }}
                                     />
                                 )}
@@ -249,7 +258,7 @@ export function FilterBar({ filters, onFilterChange, onClear, totalCount }: Prop
                         />
                     </div>
                     <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.72rem", color: "#22d47e", whiteSpace: "nowrap" }}>
-                        {filters.minPrize.toLocaleString()} – {filters.maxPrize.toLocaleString()}
+                        {filters.minPrize.toLocaleString()} – {filters.maxPrize.toLocaleString()}{filters.maxPrize >= 10000 ? "+" : ""}
                     </span>
                 </div>
 
