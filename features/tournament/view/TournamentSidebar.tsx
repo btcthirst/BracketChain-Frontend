@@ -294,9 +294,6 @@ function ActionArea({
         } finally { setStarting(false); }
     }
 
-    const btnGreen: React.CSSProperties = { width: "100%", padding: "12px 0", borderRadius: 10, background: "#22d47e", color: "#06070b", border: "none", fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer", boxShadow: "0 0 18px rgba(34,212,126,0.28)", transition: "background 0.15s, box-shadow 0.15s", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 };
-    const btnDisabled: React.CSSProperties = { ...btnGreen, background: "rgba(255,255,255,0.06)", color: "rgba(240,241,245,0.25)", boxShadow: "none", cursor: "not-allowed" };
-
     if (tournament.status === "cancelled") return null;
 
     if (tournament.status === "completed") {
