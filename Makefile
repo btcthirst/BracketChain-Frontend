@@ -39,12 +39,12 @@ help: ## Show this help
 # Install
 # ──────────────────────────────────────────────
 .PHONY: install
-install: ## Install dependencies
-	npm ci
+install: ## Install dependencies (frozen lockfile — matches CI)
+	pnpm install --frozen-lockfile
 
-.PHONY: install-fix
-install-fix: ## Install dependencies ignoring peer conflicts (ERRESOLVE)
-	npm install --legacy-peer-deps
+.PHONY: install-update
+install-update: ## Install dependencies and refresh pnpm-lock.yaml
+	pnpm install
 
 .PHONY: install-clean
 install-clean: clean-modules install ## Clean node_modules and reinstall
@@ -54,7 +54,7 @@ install-clean: clean-modules install ## Clean node_modules and reinstall
 # ──────────────────────────────────────────────
 .PHONY: dev
 dev: ## Start development server (port 3000)
-	npm run dev
+	pnpm dev
 
 .PHONY: dev-turbo
 dev-turbo: ## Start development server with Turbopack
@@ -69,15 +69,15 @@ dev-https: ## Start development server with HTTPS (requires mkcert)
 # ──────────────────────────────────────────────
 .PHONY: build
 build: ## Build for production
-	npm run build
+	pnpm build
 
 .PHONY: build-analyze
 build-analyze: ## Build and open bundle analyzer
-	ANALYZE=true npm run build
+	ANALYZE=true pnpm build
 
 .PHONY: start
 start: ## Start production server (requires build first)
-	npm run start
+	pnpm start
 
 .PHONY: preview
 preview: build start ## Build then start production server
@@ -87,7 +87,7 @@ preview: build start ## Build then start production server
 # ──────────────────────────────────────────────
 .PHONY: lint
 lint: ## Run ESLint
-	npm run lint
+	pnpm lint
 
 .PHONY: lint-fix
 lint-fix: ## Run ESLint and auto-fix issues
@@ -148,6 +148,6 @@ info: ## Show environment info
 	@echo ""
 	@echo "  $(BOLD)Environment$(RESET)"
 	@echo "  Node    $$(node -v)"
-	@echo "  npm     $$(npm -v)"
+	@echo "  pnpm    $$(pnpm -v 2>/dev/null || echo 'not installed')"
 	@echo "  Next.js $$(node -p "require('./package.json').dependencies.next" 2>/dev/null || echo 'n/a')"
 	@echo ""

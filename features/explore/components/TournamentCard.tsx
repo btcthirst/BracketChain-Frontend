@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Gamepad2, Gift, Users, Clock, Trophy } from "lucide-react";
 import { ROUTES } from "@/constants/links";
 import type { Tournament } from "@/lib/tournament";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useDeadlineReached } from "@/hooks/useDeadlineReached";
 
 interface Props {

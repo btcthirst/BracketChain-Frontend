@@ -34,23 +34,22 @@ import {
     MinParticipantsNotMetError,
     mapError,
     createTournament,
-    payoutPreset,
-    type PayoutPresetVariant,
+    PayoutPreset as SdkPayoutPreset,
 } from "@bracketchain/sdk";
 
 const USDC_DECIMALS = 1_000_000;
 
-const PAYOUT_PRESET_MAP: Record<Exclude<PayoutPreset, "custom">, Parameters<typeof payoutPreset>[0]> = {
-    wta: "winnerTakesAll",
-    standard: "standard",
-    deep: "deep",
+const PAYOUT_PRESET_MAP: Record<Exclude<PayoutPreset, "custom">, SdkPayoutPreset> = {
+    wta: SdkPayoutPreset.WinnerTakesAll,
+    standard: SdkPayoutPreset.Standard,
+    deep: SdkPayoutPreset.Deep,
 };
 
-function buildPayoutPresetVariant(preset: PayoutPreset): PayoutPresetVariant {
+function buildPayoutPreset(preset: PayoutPreset): SdkPayoutPreset {
     if (preset === "custom") {
         throw new Error("Custom payout presets are not supported in MVP. Choose WTA, Standard, or Deep.");
     }
-    return payoutPreset(PAYOUT_PRESET_MAP[preset]);
+    return PAYOUT_PRESET_MAP[preset];
 }
 
 function microUsdcFromUsd(amount: string): bigint {
@@ -196,9 +195,9 @@ export function CreateTournament() {
             return;
         }
 
-        let presetVariant: PayoutPresetVariant;
+        let presetVariant: SdkPayoutPreset;
         try {
-            presetVariant = buildPayoutPresetVariant(prizeData.payoutPreset);
+            presetVariant = buildPayoutPreset(prizeData.payoutPreset);
         } catch (err) {
             const msg = describeError(err);
             setTxError(msg);
@@ -225,7 +224,7 @@ export function CreateTournament() {
                 organizerDeposit: organizerDepositMicro,
             });
 
-            setTournamentAddress(result.tournamentPda.toBase58());
+            setTournamentAddress(result.tournamentPda.toString());
             setTxSignature(result.txSignature);
             setTxState("success");
             toast.success("Tournament created on-chain!");

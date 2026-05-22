@@ -14,11 +14,11 @@ BracketChain is a decentralized tournament platform that enables organizers to c
 | Language | TypeScript 5 |
 | Styling | Tailwind CSS v4 |
 | UI Components | shadcn/ui + Radix UI + MUI v7 |
-| Animations | Motion (Framer Motion) |
-| Blockchain | Solana — `@solana/wallet-adapter` + `@bracketchain/sdk` |
-| Wallet UI | Phantom / Backpack / Solflare |
+| Animations | Motion (`motion/react`) |
+| Blockchain | Solana — `@solana/kit` + `@solana/compat` + `@bracketchain/sdk` 0.4.0 (Kit + Codama edition) |
+| Wallet adapter | `@solana/wallet-adapter-react` + Wallet Standard auto-discovery (Phantom, Solflare) |
 | Testing | Jest + ts-jest |
-| Package Manager | npm |
+| Package Manager | pnpm 10 |
 | Deployment | Vercel |
 
 ## Project Structure
@@ -114,7 +114,7 @@ bracketchain-frontend/
 ### Prerequisites
 
 - Node.js 24+
-- npm 10+
+- pnpm 10+ (`npm i -g pnpm@10` if missing)
 
 ### Installation
 
@@ -122,11 +122,11 @@ bracketchain-frontend/
 git clone https://github.com/bracketchain/bracketchain-frontend
 cd bracketchain-frontend
 
-# Install dependencies
+# Install dependencies (matches CI — frozen lockfile)
 make install
 
-# or if you hit peer dependency conflicts:
-make install-fix
+# or refresh the lockfile after editing package.json deps:
+make install-update
 ```
 
 ### Environment Variables
@@ -138,11 +138,20 @@ make env   # copies .env.example → .env.local
 Configure `.env.local`:
 
 ```env
-# Solana RPC endpoint
+# Solana RPC endpoint (required)
 NEXT_PUBLIC_RPC_URL=https://api.devnet.solana.com
 
 # Optional: Helius RPC for better performance
 # NEXT_PUBLIC_RPC_URL=https://devnet.helius-rpc.com/?api-key=YOUR_KEY
+
+# Override the on-chain program ID. Falls back to the SDK 0.4.0 default
+# (3YpkUKBh8288XN2dCKSwBnEdyc5UozSJ19A1ZCLpUZsZ on devnet) when unset.
+# NEXT_PUBLIC_PROGRAM_ID=<program-pubkey>
+
+# Indexer base URL. When unset, the app reads tournament state directly from
+# RPC; with it set, list/detail pages prefer the indexer and fall back to
+# chain reads if the indexer is stale or down.
+# NEXT_PUBLIC_INDEXER_URL=https://indexer.example.com
 ```
 
 ### Development
@@ -164,8 +173,8 @@ make preview      # build + start production server
 ```bash
 make help           # show all commands
 
-make install        # install dependencies (npm ci)
-make install-fix    # install with --legacy-peer-deps
+make install        # install dependencies (pnpm install --frozen-lockfile)
+make install-update # install + refresh pnpm-lock.yaml
 make install-clean  # clean node_modules and reinstall
 
 make dev            # development server
@@ -196,15 +205,40 @@ make info           # show Node/npm/Next.js versions
 ### Data Flow
 
 ```
-Write:  User → Web App → Wallet signs tx → Solana program → on-chain state
-Read:   Web App → API → PostgreSQL (indexed)
-                      ↘ fallback to RPC if stale (>30s)
+Write:  User → Web App → @bracketchain/sdk → wallet signs tx → Solana program
+Read:   Web App → @bracketchain/sdk indexer client → PostgreSQL (when NEXT_PUBLIC_INDEXER_URL set)
+                ↘ falls back to on-chain RPC reads when indexer is stale or unset
+Live:   Tournament account WebSocket subscription via SDK `subscribe()`
+        + 30s inactivity safety-net poll (Drift v2 pattern)
 Sync:   Solana event → Helius webhook → Indexer → PostgreSQL
 ```
 
+### SDK Integration
+
+The frontend talks to the on-chain program through [`@bracketchain/sdk`](https://www.npmjs.com/package/@bracketchain/sdk) (currently `^0.4.0` — Kit + Codama edition). All writes are real Solana transactions signed by the connected wallet.
+
+`lib/sdk.ts` bridges the wallet-adapter v1 surface to Kit: `useAnchorWallet()` (v1 `PublicKey` + `signAllTransactions(VersionedTransaction[])`) is wrapped into a Kit `TransactionPartialSigner` via `@solana/compat`'s `fromLegacyPublicKey` plus a `VersionedTransaction` round-trip for signing. RPC + RpcSubscriptions are derived from `NEXT_PUBLIC_RPC_URL` (HTTP) with the WS endpoint auto-flipped from `https://` → `wss://`.
+
+It exposes three accessors:
+
+- `useBracketChainClient()` — wallet-aware client used by all mutating flows (create / join / start / report / cancel). Returns `null` until a signer is connected.
+- `useReadOnlySdkClient()` — signer-less client for query-only routes like `/t/[id]` viewers.
+- `getIndexerClient()` — module-level singleton wrapping `BracketChainIndexerClient`; returns `null` when `NEXT_PUBLIC_INDEXER_URL` is unset so callers fall back to chain reads.
+
+Mutating call-sites (real, not simulated):
+
+| Call | File |
+|---|---|
+| `createTournament` | `features/tournament/create/CreateTournament.tsx` |
+| `joinTournament`, `startTournament` | `features/tournament/view/TournamentSidebar.tsx` |
+| `reportResult` (incl. final-match payout `remaining_accounts`) | `features/tournament/view/ReportResultModal.tsx` |
+| `cancelTournament` (chunked refund + `remaining_accounts`) | `features/tournament/view/CancelModal.tsx` |
+
+Errors are surfaced via typed SDK error classes (`BracketChainSDKError` + `mapError`) — see `describeError` in `CreateTournament.tsx` for the user-facing mapping (insufficient funds, registration closed, name taken, etc.).
+
 ### State Management
 
-All async state uses the `useReducer` + discriminated union pattern to satisfy `react-hooks/set-state-in-effect` ESLint rule:
+All async state uses the `useReducer` + discriminated union pattern to satisfy the `react-hooks/set-state-in-effect` ESLint rule:
 
 ```ts
 type State =
@@ -215,9 +249,13 @@ type State =
 
 Every data-fetching hook follows the same structure: `dispatch` is stable (unlike `setState`), cleanup via `active` flag prevents state updates after unmount, and retry is triggered via a second `useReducer` counter.
 
+### Live Bracket Updates
+
+`hooks/useTournamentView.ts` subscribes to the Tournament account through the SDK's `subscribe()` helper. Every account-change notification triggers a refetch, and a 30-second inactivity timer arms a safety-net poll so a silently-dropped WebSocket can't strand the UI on stale data.
+
 ### Wallet Integration
 
-Wallet connection is handled globally via `Providers.tsx` which wraps the app with `ConnectionProvider`, `WalletProvider`, and `WalletModalProvider` from `@solana/wallet-adapter-react`.
+Wallet connection is handled globally via `Providers.tsx`, which wraps the app with `ConnectionProvider`, `WalletProvider`, and `WalletModalProvider` from `@solana/wallet-adapter-react`. `WalletProvider` is configured with `wallets={[]}` — connection works through Wallet Standard auto-discovery, so any WS-compliant wallet the user has installed (Phantom + Solflare on devnet today) appears in the modal without an explicit adapter import.
 
 RPC endpoint is configured via `NEXT_PUBLIC_RPC_URL` — defaults to Solana devnet.
 
@@ -227,14 +265,18 @@ const { publicKey, connected, signTransaction } = useWallet();
 const { connection } = useConnection();
 ```
 
+`lib/sdk.ts` consumes the same wallet via `useAnchorWallet()` and bridges it into a Kit `TransactionSigner` (see [SDK Integration](#sdk-integration)). Component code never needs to touch the bridge directly.
+
 ### Tournament Formats
 
-| Format | Description |
-|---|---|
-| `SE` | Single Elimination — one loss and you're out |
-| `DE` | Double Elimination — losers bracket second chance |
-| `Swiss` | Swiss System — all play every round, matched by record |
-| `RR` | Round Robin — everyone plays everyone |
+| Format | Description | MVP status |
+|---|---|---|
+| `SE` | Single Elimination — one loss and you're out | ✅ Live |
+| `DE` | Double Elimination — losers bracket second chance | 🚧 UI only; on-chain ix deferred to Phase 4 |
+| `Swiss` | Swiss System — all play every round, matched by record | 🚧 UI only; on-chain ix deferred to Phase 4 |
+| `RR` | Round Robin — everyone plays everyone | 🚧 UI only; on-chain ix deferred to Phase 3 |
+
+The Create wizard currently rejects anything other than `SE` (see `ConfirmStep.tsx`). Render components for the other formats exist in `features/tournament/view/` for the eventual rollout.
 
 ### Protocol Fee
 
@@ -260,14 +302,40 @@ Every data-fetching component handles:
 - **Empty** — contextual empty state with CTA
 - **Not found** — 404 with link to `/explore` (tournament page only)
 
-## Current Limitations (MVP v0)
+## Current Limitations
 
-> This is a frontend prototype. The following are not yet implemented:
+> MVP (devnet) is live. The frontend is wired to `@bracketchain/sdk` 0.4.0 (Kit + Codama) — every write is a real signed Solana transaction, every read comes from the indexer (when configured) with on-chain RPC fallback, and the tournament page subscribes to account changes over Kit `rpcSubscriptions.accountNotifications`.
+>
+> Remaining scope gaps, by area:
 
-- Real Solana transactions — all blockchain interactions are simulated with `setTimeout`
-- API layer — all data is mock/hardcoded
-- WebSocket subscriptions — no real-time bracket updates
-- `/about` page is a placeholder
+**Create wizard (MVP scope guards)**
+
+- Only `SE` format reaches the on-chain `createTournament` call.
+- Only `USDC` is accepted as the prize token.
+- Custom payout splits (`PayoutPreset::Custom`) ship with the V1 program redeploy — UI exposes `WTA` / `Standard` / `Deep` only.
+
+**Pending indexer endpoints**
+
+- `DuplicateNameWarning` in `features/tournament/steps/` still uses a hardcoded list — the live `GET /tournaments/check-name` endpoint and the matching `useNameCheck` hook are tracked under Phase 0 § 3.3.
+
+**Phase 1+ features (not yet started)**
+
+- Steam OpenID linking + SAS attestation flow (V1.1).
+- Player-reported / Oracle settlement modes, dispute window, claim panels — `ReportResultModal` currently implements the `OrganizerOnly` path only.
+- BindFeedModal for Switchboard-backed match commitments.
+
+**Phase 2+ features (not yet started)**
+
+- Privy embedded-wallet / social-login flow.
+- Web Push notification bus, service worker registration.
+- Fiat on-ramp (MoonPay / Coinbase Pay).
+- `/profile/[wallet]` route + cNFT badge surface.
+
+**Placeholders**
+
+- `/about` page is a placeholder.
+
+See [`docs/plan_tasks/repo-frontend.md`](./docs/plan_tasks/repo-frontend.md) for the canonical phase plan and Stage-by-Stage checklist. The manual Phase 0 Stage 4 smoke test lives at [`docs/STAGE_4_SMOKE_TEST.md`](./docs/STAGE_4_SMOKE_TEST.md).
 
 ## Contributing
 
