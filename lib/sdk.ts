@@ -29,7 +29,7 @@ type AnchorWallet = NonNullable<ReturnType<typeof useAnchorWallet>>;
  *
  * `@solana/wallet-adapter-react` is still web3.js v1-shaped (it yields an
  * AnchorWallet with `publicKey: PublicKey` and `signAllTransactions(Vt[])`).
- * SDK 0.4.0 is Kit-native and expects a `TransactionPartialSigner` whose
+ * SDK (0.5.0+) is Kit-native and expects a `TransactionPartialSigner` whose
  * `signTransactions` returns `SignatureDictionary[]` keyed by Kit `Address`.
  *
  * The bridge round-trips each Kit `Transaction.messageBytes` through a v1
