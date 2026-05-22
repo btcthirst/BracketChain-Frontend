@@ -145,7 +145,7 @@ NEXT_PUBLIC_RPC_URL=https://api.devnet.solana.com
 # NEXT_PUBLIC_RPC_URL=https://devnet.helius-rpc.com/?api-key=YOUR_KEY
 
 # Override the on-chain program ID. Falls back to the SDK 0.4.0 default
-# (3YpkUKBh8288XN2dCKSwBnEdyc5UozSJ19A1ZCLpUZsZ on devnet) when unset.
+# (AuXJKpuZtkegs2ZSgopgckhN7Ev8bUz4zBc238LD2F1 on devnet) when unset.
 # NEXT_PUBLIC_PROGRAM_ID=<program-pubkey>
 
 # Indexer base URL. When unset, the app reads tournament state directly from
