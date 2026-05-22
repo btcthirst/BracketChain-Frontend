@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@bracketchain/sdk':
-        specifier: ^0.4.0
-        version: 0.4.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6)
+        specifier: ^0.5.0
+        version: 0.5.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6)
       '@emotion/react':
         specifier: 11.14.0
         version: 11.14.0(@types/react@19.2.15)(react@19.2.4)
@@ -434,8 +434,8 @@ packages:
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
 
-  '@bracketchain/sdk@0.4.0':
-    resolution: {integrity: sha512-N5NvQ6KN8vC9wGvCqUSXGM+TV0DuZwCsLlYv9Qpk22MdO+muiorI7d6OszvKbham9o8iWLEhGjnc3MlZDvTyog==}
+  '@bracketchain/sdk@0.5.0':
+    resolution: {integrity: sha512-bMZPjAkqczqFLwd7mxBepiYeAgncuEF4E+t9qZi/6p6CcDUT/g4byWdQ5thgyys/0OherrmjMgPBfB/mB8UimQ==}
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -8407,7 +8407,7 @@ snapshots:
 
   '@bcoe/v8-coverage@0.2.3': {}
 
-  '@bracketchain/sdk@0.4.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6)':
+  '@bracketchain/sdk@0.5.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6)':
     dependencies:
       '@solana-program/compute-budget': 0.15.0(@solana/kit@6.9.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6))
       '@solana-program/system': 0.12.0(@solana/kit@6.9.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6))
