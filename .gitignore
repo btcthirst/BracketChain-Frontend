@@ -54,7 +54,7 @@ dist/
 .anchor/
 target/
 **/*.so
-**/*.keypair.json
+**/*keypair*.json
 test-ledger/
 wallet.json
 id.json

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ExternalLink, CheckCircle2, Loader2, ChevronDown, ChevronUp, Clock, Wallet } from "lucide-react";
-import { PublicKey } from "@solana/web3.js";
+import { address } from "@solana/kit";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { joinTournament, startTournament, mapError } from "@bracketchain/sdk";
 import { toast } from "sonner";
@@ -246,7 +246,7 @@ function ActionArea({
         if (!sdk) { toast.error("Connect your wallet to join"); return; }
         setJoining(true);
         try {
-            await joinTournament(sdk, { tournamentPda: new PublicKey(tournament.id) });
+            await joinTournament(sdk, { tournamentPda: address(tournament.id) });
             toast.success("Joined tournament successfully!");
             setOptimisticJoined(true);
             fire();
@@ -284,7 +284,7 @@ function ActionArea({
         if (!sdk) return;
         setStarting(true);
         try {
-            await startTournament(sdk, { tournamentPda: new PublicKey(tournament.id) });
+            await startTournament(sdk, { tournamentPda: address(tournament.id) });
             toast.success("Tournament started! Bracket is being initialized.");
             onStartSuccess();
         } catch (err) {

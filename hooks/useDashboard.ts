@@ -3,15 +3,20 @@
 import { useEffect, useReducer, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useBracketChainClient, getIndexerClient } from "@/lib/sdk";
-import { getEnumKind, type IndexerTournament, type IndexerTournamentStatus } from "@bracketchain/sdk";
-import { PublicKey } from "@solana/web3.js";
+import {
+    getTournament,
+    TournamentStatus,
+    type IndexerTournament,
+    type IndexerTournamentStatus,
+} from "@bracketchain/sdk";
+import { address } from "@solana/kit";
 
-const ANCHOR_TO_INDEXER_STATUS: Record<string, IndexerTournamentStatus> = {
-    registration: "Registration",
-    pendingBracketInit: "PendingBracketInit",
-    active: "Active",
-    completed: "Completed",
-    cancelled: "Cancelled",
+const STATUS_TO_INDEXER: Record<TournamentStatus, IndexerTournamentStatus> = {
+    [TournamentStatus.Registration]: "Registration",
+    [TournamentStatus.PendingBracketInit]: "PendingBracketInit",
+    [TournamentStatus.Active]: "Active",
+    [TournamentStatus.Completed]: "Completed",
+    [TournamentStatus.Cancelled]: "Cancelled",
 };
 
 export type DashboardFilter = "all" | "active" | "completed" | "cancelled";
@@ -120,38 +125,39 @@ export function useDashboard() {
                     .filter(r => r.organizer === publicKey.toBase58())
                     .map(toEntry);
 
-                // ── batch on-chain enrichment ───────────────────────────
-                // One getMultipleAccountsInfo RPC for up to 100 tournaments
-                // — Anchor decodes each entry server-side via the program's
-                // coder and returns null for missing accounts. Replaces the
-                // previous N+1 pattern (one getAccountInfo per row).
+                // ── on-chain enrichment ─────────────────────────────────
+                // Stage 4 (Kit migration): SDK 0.4.0 no longer exposes an
+                // Anchor-style `fetchMultiple` — Codama-generated `fetchTournament`
+                // is per-PDA. We fan out with Promise.all; Kit's RPC layer
+                // pipelines requests over the same HTTP/2 connection so the
+                // round-trip cost is similar to the old getMultipleAccountsInfo
+                // batch for typical dashboard sizes (≤100 rows).
                 if (mine.length > 0 && client) {
                     const validEntries = mine.filter(t => t.address && t.address.length >= 32);
-                    const pdas = validEntries.map(t => new PublicKey(t.address));
 
                     try {
-                        const fetched = await client.program.account.tournament.fetchMultiple(pdas);
+                        await Promise.all(
+                            validEntries.map(async (t) => {
+                                try {
+                                    const data = await getTournament(client, address(t.address));
+                                    if (!data) return;
+                                    t.status = STATUS_TO_INDEXER[data.status] || t.status;
+                                    // Authoritative count from the Tournament PDA — fixes
+                                    // indexer derivation for non-completed tournaments
+                                    // (grossPool null) and for Variant B tournaments with
+                                    // organizerDeposit > 0 (where grossPool/entryFee
+                                    // over-counts by deposit/entryFee).
+                                    t.participantCount = Number(data.participantCount);
+                                } catch {
+                                    // Per-row failure — ignore; row keeps indexer-derived values.
+                                }
+                            }),
+                        );
 
                         // Race guard: between dispatching FETCH_START and now the user
                         // may have triggered a refetch (e.g. unmounted via wallet
-                        // disconnect). The Promise.all variant could mutate `mine`
-                        // entries even after the next FETCH_SUCCESS dispatched.
-                        // Single check here — fetchMultiple is one atomic RPC, so
-                        // there's no per-iteration window to worry about.
+                        // disconnect). Check once after the Promise.all resolves.
                         if (ac.signal.aborted) return;
-
-                        validEntries.forEach((t, i) => {
-                            const data = fetched[i];
-                            if (!data) return;  // account not found / missing
-                            const kind = getEnumKind(data.status as never);
-                            t.status = ANCHOR_TO_INDEXER_STATUS[kind] || t.status;
-                            // Authoritative count from the Tournament PDA — fixes
-                            // indexer derivation for non-completed tournaments
-                            // (grossPool null) and for Variant B tournaments with
-                            // organizerDeposit > 0 (where grossPool/entryFee
-                            // over-counts by deposit/entryFee).
-                            t.participantCount = Number(data.participantCount);
-                        });
                     } catch (e) {
                         // Enrichment is best-effort; fall back to indexer-derived values.
                         console.warn("Batch on-chain enrichment failed:", e);

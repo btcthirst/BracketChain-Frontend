@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { AlertTriangle, Loader2, Trophy } from "lucide-react";
-import { PublicKey } from "@solana/web3.js";
+import { address, type Address } from "@solana/kit";
 import {
     reportResult,
     mapError,
     getTournamentState,
-    getEnumKind,
+    MatchStatus,
+    TournamentStatus,
 } from "@bracketchain/sdk";
 import { toast } from "sonner";
 
@@ -70,7 +71,7 @@ function quarterfinalLosers(allMatches: Match[]): Player[] {
 
 async function didActionSettle(
     sdk: import("@bracketchain/sdk").BracketChainClient,
-    tournamentPda: PublicKey,
+    tournamentPda: Address,
     onChainRound: number,
     onChainMatchIndex: number,
     isFinal: boolean,
@@ -78,14 +79,14 @@ async function didActionSettle(
     try {
         const fresh = await getTournamentState(sdk, tournamentPda);
         if (isFinal) {
-            return getEnumKind(fresh.tournament.status as never) === "completed";
+            return fresh.tournament.status === TournamentStatus.Completed;
         }
         return fresh.bracket.some((b) => {
             const acc = b.account;
             return (
                 acc.round === onChainRound &&
                 acc.matchIndex === onChainMatchIndex &&
-                getEnumKind(acc.status as never) === "completed"
+                acc.status === MatchStatus.Completed
             );
         });
     } catch {
@@ -146,8 +147,8 @@ export function ReportResultModal({
         }
         if (!winner) return;
 
-        const winnerPk = new PublicKey(winner.address);
-        const placements: PublicKey[] = isFinal ? buildPlacements() : [];
+        const winnerAddr = address(winner.address);
+        const placements: Address[] = isFinal ? buildPlacements() : [];
 
         if (isFinal && placements.length === 0) {
             toast.error("Could not derive placements — bracket data incomplete.");
@@ -157,10 +158,10 @@ export function ReportResultModal({
         setSubmitting(true);
         try {
             const result = await reportResult(sdk, {
-                tournamentPda: new PublicKey(tournament.id),
+                tournamentPda: address(tournament.id),
                 round: match.round - 1, // UI is 1-indexed; on-chain is 0-indexed
                 matchIndex: match.position,
-                winner: winnerPk,
+                winner: winnerAddr,
                 placements: isFinal ? placements : undefined,
             });
 
@@ -181,7 +182,7 @@ export function ReportResultModal({
             // actually succeeded — the symptom the user reported.
             const settled = await didActionSettle(
                 sdk,
-                new PublicKey(tournament.id),
+                address(tournament.id),
                 match.round - 1,
                 match.position,
                 isFinal,
@@ -210,27 +211,27 @@ export function ReportResultModal({
         }
     }
 
-    function buildPlacements(): PublicKey[] {
+    function buildPlacements(): Address[] {
         if (!winner) return [];
-        const winnerPk = new PublicKey(winner.address);
+        const winnerAddr = address(winner.address);
         const runnerUp = loserOf(match, winner);
         if (!runnerUp) return [];
-        const runnerUpPk = new PublicKey(runnerUp.address);
+        const runnerUpAddr = address(runnerUp.address);
 
         if (preset === "wta") {
-            return [winnerPk];
+            return [winnerAddr];
         }
         if (preset === "standard") {
             if (!thirdPlace) return [];
-            return [winnerPk, runnerUpPk, new PublicKey(thirdPlace.address)];
+            return [winnerAddr, runnerUpAddr, address(thirdPlace.address)];
         }
         // deep
         if (!thirdPlace || qfLosers.length !== 4) return [];
         return [
-            winnerPk,
-            runnerUpPk,
-            new PublicKey(thirdPlace.address),
-            ...qfLosers.map((p) => new PublicKey(p.address)),
+            winnerAddr,
+            runnerUpAddr,
+            address(thirdPlace.address),
+            ...qfLosers.map((p) => address(p.address)),
         ];
     }
 

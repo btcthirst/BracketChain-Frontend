@@ -1,22 +1,23 @@
 "use client";
 
 import { useEffect, useReducer, useCallback } from "react";
-import { PublicKey } from "@solana/web3.js";
+import { address, type Address } from "@solana/kit";
 import {
-    getEnumKind,
     getTournamentState,
     IndexerMatch,
     IndexerParticipant,
     IndexerPayout,
     IndexerTournament,
+    MatchStatus,
+    PayoutPreset,
     subscribe,
+    TournamentStatus,
     type BracketChainClient,
     type MatchNode,
     type MatchNodeWithAddress,
     type ParticipantWithAddress,
     type Tournament,
     type TournamentState,
-    type TournamentStatusKind,
 } from "@bracketchain/sdk";
 
 import { useReadOnlySdkClient, getIndexerClient } from "@/lib/sdk";
@@ -25,7 +26,7 @@ import type {
     Match,
     Player,
     PayoutDistribution,
-    TournamentStatus,
+    TournamentStatus as UITournamentStatus,
     TournamentView,
 } from "@/types/tournament";
 
@@ -34,8 +35,9 @@ import type {
 const USDC_DECIMALS = 1_000_000;
 const MAX_PARTICIPANTS = 128;
 const MIN_PARTICIPANTS = 2;
+const DEFAULT_ADDRESS = address("11111111111111111111111111111111");
 
-// Anchor enum index → preset key. Mirrors PayoutPreset on-chain.
+// PayoutPreset numeric variant → preset key. Mirrors PayoutPreset on-chain.
 const PAYOUT_PRESETS = {
     winnerTakesAll: [{ place: 1, label: "1st", pct: 100 }],
     standard: [
@@ -54,12 +56,12 @@ const PAYOUT_PRESETS = {
     ],
 } as const;
 
-const STATUS_MAP: Record<TournamentStatusKind, TournamentStatus> = {
-    registration: "registration",
-    pendingBracketInit: "in_progress",
-    active: "in_progress",
-    completed: "completed",
-    cancelled: "cancelled",
+const STATUS_MAP: Record<TournamentStatus, UITournamentStatus> = {
+    [TournamentStatus.Registration]: "registration",
+    [TournamentStatus.PendingBracketInit]: "in_progress",
+    [TournamentStatus.Active]: "in_progress",
+    [TournamentStatus.Completed]: "completed",
+    [TournamentStatus.Cancelled]: "cancelled",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -68,29 +70,29 @@ function truncate(addr: string): string {
     return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
 }
 
-function isValidPubkey(s: string): boolean {
+function isValidAddress(s: string): boolean {
     try {
-        new PublicKey(s);
+        address(s);
         return true;
     } catch {
         return false;
     }
 }
 
-function isZeroPubkey(pk: PublicKey): boolean {
-    return pk.equals(PublicKey.default);
+function isDefaultAddress(addr: Address): boolean {
+    return addr === DEFAULT_ADDRESS;
 }
 
-function makePlayer(address: string, organizerAddress: string): Player {
+function makePlayer(addr: string, organizerAddress: string): Player {
     return {
-        address,
-        display: truncate(address),
-        isOrganizer: address === organizerAddress,
+        address: addr,
+        display: truncate(addr),
+        isOrganizer: addr === organizerAddress,
     };
 }
 
 function findPlayerByAddress(
-    pk: PublicKey,
+    addr: Address,
     _participants: ParticipantWithAddress[],
     organizerAddress: string,
 ): Player | null {
@@ -99,8 +101,26 @@ function findPlayerByAddress(
     // against the participants list was defensive code that broke completed
     // tournaments: after claim_prize closes Participant PDAs, the list is
     // empty even though the Match still has valid playerA/playerB pubkeys.
-    if (isZeroPubkey(pk)) return null;
-    return makePlayer(pk.toBase58(), organizerAddress);
+    if (isDefaultAddress(addr)) return null;
+    return makePlayer(addr.toString(), organizerAddress);
+}
+
+function presetKey(preset: PayoutPreset): keyof typeof PAYOUT_PRESETS {
+    switch (preset) {
+        case PayoutPreset.WinnerTakesAll: return "winnerTakesAll";
+        case PayoutPreset.Standard: return "standard";
+        case PayoutPreset.Deep: return "deep";
+        default: return "winnerTakesAll";
+    }
+}
+
+function matchUiStatus(status: MatchStatus): Match["status"] {
+    switch (status) {
+        case MatchStatus.Pending: return "pending";
+        case MatchStatus.Active: return "in_progress";
+        case MatchStatus.Completed: return "completed";
+        default: return "pending";
+    }
 }
 
 function buildMatch(
@@ -109,10 +129,6 @@ function buildMatch(
     organizerAddress: string,
     index: number,
 ): Match {
-    const status = getEnumKind(node.status as never) as
-        | "pending"
-        | "active"
-        | "completed";
     return {
         id: `r${node.round}-m${node.matchIndex}-${index}`,
         round: node.round + 1, // on-chain rounds are 0-indexed; UI is 1-indexed
@@ -120,7 +136,7 @@ function buildMatch(
         playerA: findPlayerByAddress(node.playerA, participants, organizerAddress),
         playerB: findPlayerByAddress(node.playerB, participants, organizerAddress),
         winner: findPlayerByAddress(node.winner, participants, organizerAddress),
-        status: status === "active" ? "in_progress" : status,
+        status: matchUiStatus(node.status),
         // Scores + match-tx signature are not tracked on-chain in MVP.
         // Bracket UI conditionally renders this block — null is safe.
         result: null,
@@ -148,7 +164,7 @@ function buildPayouts(
 
         const recipientAddress = indexed?.recipient ?? null;
         const recipient =
-            recipientAddress && participants.some((p) => p.account.wallet.toBase58() === recipientAddress)
+            recipientAddress && participants.some((p) => p.account.wallet.toString() === recipientAddress)
                 ? makePlayer(recipientAddress, organizerAddress)
                 : recipientAddress
                     ? makePlayer(recipientAddress, organizerAddress)
@@ -171,8 +187,8 @@ function buildView(
     feeBps: number,
 ): TournamentView {
     const t = state.tournament as Tournament;
-    const organizerAddress = t.organizer.toBase58();
-    const address = state.address.toBase58();
+    const organizerAddress = t.organizer.toString();
+    const stateAddress = state.address.toString();
 
     // Defensive: clamp on-chain values into known-safe ranges before using them.
     // Treat on-chain data as untrusted (account could be malformed in adversarial setups).
@@ -181,15 +197,15 @@ function buildView(
         Math.min(MAX_PARTICIPANTS, Number(t.maxParticipants) || MIN_PARTICIPANTS),
     );
 
-    const status = STATUS_MAP[getEnumKind(t.status as never) as TournamentStatusKind];
+    const status: UITournamentStatus = STATUS_MAP[t.status] ?? "registration";
 
     // DEBUG OVERRIDE: Shorten specific tournament for testing (only during registration)
-    if (address === "DRVqTngSGUsrmZQZvbw1xQ2fkxcx2hEq9uXt7pvu4yHg" && status === "registration") {
+    if (stateAddress === "DRVqTngSGUsrmZQZvbw1xQ2fkxcx2hEq9uXt7pvu4yHg" && status === "registration") {
         maxParticipants = 2;
     }
-    const presetKind = getEnumKind(t.payoutPreset as never) as keyof typeof PAYOUT_PRESETS;
+    const presetKind = presetKey(t.payoutPreset);
 
-    const entryFeeUsdc = Number(t.entryFee.toString()) / USDC_DECIMALS;
+    const entryFeeUsdc = Number(t.entryFee) / USDC_DECIMALS;
     const participantCount = state.participants.length;
     // Variant B (plan 2026-05-03 decision): organizer_deposit goes INTO the
     // prize pool and is distributed via the preset on completion. It's only
@@ -198,11 +214,11 @@ function buildView(
     const depositRefunded = status === "cancelled" && Boolean(t.organizerDepositRefunded);
     const organizerDepositUsdc = depositRefunded
         ? 0
-        : Number(t.organizerDeposit.toString()) / USDC_DECIMALS;
+        : Number(t.organizerDeposit) / USDC_DECIMALS;
     const grossPoolUsdc = entryFeeUsdc * participantCount + organizerDepositUsdc;
 
     const players: Player[] = state.participants.map((p) =>
-        makePlayer(p.account.wallet.toBase58(), organizerAddress),
+        makePlayer(p.account.wallet.toString(), organizerAddress),
     );
 
     const matches: Match[] = state.bracket.map((b: MatchNodeWithAddress, i) =>
@@ -220,14 +236,13 @@ function buildView(
     // the report flow even though the status pill says "in_progress" already.
     const matchesInitialized = Number(t.matchesInitialized) || 0;
     const totalMatches = Number(t.totalMatches) || 0;
-    const onChainStatusKind = getEnumKind(t.status as never) as TournamentStatusKind;
     const bracketReady =
-        onChainStatusKind === "active" ||
-        onChainStatusKind === "completed" ||
+        t.status === TournamentStatus.Active ||
+        t.status === TournamentStatus.Completed ||
         (totalMatches > 0 && matchesInitialized >= totalMatches);
 
     return {
-        id: state.address.toBase58(),
+        id: stateAddress,
         name: t.name,
         // No on-chain `game` field in MVP — all tournaments labelled generically.
         game: "On-chain",
@@ -249,8 +264,8 @@ function buildView(
             organizerAddress,
         ),
         organizer: makePlayer(organizerAddress, organizerAddress),
-        startTime: new Date(Number(t.createdAt.toString()) * 1000).toISOString(),
-        registrationDeadline: new Date(Number(t.registrationDeadline.toString()) * 1000).toISOString(),
+        startTime: new Date(Number(t.createdAt) * 1000).toISOString(),
+        registrationDeadline: new Date(Number(t.registrationDeadline) * 1000).toISOString(),
         cancelledTxSignature: null, // Lean indexer doesn't track cancel tx — V1.
         refundTxSignatures,
         matchesInitialized,
@@ -339,40 +354,46 @@ interface IndexerBundle {
  */
 async function loadFromIndexer(
     client: BracketChainClient,
-    pda: PublicKey,
+    pda: Address,
     signal: AbortSignal,
 ): Promise<{ bundle: IndexerBundle; currentSlot: number } | null> {
     const indexer = getIndexerClient();
     if (!indexer) return null;  // INDEXER_URL not configured
 
-    const address = pda.toBase58();
+    const addrStr = pda.toString();
 
     try {
-        const [tournament, participants, matches, payouts, currentSlot] = await Promise.all([
+        const [tournament, participants, matches, payouts, slotResp] = await Promise.all([
             withTimeout(
-                indexer.getTournament(address, { signal }),
+                indexer.getTournament(addrStr, { signal }),
                 INDEXER_TIMEOUT_MS,
                 "indexer getTournament",
             ),
             withTimeout(
-                indexer.getParticipants(address, { signal }),
+                indexer.getParticipants(addrStr, { signal }),
                 INDEXER_TIMEOUT_MS,
                 "indexer getParticipants",
             ),
             withTimeout(
-                indexer.getMatches(address, { signal }),
+                indexer.getMatches(addrStr, { signal }),
                 INDEXER_TIMEOUT_MS,
                 "indexer getMatches",
             ),
             withTimeout(
-                indexer.getPayouts(address, { signal }),
+                indexer.getPayouts(addrStr, { signal }),
                 INDEXER_TIMEOUT_MS,
                 "indexer getPayouts",
             ),
             // getSlot is part of the SWR freshness gate — if RPC is so slow
             // it can't return a slot in 3 s, indexer-first is moot.
-            withTimeout(client.connection.getSlot(), INDEXER_TIMEOUT_MS, "rpc getSlot"),
+            withTimeout(
+                client.rpc.getSlot().send(),
+                INDEXER_TIMEOUT_MS,
+                "rpc getSlot",
+            ),
         ]);
+
+        const currentSlot = Number(slotResp);
 
         return {
             bundle: {
@@ -399,7 +420,7 @@ async function loadFromIndexer(
  */
 async function loadFromChain(
     client: BracketChainClient,
-    pda: PublicKey,
+    pda: Address,
     signal: AbortSignal,
 ): Promise<TournamentView | null> {
     let state: TournamentState;
@@ -418,7 +439,7 @@ async function loadFromChain(
     const indexer = getIndexerClient();
     if (indexer) {
         try {
-            payouts = await indexer.getPayouts(pda.toBase58(), { signal });
+            payouts = await indexer.getPayouts(pda.toString(), { signal });
         } catch {
             // Ignore — indexer down / 404 / network. Chain path stays valid.
         }
@@ -440,7 +461,7 @@ async function loadFromChain(
  */
 async function loadView(
     client: BracketChainClient,
-    pda: PublicKey,
+    pda: Address,
     signal: AbortSignal,
 ): Promise<TournamentView | null> {
     const indexerResult = await loadFromIndexer(client, pda, signal);
@@ -482,9 +503,9 @@ async function loadView(
             const indexerMissingBracket = expectsBracket && bundle.matches.length === 0;
 
             if (!needsChainForPlayers && !indexerMissingBracket) {
-                const adapted = indexerToTournamentState(
+                const adapted = await indexerToTournamentState(
                     pda,
-                    client.programId,
+                    client.programAddress,
                     bundle.tournament,
                     bundle.participants,
                     bundle.matches,
@@ -508,11 +529,11 @@ export function useTournamentView(id: string) {
     const refresh = useCallback(() => retry(), []);
 
     useEffect(() => {
-        if (!isValidPubkey(id)) {
+        if (!isValidAddress(id)) {
             dispatch({ type: "FETCH_NOT_FOUND" });
             return;
         }
-        const pda = new PublicKey(id);
+        const pda = address(id);
         const ac = new AbortController();
         let unsubscribe: (() => void) | null = null;
         let inactivityTimer: ReturnType<typeof setTimeout> | null = null;

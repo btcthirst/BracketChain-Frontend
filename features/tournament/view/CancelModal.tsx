@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, AlertTriangle } from "lucide-react";
-import { PublicKey } from "@solana/web3.js";
+import { address } from "@solana/kit";
 import { cancelTournament, mapError } from "@bracketchain/sdk";
 import { toast } from "sonner";
 import { useBracketChainClient } from "@/lib/sdk";
@@ -27,7 +27,7 @@ export function CancelModal({ tournamentId, tournamentName, onClose, onSuccess }
         setError("");
         try {
             const result = await cancelTournament(sdk, {
-                tournamentPda: new PublicKey(tournamentId),
+                tournamentPda: address(tournamentId),
             });
             const { refundsSubmitted, txSignatures } = result;
             const txCount = txSignatures.length;
