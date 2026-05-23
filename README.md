@@ -15,7 +15,7 @@ BracketChain is a decentralized tournament platform that enables organizers to c
 | Styling | Tailwind CSS v4 |
 | UI Components | shadcn/ui + Radix UI + MUI v7 |
 | Animations | Motion (`motion/react`) |
-| Blockchain | Solana — `@solana/kit` + `@solana/compat` + `@bracketchain/sdk` 0.4.0 (Kit + Codama edition) |
+| Blockchain | Solana — `@solana/kit` + `@solana/compat` + `@bracketchain/sdk` 0.5.0 (Kit + Codama edition) |
 | Wallet adapter | `@solana/wallet-adapter-react` + Wallet Standard auto-discovery (Phantom, Solflare) |
 | Testing | Jest + ts-jest |
 | Package Manager | pnpm 10 |
@@ -144,7 +144,7 @@ NEXT_PUBLIC_RPC_URL=https://api.devnet.solana.com
 # Optional: Helius RPC for better performance
 # NEXT_PUBLIC_RPC_URL=https://devnet.helius-rpc.com/?api-key=YOUR_KEY
 
-# Override the on-chain program ID. Falls back to the SDK 0.4.0 default
+# Override the on-chain program ID. Falls back to the SDK 0.5.0 default
 # (AuXJKpuZtkegs2ZSgopgckhN7Ev8bUz4zBc238LD2F1 on devnet) when unset.
 # NEXT_PUBLIC_PROGRAM_ID=<program-pubkey>
 
@@ -215,7 +215,7 @@ Sync:   Solana event → Helius webhook → Indexer → PostgreSQL
 
 ### SDK Integration
 
-The frontend talks to the on-chain program through [`@bracketchain/sdk`](https://www.npmjs.com/package/@bracketchain/sdk) (currently `^0.4.0` — Kit + Codama edition). All writes are real Solana transactions signed by the connected wallet.
+The frontend talks to the on-chain program through [`@bracketchain/sdk`](https://www.npmjs.com/package/@bracketchain/sdk) (currently `^0.5.0` — Kit + Codama edition). All writes are real Solana transactions signed by the connected wallet.
 
 `lib/sdk.ts` bridges the wallet-adapter v1 surface to Kit: `useAnchorWallet()` (v1 `PublicKey` + `signAllTransactions(VersionedTransaction[])`) is wrapped into a Kit `TransactionPartialSigner` via `@solana/compat`'s `fromLegacyPublicKey` plus a `VersionedTransaction` round-trip for signing. RPC + RpcSubscriptions are derived from `NEXT_PUBLIC_RPC_URL` (HTTP) with the WS endpoint auto-flipped from `https://` → `wss://`.
 
@@ -304,7 +304,7 @@ Every data-fetching component handles:
 
 ## Current Limitations
 
-> MVP (devnet) is live. The frontend is wired to `@bracketchain/sdk` 0.4.0 (Kit + Codama) — every write is a real signed Solana transaction, every read comes from the indexer (when configured) with on-chain RPC fallback, and the tournament page subscribes to account changes over Kit `rpcSubscriptions.accountNotifications`.
+> MVP (devnet) is live. The frontend is wired to `@bracketchain/sdk` 0.5.0 (Kit + Codama) — every write is a real signed Solana transaction, every read comes from the indexer (when configured) with on-chain RPC fallback, and the tournament page subscribes to account changes over Kit `rpcSubscriptions.accountNotifications`.
 >
 > Remaining scope gaps, by area:
 
