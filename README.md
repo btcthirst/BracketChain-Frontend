@@ -314,9 +314,10 @@ Every data-fetching component handles:
 - Only `USDC` is accepted as the prize token.
 - Custom payout splits (`PayoutPreset::Custom`) ship with the V1 program redeploy — UI exposes `WTA` / `Standard` / `Deep` only.
 
-**Pending indexer endpoints**
+**Indexer endpoints**
 
-- `DuplicateNameWarning` in `features/tournament/steps/` still uses a hardcoded list — the live `GET /tournaments/check-name` endpoint and the matching `useNameCheck` hook are tracked under Phase 0 § 3.3.
+- ✅ `DuplicateNameWarning` is wired to the live `GET /tournaments/check-name?organizer=&name=` endpoint via the `useNameCheck` hook (`hooks/useNameCheck.ts`, 300ms debounce, organizer-scoped). Advisory: degrades to "clear" on error / when `NEXT_PUBLIC_INDEXER_URL` is unset (Phase 0 § 3.3 done).
+- Landing-page `useStats` still returns mocked numbers — no `/stats` aggregation endpoint exists yet (tracked separately).
 
 **Phase 1+ features (not yet started)**
 
