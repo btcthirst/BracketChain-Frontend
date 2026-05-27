@@ -8,6 +8,9 @@ import {
     IndexerTournament,
     MatchStatus,
     PayoutPreset,
+    ProposalSource,
+    SettlementMode,
+    SupportedGame,
     TournamentStatus,
     type MatchNode,
     type MatchNodeWithAddress,
@@ -31,14 +34,41 @@ const INDEXER_PRESET_TO_KIND: Record<IndexerTournament["payoutPreset"], PayoutPr
     Deep: PayoutPreset.Deep,
 };
 
+// The on-chain MatchNode.status only has three states. The indexer's
+// PendingConfirmation / Disputed are derived from the settlement envelope and
+// have no chain counterpart — on chain the match is still `Active` while a
+// proposal/dispute is open. Collapse them to Active here; the 5-state UI
+// status is re-derived from the envelope in useTournamentView's matchUiStatus.
 const INDEXER_MATCH_STATUS: Record<IndexerMatch["status"], MatchStatus> = {
     Pending: MatchStatus.Pending,
     Active: MatchStatus.Active,
+    PendingConfirmation: MatchStatus.Active,
+    Disputed: MatchStatus.Active,
     Completed: MatchStatus.Completed,
+};
+
+const INDEXER_SETTLEMENT_TO_KIND: Record<
+    NonNullable<IndexerTournament["settlementMode"]>,
+    SettlementMode
+> = {
+    OrganizerOnly: SettlementMode.OrganizerOnly,
+    PlayerReported: SettlementMode.PlayerReported,
+    Oracle: SettlementMode.Oracle,
+};
+
+const INDEXER_PROPOSAL_TO_KIND: Record<
+    IndexerMatch["proposalSource"],
+    ProposalSource
+> = {
+    None: ProposalSource.None,
+    Player: ProposalSource.Player,
+    Oracle: ProposalSource.Oracle,
+    GameServer: ProposalSource.GameServer,
 };
 
 const DEFAULT_ADDRESS = address("11111111111111111111111111111111");
 const EMPTY_DISCRIMINATOR = new Uint8Array(8);
+const EMPTY_IDENTITY_HASH = new Uint8Array(32);
 
 function nextPow2(n: number): number {
     if (n <= 1) return 1;
@@ -152,6 +182,21 @@ export async function indexerToTournamentState(
         champion: addrOrDefault(it.champion),
         bump: 0,
         vaultBump: 0,
+        // Stage B / VRF fields. The indexer carries settlementMode (backfilled
+        // set-once by the reconciliation cron); until that first reconcile it is
+        // null, in which case we default to OrganizerOnly — the safe MVP flow,
+        // and the chain reconcile corrects it within a few hundred ms if wrong.
+        // game / disputeWindowSecs / vrf state aren't cached by the indexer and
+        // aren't consumed by buildView, so they get harmless defaults here.
+        game: SupportedGame.Manual,
+        settlementMode:
+            it.settlementMode !== null
+                ? INDEXER_SETTLEMENT_TO_KIND[it.settlementMode]
+                : SettlementMode.OrganizerOnly,
+        disputeWindowSecs: 0,
+        vrfRandomnessAccount: DEFAULT_ADDRESS,
+        vrfCommitSlot: 0n,
+        seedRevealed: false,
     };
 
     const participantsAdapted: ParticipantWithAddress[] = await Promise.all(
@@ -168,6 +213,16 @@ export async function indexerToTournamentState(
                 seedIndex: p.seedIndex,
                 refundPaid: p.refundPaid,
                 bump: 0,
+                // B-14 foundation stats / identity. The indexer carries the
+                // numeric stats (backfilled by the reconciliation cron) but not
+                // the attestation account; the raw identityHash bytes aren't
+                // consumed by buildView, so default to empty.
+                identityHash: EMPTY_IDENTITY_HASH,
+                identityAttestation: DEFAULT_ADDRESS,
+                wins: p.wins,
+                losses: p.losses,
+                pointsFor: p.pointsFor,
+                pointsAgainst: p.pointsAgainst,
             };
             return { address: participantPda, account };
         }),
@@ -176,12 +231,18 @@ export async function indexerToTournamentState(
     const bracket: MatchNodeWithAddress[] = await Promise.all(
         matches.map(async (m): Promise<MatchNodeWithAddress> => {
             const [matchPda] = await findMatchPda(
-                { tournament: pda, round: m.round, matchIndex: m.matchIndex },
+                {
+                    tournament: pda,
+                    bracket: m.bracket,
+                    round: m.round,
+                    matchIndex: m.matchIndex,
+                },
                 { programAddress },
             );
             const account: MatchNode = {
                 discriminator: EMPTY_DISCRIMINATOR,
                 tournament: pda,
+                bracket: m.bracket,
                 round: m.round,
                 matchIndex: m.matchIndex,
                 playerA: addrOrDefault(m.playerA),
@@ -190,6 +251,16 @@ export async function indexerToTournamentState(
                 status: INDEXER_MATCH_STATUS[m.status],
                 bye: m.bye,
                 bump: 0,
+                // Stage B settlement envelope — carried straight from the
+                // indexer row so buildMatch can derive the 5-state UI status
+                // and the report modal can render confirm/dispute/claim panels.
+                proposalSource: INDEXER_PROPOSAL_TO_KIND[m.proposalSource],
+                proposer: addrOrDefault(m.proposer),
+                proposedWinner: addrOrDefault(m.proposedWinner),
+                proposedAt: unixSecToBig(m.proposedAt),
+                claimDeadline: unixSecToBig(m.claimDeadline),
+                disputed: m.disputed,
+                disputeReason: m.disputeReason ?? 0,
             };
             return { address: matchPda, account };
         }),

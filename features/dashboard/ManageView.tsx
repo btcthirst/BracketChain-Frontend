@@ -115,7 +115,16 @@ export function ManageView({ tournamentId, onBack }: Props) {
             {state.status === "success" && (() => {
                 const t = state.data;
                 const hasBracket = t.matches.length > 0;
-                const activeMatches = t.matches.filter(m => m.status === "in_progress");
+                // Matches the organizer can act on from the dashboard. In
+                // organizer-only mode that's live (in_progress) matches to
+                // report; in player-reported / oracle modes the players settle
+                // their own matches and the organizer's job is to arbitrate
+                // disputed ones (resolve_dispute).
+                const activeMatches = t.matches.filter(m =>
+                    t.settlementMode === "organizer_only"
+                        ? m.status === "in_progress"
+                        : m.status === "disputed",
+                );
 
                 const isOrganizer = t.organizer.address === publicKey?.toBase58();
                 const canCancel =
@@ -168,7 +177,7 @@ export function ManageView({ tournamentId, onBack }: Props) {
                             <div style={darkPanel}>
                                 <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 8 }}>
                                     <h3 style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", fontWeight: 500, color: "rgba(240,241,245,0.3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                                        Active Matches
+                                        {t.settlementMode === "organizer_only" ? "Active Matches" : "Disputed Matches"}
                                     </h3>
                                     <span
                                         style={{
@@ -206,7 +215,7 @@ export function ManageView({ tournamentId, onBack }: Props) {
                                                 </span>
                                             </div>
                                             <Button variant="primary" size="sm" onClick={() => setReportMatch(match)}>
-                                                Report Result
+                                                {match.status === "disputed" ? "Resolve Dispute" : "Report Result"}
                                             </Button>
                                         </div>
                                     ))}

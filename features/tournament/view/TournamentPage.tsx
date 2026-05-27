@@ -13,7 +13,7 @@ import { useDeadlineReached } from "@/hooks/useDeadlineReached";
 import { TournamentHeader } from "./TournamentHeader";
 import { BracketView, BracketSkeleton, BracketEmpty } from "./BracketView";
 import { TournamentSidebar, SidebarSkeleton } from "./TournamentSidebar";
-import { ReportResultModal } from "./ReportResultModal";
+import { ReportResultModal, matchActionable } from "./ReportResultModal";
 import { CancelModal } from "./CancelModal";
 import type { Match, Player } from "@/types/tournament";
 
@@ -253,7 +253,7 @@ export function TournamentPage({ id }: { id: string }) {
                                             />
                                             : <BracketView
                                                 matches={t.matches}
-                                                isOrganizer={isOrganizer && t.status === "in_progress" && t.bracketReady}
+                                                canReport={(m) => matchActionable(m, t, currentAddress)}
                                                 onReport={setReportingMatch}
                                             />
                                         }

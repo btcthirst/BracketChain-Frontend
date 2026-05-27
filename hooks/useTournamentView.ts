@@ -10,6 +10,8 @@ import {
     IndexerTournament,
     MatchStatus,
     PayoutPreset,
+    ProposalSource,
+    SettlementMode,
     subscribe,
     TournamentStatus,
     type BracketChainClient,
@@ -24,8 +26,11 @@ import { useReadOnlySdkClient, getIndexerClient } from "@/lib/sdk";
 import { indexerToTournamentState } from "@/lib/indexerToTournamentState";
 import type {
     Match,
+    MatchSettlement,
     Player,
     PayoutDistribution,
+    ProposalSource as UIProposalSource,
+    SettlementMode as UISettlementMode,
     TournamentStatus as UITournamentStatus,
     TournamentView,
 } from "@/types/tournament";
@@ -114,13 +119,60 @@ function presetKey(preset: PayoutPreset): keyof typeof PAYOUT_PRESETS {
     }
 }
 
-function matchUiStatus(status: MatchStatus): Match["status"] {
-    switch (status) {
-        case MatchStatus.Pending: return "pending";
-        case MatchStatus.Active: return "in_progress";
-        case MatchStatus.Completed: return "completed";
-        default: return "pending";
+function settlementModeToUi(mode: SettlementMode): UISettlementMode {
+    switch (mode) {
+        case SettlementMode.PlayerReported: return "player_reported";
+        case SettlementMode.Oracle: return "oracle";
+        case SettlementMode.OrganizerOnly:
+        default: return "organizer_only";
     }
+}
+
+// Derive the 5-state UI status from the on-chain MatchNode. The chain status
+// only has Pending/Active/Completed — while a player-reported proposal or a
+// dispute is open the match stays Active, and the envelope distinguishes the
+// two intermediate UI states. Precedence: completed wins (a finalized result
+// is terminal regardless of stale envelope bytes), then disputed, then a live
+// proposal, then the base Active/Pending.
+function matchUiStatus(node: MatchNode): Match["status"] {
+    if (node.status === MatchStatus.Completed) return "completed";
+    if (node.disputed) return "disputed";
+    if (node.proposalSource !== ProposalSource.None) return "pending_confirmation";
+    if (node.status === MatchStatus.Active) return "in_progress";
+    return "pending";
+}
+
+function proposalSourceToUi(source: ProposalSource): UIProposalSource {
+    switch (source) {
+        case ProposalSource.Player: return "player";
+        case ProposalSource.Oracle: return "oracle";
+        case ProposalSource.GameServer: return "game_server";
+        default: return "none";
+    }
+}
+
+// On-chain unix-seconds bigint → ISO string. Zero means "unset" → null.
+function bigSecToIso(n: bigint): string | null {
+    if (n <= 0n) return null;
+    return new Date(Number(n) * 1000).toISOString();
+}
+
+function addrOrNull(addr: Address): string | null {
+    return isDefaultAddress(addr) ? null : addr.toString();
+}
+
+function buildSettlement(node: MatchNode): MatchSettlement {
+    return {
+        proposalSource: proposalSourceToUi(node.proposalSource),
+        proposer: addrOrNull(node.proposer),
+        proposedWinner: addrOrNull(node.proposedWinner),
+        proposedAt: bigSecToIso(node.proposedAt),
+        claimDeadline: bigSecToIso(node.claimDeadline),
+        disputed: node.disputed,
+        // disputeReason is only meaningful while disputed; 0 is the
+        // "unspecified" sentinel — surface null when there's no open dispute.
+        disputeReason: node.disputed ? node.disputeReason : null,
+    };
 }
 
 function buildMatch(
@@ -136,7 +188,8 @@ function buildMatch(
         playerA: findPlayerByAddress(node.playerA, participants, organizerAddress),
         playerB: findPlayerByAddress(node.playerB, participants, organizerAddress),
         winner: findPlayerByAddress(node.winner, participants, organizerAddress),
-        status: matchUiStatus(node.status),
+        status: matchUiStatus(node),
+        settlement: buildSettlement(node),
         // Scores + match-tx signature are not tracked on-chain in MVP.
         // Bracket UI conditionally renders this block — null is safe.
         result: null,
@@ -204,6 +257,7 @@ function buildView(
         maxParticipants = 2;
     }
     const presetKind = presetKey(t.payoutPreset);
+    const settlementMode = settlementModeToUi(t.settlementMode);
 
     const entryFeeUsdc = Number(t.entryFee) / USDC_DECIMALS;
     const participantCount = state.participants.length;
@@ -271,6 +325,7 @@ function buildView(
         matchesInitialized,
         totalMatches,
         bracketReady,
+        settlementMode,
     };
 }
 

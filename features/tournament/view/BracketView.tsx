@@ -39,7 +39,13 @@ function PlayerSlot({ player, isWinner }: { player: Player | null; isWinner: boo
 // ── Hover tooltip ─────────────────────────────────────────────────────────────
 
 function MatchTooltip({ match, organizerHint }: { match: Match; organizerHint: boolean }) {
-    const statusLabel = { completed: "Completed", in_progress: "In Progress", pending: "Pending" }[match.status];
+    const statusLabel = {
+        completed: "Completed",
+        in_progress: "In Progress",
+        pending_confirmation: "Awaiting Confirmation",
+        disputed: "Disputed",
+        pending: "Pending",
+    }[match.status];
 
     return (
         <div
@@ -125,6 +131,10 @@ function MatchNode({ match, onClick, organizerActionable }: { match: Match; onCl
     const borderStyle = {
         completed: "2px solid rgba(34,212,126,0.3)",
         in_progress: organizerActionable ? "2px solid rgba(34,212,126,0.7)" : "2px solid rgba(34,212,126,0.4)",
+        // Stage B: a live proposal awaits opponent confirmation (amber); an open
+        // dispute needs organizer arbitration (red).
+        pending_confirmation: "2px solid rgba(245,180,60,0.65)",
+        disputed: "2px solid rgba(240,90,90,0.7)",
         pending: "2px solid rgba(255,255,255,0.1)",
     }[match.status];
 
@@ -153,7 +163,7 @@ function MatchNode({ match, onClick, organizerActionable }: { match: Match; onCl
                 }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = match.status === "pending" ? "rgba(255,255,255,0.18)" : "rgba(34,212,126,0.6)"; }}
                 onMouseLeave={e => {
-                    const base = { completed: "rgba(34,212,126,0.3)", in_progress: organizerActionable ? "rgba(34,212,126,0.7)" : "rgba(34,212,126,0.4)", pending: "rgba(255,255,255,0.1)" }[match.status];
+                    const base = { completed: "rgba(34,212,126,0.3)", in_progress: organizerActionable ? "rgba(34,212,126,0.7)" : "rgba(34,212,126,0.4)", pending_confirmation: "rgba(245,180,60,0.65)", disputed: "rgba(240,90,90,0.7)", pending: "rgba(255,255,255,0.1)" }[match.status];
                     e.currentTarget.style.borderColor = base;
                 }}
             >
@@ -334,11 +344,14 @@ export function BracketEmpty({
 
 // ── Main bracket ──────────────────────────────────────────────────────────────
 
-export function BracketView({ matches, isOrganizer = false, onReport }: { matches: Match[]; isOrganizer?: boolean; onReport?: (m: Match) => void }) {
+export function BracketView({ matches, canReport, onReport }: { matches: Match[]; canReport?: (m: Match) => boolean; onReport?: (m: Match) => void }) {
     const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
     const handleMatchClick = (m: Match) => {
-        if (isOrganizer && m.status === "in_progress" && onReport) { onReport(m); return; }
+        // Route to the action dispatcher when the viewer can act on this match
+        // (organizer report / resolve, or player propose / confirm / dispute /
+        // claim per settlementMode). Otherwise open the read-only match modal.
+        if (onReport && canReport?.(m)) { onReport(m); return; }
         setSelectedMatch(m);
     };
 
@@ -363,7 +376,7 @@ export function BracketView({ matches, isOrganizer = false, onReport }: { matche
                                             key={match.id}
                                             match={match}
                                             onClick={handleMatchClick}
-                                            organizerActionable={isOrganizer && match.status === "in_progress"}
+                                            organizerActionable={!!canReport?.(match)}
                                         />
                                     ))}
                                 </div>
