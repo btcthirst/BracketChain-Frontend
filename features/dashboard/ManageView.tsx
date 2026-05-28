@@ -168,7 +168,7 @@ export function ManageView({ tournamentId, onBack }: Props) {
                                     isRegistered={isOrganizer}
                                     cancelled={t.status === "cancelled"}
                                 />
-                                : <BracketView matches={t.matches} />
+                                : <BracketView matches={t.matches} settlementMode={t.settlementMode} />
                             }
                         </div>
 

@@ -1,2 +1,5 @@
-overrides:
-  '@bracketchain/sdk': link:../BracketChain-Sdk
+# SDK override removed 2026-05-28 — Turbopack does not resolve `link:` deps
+# reliably, causing dev-server crashes on linked SDK changes. We now consume
+# the SDK as a packed tarball (`pnpm pack` in BracketChain-Sdk) so Next/
+# Turbopack sees a normal node_modules copy. Trade-off: SDK changes require
+# re-pack + `pnpm install` in this repo (no live-reload).

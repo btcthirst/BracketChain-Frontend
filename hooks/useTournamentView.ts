@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useReducer, useCallback } from "react";
-import { address, type Address } from "@solana/kit";
+import { address, isSome, type Address } from "@solana/kit";
 import {
     getTournamentState,
     IndexerMatch,
@@ -26,6 +26,7 @@ import { useReadOnlySdkClient, getIndexerClient } from "@/lib/sdk";
 import { indexerToTournamentState } from "@/lib/indexerToTournamentState";
 import type {
     Match,
+    MatchOracleCommit,
     MatchSettlement,
     Player,
     PayoutDistribution,
@@ -161,6 +162,30 @@ function addrOrNull(addr: Address): string | null {
     return isDefaultAddress(addr) ? null : addr.toString();
 }
 
+// Accepts both Uint8Array (chain reads) and ReadonlyUint8Array (Codama types)
+// without requiring the mutating methods — only length + indexed access.
+function bytesToHex(b: { readonly length: number; readonly [i: number]: number }): string {
+    let s = "";
+    for (let i = 0; i < b.length; i++) s += b[i].toString(16).padStart(2, "0");
+    return s;
+}
+
+// On-chain MatchNode → UI commit/feed snapshot. `commitment` is Codama's
+// tagged-union Option<MatchCommitment> (`{ __option: 'None' | 'Some' }`) —
+// must be unwrapped with `isSome` rather than a `?? null` truthiness check.
+// `switchboardFeed` is a default-pubkey sentinel until `bind_match_feed`.
+function buildOracleCommit(node: MatchNode): MatchOracleCommit {
+    const c = isSome(node.commitment) ? node.commitment.value : null;
+    return {
+        lobbyId: c ? bytesToHex(c.lobbyId) : null,
+        committedAt: c ? bigSecToIso(c.committedAt) : null,
+        playerAGameId: c ? bytesToHex(c.playerAGameId) : null,
+        playerBGameId: c ? bytesToHex(c.playerBGameId) : null,
+        expectedFeedHash: c ? bytesToHex(c.expectedFeedHash) : null,
+        switchboardFeed: addrOrNull(node.switchboardFeed),
+    };
+}
+
 function buildSettlement(node: MatchNode): MatchSettlement {
     return {
         proposalSource: proposalSourceToUi(node.proposalSource),
@@ -190,6 +215,7 @@ function buildMatch(
         winner: findPlayerByAddress(node.winner, participants, organizerAddress),
         status: matchUiStatus(node),
         settlement: buildSettlement(node),
+        oracle: buildOracleCommit(node),
         // Scores + match-tx signature are not tracked on-chain in MVP.
         // Bracket UI conditionally renders this block — null is safe.
         result: null,
@@ -326,6 +352,7 @@ function buildView(
         totalMatches,
         bracketReady,
         settlementMode,
+        arbitrator: addrOrNull(t.arbitrator),
     };
 }
 

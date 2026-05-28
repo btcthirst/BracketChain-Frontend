@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Clock, Gavel, Loader2, ShieldAlert, Trophy } from "lucide-react";
+import { AlertTriangle, Clock, Gavel, Loader2, Radio, ShieldAlert, Trophy } from "lucide-react";
 import { address, type Address } from "@solana/kit";
 import { useAnchorWallet } from "@solana/wallet-adapter-react";
 import {
@@ -12,7 +12,6 @@ import {
     claimResult,
     resolveDispute,
     forceClaimDisputed,
-    mapError,
     getTournamentState,
     MatchStatus,
     TournamentStatus,
@@ -21,10 +20,13 @@ import {
 import { toast } from "sonner";
 
 import { useBracketChainClient } from "@/lib/sdk";
+import { handleTxError } from "@/lib/txErrors";
 import { useConfetti } from "@/hooks/useConfetti";
 import type { Match, Player, TournamentView } from "@/types/tournament";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
+import { CommitAndBindPanel } from "./CommitAndBindPanel";
+import { OraclePendingPanel } from "./OraclePendingPanel";
 
 // ── Preset derivation ─────────────────────────────────────────────────────────
 //
@@ -149,8 +151,18 @@ export function matchActionable(
     switch (view.settlementMode) {
         case "organizer_only":
             return isOrganizer && match.status === "in_progress" && view.bracketReady;
-        case "oracle":
-            return isOrganizer && match.status === "disputed";
+        case "oracle": {
+            if (match.status === "in_progress" && view.bracketReady && isOrganizer) {
+                // Commit/bind ceremony — organizer-actionable until both steps done.
+                const committed = match.oracle.lobbyId !== null;
+                const bound = match.oracle.switchboardFeed !== null;
+                return !committed || !bound;
+            }
+            if (match.status === "pending_confirmation")
+                return isParticipant || deadlinePassed;
+            if (match.status === "disputed") return isOrganizer || deadlinePassed;
+            return false;
+        }
         case "player_reported":
             if (match.status === "in_progress") return isParticipant;
             if (match.status === "pending_confirmation")
@@ -295,8 +307,8 @@ export function ReportResultModal({
             onSuccess();
             onClose();
         } catch (err: unknown) {
-            const error = err as Error;
-            if (error.message?.toLowerCase().includes("rejected")) {
+            const text = (err as Error)?.message?.toLowerCase() ?? "";
+            if (text.includes("rejected")) {
                 toast.info("Request cancelled");
                 return;
             }
@@ -307,8 +319,7 @@ export function ReportResultModal({
                 onClose();
                 return;
             }
-            toast.error(mapError(err).message);
-            console.error("settlement action failed:", err);
+            handleTxError(err, "finalize");
         } finally {
             setSubmitting(false);
         }
@@ -328,13 +339,7 @@ export function ReportResultModal({
             onSuccess();
             onClose();
         } catch (err: unknown) {
-            const error = err as Error;
-            if (error.message?.toLowerCase().includes("rejected")) {
-                toast.info("Request cancelled");
-                return;
-            }
-            toast.error(mapError(err).message);
-            console.error("settlement action failed:", err);
+            handleTxError(err, "settlement");
         } finally {
             setSubmitting(false);
         }
@@ -606,19 +611,91 @@ export function ReportResultModal({
             );
         }
 
-        // ── Oracle mode (UI deferred) ───────────────────────────────────────
+        // ── Oracle mode (Stage C / V1.2) ────────────────────────────────────
         if (tournament.settlementMode === "oracle") {
-            if (match.status === "disputed" && isOrganizer) {
+            const committed = match.oracle.lobbyId !== null;
+            const bound = match.oracle.switchboardFeed !== null;
+            const ready = committed && bound;
+
+            // Active match, no live proposal — commit/bind ceremony OR awaiting
+            // the relayer once the ceremony is done.
+            if (match.status === "in_progress") {
+                if (!tournament.bracketReady) {
+                    return <InfoBox icon={<Clock style={{ width: 16, height: 16 }} />} title="Bracket not ready" body="The on-chain bracket is still initializing. Commit unlocks once all match accounts exist." tone="amber" />;
+                }
+                if (!ready && isOrganizer) {
+                    return <CommitAndBindPanel tournament={tournament} match={match} onSuccess={onSuccess} />;
+                }
+                if (!ready) {
+                    return <InfoBox icon={<Clock style={{ width: 16, height: 16 }} />} title="Oracle setup in progress" body="The organizer is committing the match to the oracle feed. The result will be reported automatically once the feed resolves." tone="amber" />;
+                }
+                return <OraclePendingPanel tournament={tournament} match={match} />;
+            }
+
+            // Live oracle proposal — either player may dispute, and the
+            // arbitrator (defaults to organizer) joins the resolve path. The
+            // proposer is the relayer wallet, so the existing `viewerIsProposer`
+            // gate naturally lets both players act.
+            if (match.status === "pending_confirmation") {
+                if (isParticipant) {
+                    return (
+                        <>
+                            <InfoBox icon={<Radio style={{ width: 16, height: 16 }} />} title="Oracle proposed a winner" body="The Switchboard feed has reported the match result. Either player may dispute it; if the window closes undisputed, the result is permissionlessly claimed." tone="amber" />
+                            <ProposedSummary />
+                            <Countdown tone="amber" />
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                <label style={sectionLabel}>If you dispute — reason</label>
+                                <select
+                                    value={disputeReason}
+                                    disabled={submitting}
+                                    onChange={(e) => setDisputeReason(Number(e.target.value))}
+                                    style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.8rem", color: "rgba(240,241,245,0.85)", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "10px 12px" }}
+                                >
+                                    {DISPUTE_REASONS.map((r) => (
+                                        <option key={r.code} value={r.code} style={{ background: "#0d0f18" }}>{r.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </>
+                    );
+                }
                 return (
                     <>
-                        <InfoBox icon={<Gavel style={{ width: 16, height: 16 }} />} title="Resolve disputed oracle result" body="An oracle result was disputed. As organizer you may set the final winner." tone="amber" />
-                        <WinnerPicker />
-                        <PlacementPicker />
-                        <FinalityWarning />
+                        <ProposedSummary />
+                        <Countdown tone="amber" />
+                        {deadlinePassed
+                            ? <InfoBox icon={<Trophy style={{ width: 16, height: 16 }} />} title="Dispute window elapsed" body="No dispute was filed. Anyone may now claim this result to finalize the match on-chain." />
+                            : <InfoBox icon={<Radio style={{ width: 16, height: 16 }} />} title="Oracle proposed a winner" body="Awaiting either player's dispute or window close." tone="amber" />}
                     </>
                 );
             }
-            return <InfoBox icon={<ShieldAlert style={{ width: 16, height: 16 }} />} title="Oracle-settled match" body="Results for this tournament are reported by an oracle. Player actions are not available here." />;
+
+            // Disputed: arbitrator (= organizer in V1.2) resolves.
+            if (match.status === "disputed") {
+                if (isOrganizer) {
+                    return (
+                        <>
+                            <InfoBox icon={<Gavel style={{ width: 16, height: 16 }} />} title="Resolve disputed oracle result" body="An oracle result was disputed. As arbitrator you may set the final winner." tone="amber" />
+                            <ProposedSummary />
+                            <WinnerPicker />
+                            <PlacementPicker />
+                            <Countdown tone="red" />
+                            <FinalityWarning />
+                        </>
+                    );
+                }
+                return (
+                    <>
+                        <ProposedSummary />
+                        <Countdown tone="red" />
+                        {deadlinePassed
+                            ? <InfoBox icon={<ShieldAlert style={{ width: 16, height: 16 }} />} title="Arbitrator did not resolve" body="The 24h resolution window elapsed. Anyone may now force-claim the disputed match for its proposed winner." tone="red" />
+                            : <InfoBox icon={<Gavel style={{ width: 16, height: 16 }} />} title="Awaiting arbitrator" body="This oracle proposal is disputed and waiting for the arbitrator to resolve it. If they stay silent past the window, it can be force-claimed." tone="amber" />}
+                    </>
+                );
+            }
+
+            return <InfoBox icon={<ShieldAlert style={{ width: 16, height: 16 }} />} title="Oracle-settled match" body="Results for this tournament are reported by an oracle." />;
         }
 
         // ── Player-reported mode ────────────────────────────────────────────
@@ -762,13 +839,56 @@ export function ReportResultModal({
         }
 
         if (tournament.settlementMode === "oracle") {
-            if (match.status === "disputed" && isOrganizer) {
-                const ready = winner !== null && placementsReady(winner);
-                return (
-                    <Button variant="primary" className="flex-1" onClick={handleResolve} disabled={!ready || submitting}>
-                        {busy("Resolving…", "Resolve Dispute")}
-                    </Button>
-                );
+            // in_progress: the CommitAndBindPanel ships its own buttons; the
+            // OraclePendingPanel is informational. No footer action.
+            if (match.status === "in_progress") return null;
+
+            // Oracle proposal live — either player may dispute, anyone may
+            // claim once the window passes.
+            if (match.status === "pending_confirmation") {
+                if (isParticipant) {
+                    return (
+                        <>
+                            <Button variant="outline" className="flex-1" onClick={handleDispute} disabled={submitting}>
+                                {submitting ? <Loader2 className="animate-spin size-[15px]" /> : "Dispute"}
+                            </Button>
+                            {deadlinePassed && (
+                                <Button variant="primary" className="flex-1" onClick={handleClaim} disabled={submitting}>
+                                    {busy("Claiming…", "Claim Result")}
+                                </Button>
+                            )}
+                        </>
+                    );
+                }
+                if (deadlinePassed) {
+                    return (
+                        <Button variant="primary" className="flex-1" onClick={handleClaim} disabled={submitting}>
+                            {busy("Claiming…", "Claim Result")}
+                        </Button>
+                    );
+                }
+                return null;
+            }
+
+            // Disputed: arbitrator resolves; anyone force-claims past window.
+            if (match.status === "disputed") {
+                if (isOrganizer) {
+                    const ready = winner !== null && placementsReady(winner);
+                    return (
+                        <Button variant="primary" className="flex-1" onClick={handleResolve} disabled={!ready || submitting}>
+                            {busy("Resolving…", "Resolve Dispute")}
+                        </Button>
+                    );
+                }
+                if (deadlinePassed) {
+                    const fcReady = placementsReady(proposedWinnerPlayer);
+                    return (
+                        <Button variant="primary" className="flex-1" onClick={handleForceClaim} disabled={!fcReady || submitting}>
+                            {busy("Finalizing…", "Force-Claim")}
+                        </Button>
+                    );
+                }
+                return null;
             }
             return null;
         }

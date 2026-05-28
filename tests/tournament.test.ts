@@ -48,6 +48,7 @@ describe("Tournament Utilities", () => {
             createdTxSig: "sig123",
             completedTxSig: null,
             chainSlotAtWrite: "0",
+            arbitrator: null,
         };
 
         it("calculates participant count correctly from grossPool", () => {

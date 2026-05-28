@@ -4,14 +4,14 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test": "jest"
   },
   "dependencies": {
-    "@bracketchain/sdk": "^0.5.0",
+    "@bracketchain/sdk": "file:../BracketChain-Sdk/bracketchain-sdk-0.6.0-dev.tgz",
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.1",
     "@mui/icons-material": "7.3.5",

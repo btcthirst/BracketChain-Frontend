@@ -177,7 +177,12 @@ function EscrowPanel({ tournament, payoutsExpanded, setPayoutsExpanded, payoutsR
 
 // ── Organizer panel ───────────────────────────────────────────────────────────
 
-function OrganizerPanel({ organizer }: { organizer: Player }) {
+function OrganizerPanel({ organizer, arbitrator, showArbitrator }: { organizer: Player; arbitrator: string | null; showArbitrator: boolean }) {
+    // V1.2 always sets arbitrator = organizer at create-time; suppress the
+    // redundant row in that case. The row appears only if a Squads multisig
+    // (V1.3) is configured, OR if the indexer hasn't reconciled yet and the
+    // arbitrator differs from the organizer for some other reason.
+    const showRow = showArbitrator && arbitrator !== null && arbitrator !== organizer.address;
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <span style={sectionLabel}>Organizer</span>
@@ -185,6 +190,9 @@ function OrganizerPanel({ organizer }: { organizer: Player }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                     <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.75rem", color: "rgba(240,241,245,0.65)" }}>{organizer.display}</span>
                     <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", fontWeight: 600, color: "#22d47e", background: "rgba(34,212,126,0.08)", border: "1px solid rgba(34,212,126,0.18)", padding: "1px 6px", borderRadius: 999 }}>ORG</span>
+                    {showArbitrator && arbitrator === organizer.address && (
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", fontWeight: 600, color: "#5eb6ff", background: "rgba(94,182,255,0.08)", border: "1px solid rgba(94,182,255,0.18)", padding: "1px 6px", borderRadius: 999 }} title="Resolves disputed oracle proposals">ARB</span>
+                    )}
                 </div>
                 <a href={SOLANA.explorerAddr(organizer.address)} target="_blank" rel="noopener noreferrer" style={{ color: "rgba(240,241,245,0.2)", transition: "color 0.15s" }}
                     onMouseEnter={e => (e.currentTarget.style.color = "#22d47e")}
@@ -194,6 +202,23 @@ function OrganizerPanel({ organizer }: { organizer: Player }) {
                     <ExternalLink style={{ width: 13, height: 13 }} />
                 </a>
             </div>
+            {showRow && (
+                <>
+                    <span style={sectionLabel}>Arbitrator</span>
+                    <div style={darkRow}>
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.75rem", color: "rgba(240,241,245,0.65)" }} title={arbitrator!}>
+                            {arbitrator!.slice(0, 4)}…{arbitrator!.slice(-4)}
+                        </span>
+                        <a href={SOLANA.explorerAddr(arbitrator!)} target="_blank" rel="noopener noreferrer" style={{ color: "rgba(240,241,245,0.2)", transition: "color 0.15s" }}
+                            onMouseEnter={e => (e.currentTarget.style.color = "#22d47e")}
+                            onMouseLeave={e => (e.currentTarget.style.color = "rgba(240,241,245,0.2)")}
+                            title="View on Solana Explorer"
+                        >
+                            <ExternalLink style={{ width: 13, height: 13 }} />
+                        </a>
+                    </div>
+                </>
+            )}
         </div>
     );
 }
@@ -506,7 +531,7 @@ export function TournamentSidebar({
             <div style={{ height: 1, background: "rgba(255,255,255,0.05)" }} />
             <EscrowPanel tournament={tournament} payoutsExpanded={payoutsExpanded} setPayoutsExpanded={setPayoutsExpanded} payoutsRef={payoutsRef} />
             <div style={{ height: 1, background: "rgba(255,255,255,0.05)" }} />
-            <OrganizerPanel organizer={tournament.organizer} />
+            <OrganizerPanel organizer={tournament.organizer} arbitrator={tournament.arbitrator} showArbitrator={tournament.settlementMode === "oracle"} />
             <ActionArea
                 tournament={tournament}
                 currentAddress={currentAddress}

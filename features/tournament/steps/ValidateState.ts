@@ -10,20 +10,24 @@ export function validateStep1(d: DetailsData): Partial<Record<keyof DetailsData,
     // ≤ char count for ASCII; for multi-byte chars the SDK may still throw —
     // the client-side cap here is best-effort UX, not authoritative.
     if (d.name.length > 32) errs.name = "Name must be 32 characters or fewer.";
-    if (!d.freeEntry && (isNaN(parseFloat(d.entryFee)) || parseFloat(d.entryFee) < 0))
-        errs.entryFee = "Enter a valid entry fee.";
-    if (!d.startDate) errs.startDate = "Select a registration close date.";
-    if (!d.startTime) errs.startTime = "Select a registration close time.";
-    if (d.startDate) {
-        // Parse as UTC to match the on-chain conversion in CreateTournament.tsx
-        // (`unixSecondsFromForm`). Without the `Z`, JS interprets the string as
-        // local time — the gate would then drift from what the program enforces.
-        const dt = new Date(`${d.startDate}T${d.startTime || "00:00"}:00Z`);
+    // Empty input means free entry (0 fee). Any other value must be a
+    // non-negative finite number.
+    if (d.entryFee.trim() !== "") {
+        const n = parseFloat(d.entryFee);
+        if (!Number.isFinite(n) || n < 0) errs.entryFee = "Enter a valid amount, or leave blank for free.";
+    }
+    if (!d.startAt) {
+        errs.startAt = "Pick when registration closes.";
+    } else {
+        // datetime-local is parsed as LOCAL time by JS (no `Z` suffix) — same
+        // tz that the user sees in the picker, so the gate matches what they
+        // typed against their clock. unixSecondsFromForm uses the same parse.
+        const dt = new Date(d.startAt);
         // 60s buffer absorbs sysvar block-time drift + tx confirmation latency.
         // Without it, a deadline 2s in the future passes UI but the program
         // rejects with RegistrationClosed once the tx lands.
         if (dt.getTime() <= Date.now() + 60_000)
-            errs.startDate = "Registration must close at least 1 minute from now.";
+            errs.startAt = "Registration must close at least 1 minute from now.";
     }
     return errs;
 }

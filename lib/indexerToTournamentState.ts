@@ -1,4 +1,4 @@
-import { address, type Address } from "@solana/kit";
+import { address, none, some, type Address } from "@solana/kit";
 import {
     findMatchPda,
     findParticipantPda,
@@ -93,6 +93,20 @@ function addrOrDefault(s: string | null): Address {
     } catch {
         return DEFAULT_ADDRESS;
     }
+}
+
+// Indexer serializes `Bytes` columns as lowercase hex (see Indexer
+// tournaments.controller serializeRow). Returns an empty Uint8Array on null;
+// callers gate on the partner field to decide whether to render commit data.
+function hexToBytes(hex: string | null, byteLen: number): Uint8Array {
+    if (!hex) return new Uint8Array(byteLen);
+    const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
+    if (clean.length !== byteLen * 2) return new Uint8Array(byteLen);
+    const out = new Uint8Array(byteLen);
+    for (let i = 0; i < byteLen; i++) {
+        out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+    }
+    return out;
 }
 
 /**
@@ -197,6 +211,10 @@ export async function indexerToTournamentState(
         vrfRandomnessAccount: DEFAULT_ADDRESS,
         vrfCommitSlot: 0n,
         seedRevealed: false,
+        // Stage C: arbitrator defaults to organizer at create-time; the
+        // reconciliation cron backfills it. Treat missing as organizer (matches
+        // on-chain default).
+        arbitrator: it.arbitrator ? address(it.arbitrator) : address(it.organizer),
     };
 
     const participantsAdapted: ParticipantWithAddress[] = await Promise.all(
@@ -261,6 +279,24 @@ export async function indexerToTournamentState(
                 claimDeadline: unixSecToBig(m.claimDeadline),
                 disputed: m.disputed,
                 disputeReason: m.disputeReason ?? 0,
+                // Stage C oracle commit/feed. The webhook events only carry
+                // lobbyId + committedAt + switchboardFeed; the game-id hashes
+                // and expectedFeedHash come from the reconciliation cron and
+                // are null until that runs. Reconstruct MatchCommitment only
+                // when the commit event has fired (lobbyId present); else
+                // emit `null` to match the on-chain `Option<MatchCommitment>`
+                // sentinel that the buildOracleCommit hook expects.
+                commitment: m.lobbyId
+                    ? some({
+                          lobbyId: hexToBytes(m.lobbyId, 16),
+                          playerAGameId: hexToBytes(m.playerAGameId, 32),
+                          playerBGameId: hexToBytes(m.playerBGameId, 32),
+                          expectedFeedHash: hexToBytes(m.expectedFeedHash, 32),
+                          committedAt: unixSecToBig(m.committedAt),
+                          committedSlot: 0n,
+                      })
+                    : none(),
+                switchboardFeed: addrOrDefault(m.switchboardFeed),
             };
             return { address: matchPda, account };
         }),

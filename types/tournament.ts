@@ -21,14 +21,30 @@ export type ProposalSource = "none" | "player" | "oracle" | "game_server";
 
 // ── Create flow ───────────────────────────────────────────────────────────────
 
+// UI-level settlement choice — mirrors SDK's SettlementMode but stays as a
+// literal here so the form can hold it without importing the SDK enum.
+export type UISettlementChoice = "organizer_only" | "player_reported" | "oracle";
+
+// UI-level game choice — Phase 1 supports Manual only in the create form
+// (Dota 2 needs a SAS attestation flow; CS2/Valorant/LoL aren't yet on chain).
+// The picker shows all values but only `manual` is enabled.
+export type UIGameChoice = "manual" | "dota2" | "cs2faceit" | "valorant" | "lol";
+
+// UI-level arbitrator choice — V1.2 fixes arbitrator = organizer on chain;
+// Squads / custom are V1.3 reassignment options surfaced as locked previews.
+export type UIArbitratorChoice = "organizer" | "squads" | "custom";
+
 export interface DetailsData {
     name: string;
     format: TournamentFormat;
     maxParticipants: 2 | 4 | 8 | 16 | 32 | 64 | 128;
-    startDate: string;
-    startTime: string;
-    freeEntry: boolean;
+    /** ISO-local datetime ("YYYY-MM-DDTHH:MM") from a single <input type="datetime-local">. */
+    startAt: string;
+    /** Empty string or "0" means free entry. Non-zero positive → charged. */
     entryFee: string;
+    settlementMode: UISettlementChoice;
+    game: UIGameChoice;
+    arbitrator: UIArbitratorChoice;
 }
 
 export interface PayoutEntry {
@@ -94,6 +110,27 @@ export interface MatchSettlement {
     disputeReason: number | null;
 }
 
+// Stage C (V1.2 Oracle settlement) — pre-match commitment + feed binding.
+// Populated only for Oracle-mode matches once `commit_match_lobby` /
+// `bind_match_feed` have fired. All fields null until then; everything stays
+// null on OrganizerOnly / PlayerReported matches.
+export interface MatchOracleCommit {
+    // 32-byte lowercase hex; matches what is pasted into the Dota 2 lobby name.
+    lobbyId: string | null;
+    // ISO timestamp of the `commit_match_lobby` tx.
+    committedAt: string | null;
+    // 32-byte SHA-256 of player A's identity at commit time (lowercase hex).
+    // Populated by the chain-read path / reconciliation cron — webhook events
+    // don't carry it. Useful for the OraclePendingPanel audit display.
+    playerAGameId: string | null;
+    playerBGameId: string | null;
+    // 32-byte SHA-256 of the OracleJob schema; bound feed's `feed_hash` must
+    // equal this (Layer-1 anti-redirection — see MatchCommitment docs).
+    expectedFeedHash: string | null;
+    // Switchboard PullFeed PDA bound to this match (base58); null = unbound.
+    switchboardFeed: string | null;
+}
+
 export interface Match {
     id: string;
     round: number;
@@ -106,6 +143,10 @@ export interface Match {
     // or dispute is open (see useTournamentView's matchUiStatus).
     status: "pending" | "in_progress" | "pending_confirmation" | "disputed" | "completed";
     settlement: MatchSettlement;
+    // Stage C: Oracle commit/bind state. Always present (fields default to null);
+    // panels read it to decide whether to render commit/bind UI vs awaiting feed
+    // vs the OraclePendingPanel.
+    oracle: MatchOracleCommit;
     result: MatchResult | null;
 }
 
@@ -137,4 +178,9 @@ export interface TournamentView extends Omit<TournamentSummary, "participants" |
     // Stage B: who may report results. Drives the report-modal flow
     // (organizer-report vs player-reported propose/confirm/dispute/claim).
     settlementMode: SettlementMode;
+    // Stage C: wallet authorized to resolve disputed Oracle proposals.
+    // Defaults to the organizer at create-time. Surfaced in dispute UI so
+    // players know who can force a resolution. Null on pre-V1.2 indexer rows
+    // that haven't been reconciled yet.
+    arbitrator: string | null;
 }

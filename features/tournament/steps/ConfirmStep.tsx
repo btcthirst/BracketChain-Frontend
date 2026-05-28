@@ -28,7 +28,8 @@ export function ConfirmStep({
     tournamentAddress: string | null;
     txSignature: string | null;
 }) {
-    const pool = totalPool(prizeData.deposit, detailsData.entryFee, detailsData.maxParticipants, detailsData.freeEntry);
+    const pool = totalPool(prizeData.deposit, detailsData.entryFee, detailsData.maxParticipants);
+    const isFreeEntry = !detailsData.entryFee.trim() || parseFloat(detailsData.entryFee) === 0;
     const cost = (parseFloat(prizeData.deposit) || 0) + 0.001;
     const [copied, setCopied] = useState(false);
     // Hoisted above the success-screen early return to keep hook order stable
@@ -193,17 +194,42 @@ export function ConfirmStep({
     }
 
     // ── Summary rows ──────────────────────────────────────────────────────────
+    const closesLabel = detailsData.startAt
+        ? new Date(detailsData.startAt).toLocaleString(undefined, {
+              year: "numeric", month: "short", day: "numeric",
+              hour: "2-digit", minute: "2-digit",
+          })
+        : "—";
+    const settlementLabel: Record<typeof detailsData.settlementMode, string> = {
+        organizer_only: "Organizer reports",
+        player_reported: "Players report",
+        oracle: "Oracle (Switchboard)",
+    };
+    const gameLabel: Record<typeof detailsData.game, string> = {
+        manual: "Manual",
+        dota2: "Dota 2",
+        cs2faceit: "CS2 / FACEIT",
+        valorant: "Valorant",
+        lol: "League of Legends",
+    };
+    const arbitratorLabel: Record<typeof detailsData.arbitrator, string> = {
+        organizer: "Organizer (you)",
+        squads: "Squads multisig",
+        custom: "Custom address",
+    };
+
     const rows: [string, string][] = [
         ["Name", detailsData.name || "—"],
         ["Format", FORMAT_INFO[detailsData.format].label],
         ["Max Participants", `${detailsData.maxParticipants} players`],
-        ["Registration Closes", detailsData.startDate && detailsData.startTime
-            ? `${detailsData.startDate} at ${detailsData.startTime} UTC`
-            : "—"],
-        ["Entry Fee", detailsData.freeEntry ? "Free" : `${detailsData.entryFee} ${prizeData.token}`],
+        ["Registration Closes", closesLabel],
+        ["Entry Fee", isFreeEntry ? "Free" : `${detailsData.entryFee} ${prizeData.token}`],
         ["Prize Token", prizeData.token === "custom" ? prizeData.customToken || "Custom SPL" : prizeData.token],
         ["Prize Pool", `${pool.toFixed(2)} ${prizeData.token}`],
         ["Payout", PAYOUT_PRESETS[prizeData.payoutPreset].label],
+        ["Settlement", settlementLabel[detailsData.settlementMode]],
+        ["Game", gameLabel[detailsData.game]],
+        ["Arbitrator", arbitratorLabel[detailsData.arbitrator]],
     ];
 
     const isProcessing = txState === "signing" || txState === "pending";

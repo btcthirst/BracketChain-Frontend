@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { ExternalLink, X } from "lucide-react";
 import type { Match, Player } from "@/types/tournament";
 import { SOLANA } from "@/constants/links";
@@ -38,7 +39,7 @@ function PlayerSlot({ player, isWinner }: { player: Player | null; isWinner: boo
 
 // ── Hover tooltip ─────────────────────────────────────────────────────────────
 
-function MatchTooltip({ match, organizerHint }: { match: Match; organizerHint: boolean }) {
+function MatchTooltip({ match, organizerHint, anchor }: { match: Match; organizerHint: boolean; anchor: DOMRect }) {
     const statusLabel = {
         completed: "Completed",
         in_progress: "In Progress",
@@ -47,15 +48,23 @@ function MatchTooltip({ match, organizerHint }: { match: Match; organizerHint: b
         pending: "Pending",
     }[match.status];
 
-    return (
+    // Position above the anchor card, centered horizontally. Rendered via
+    // portal at document.body so the overflowX: auto on the bracket scroll
+    // container doesn't clip it and the round-header label stacking doesn't
+    // cover it.
+    const TOOLTIP_W = 208;
+    const left = Math.max(8, Math.min(window.innerWidth - TOOLTIP_W - 8, anchor.left + anchor.width / 2 - TOOLTIP_W / 2));
+    const top = anchor.top - 8; // anchor's top edge; tooltip uses `transform: translateY(-100%)` to sit above
+
+    return createPortal(
         <div
             style={{
-                position: "absolute",
-                zIndex: 50,
-                bottom: "calc(100% + 8px)",
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: 208,
+                position: "fixed",
+                zIndex: 1000,
+                top,
+                left,
+                transform: "translateY(-100%)",
+                width: TOOLTIP_W,
                 background: "rgba(13,15,24,0.98)",
                 border: "1px solid rgba(255,255,255,0.1)",
                 borderRadius: 12,
@@ -118,15 +127,28 @@ function MatchTooltip({ match, organizerHint }: { match: Match; organizerHint: b
             <p style={{ color: "rgba(240,241,245,0.2)", marginTop: 8, fontSize: "0.65rem" }}>
                 {organizerHint ? "Click to report winner" : "Click for full details"}
             </p>
-        </div>
+        </div>,
+        document.body,
     );
 }
 
 // ── Match node ────────────────────────────────────────────────────────────────
 
-function MatchNode({ match, onClick, organizerActionable }: { match: Match; onClick: (m: Match) => void; organizerActionable: boolean }) {
-    const [hovered, setHovered] = useState(false);
+// Stage C oracle commit/feed badge — surfaces the ceremony state on the
+// match card so organizers see what's pending without opening the modal.
+function oracleBadge(match: Match): { label: string; tone: "amber" | "green" | "blue" } | null {
+    if (match.status === "completed") return null;
+    const { lobbyId, switchboardFeed } = match.oracle;
+    if (match.settlement.proposalSource === "oracle") return { label: "Oracle proposed", tone: "blue" };
+    if (!lobbyId) return { label: "Awaiting commit", tone: "amber" };
+    if (!switchboardFeed) return { label: "Awaiting feed", tone: "amber" };
+    return { label: "Awaiting oracle", tone: "green" };
+}
+
+function MatchNode({ match, onClick, organizerActionable, oracleMode = false }: { match: Match; onClick: (m: Match) => void; organizerActionable: boolean; oracleMode?: boolean }) {
+    const [anchor, setAnchor] = useState<DOMRect | null>(null);
     const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const cardRef = useRef<HTMLButtonElement | null>(null);
 
     const borderStyle = {
         completed: "2px solid rgba(34,212,126,0.3)",
@@ -142,13 +164,34 @@ function MatchNode({ match, onClick, organizerActionable }: { match: Match; onCl
         ? { boxShadow: organizerActionable ? "0 0 16px rgba(34,212,126,0.25)" : "0 0 10px rgba(34,212,126,0.12)" }
         : {};
 
+    const badge = oracleMode ? oracleBadge(match) : null;
+
     return (
-        <div style={{ position: "relative" }}
-            onMouseEnter={() => { hoverTimeout.current = setTimeout(() => setHovered(true), 200); }}
-            onMouseLeave={() => { if (hoverTimeout.current) clearTimeout(hoverTimeout.current); setHovered(false); }}
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 4 }}
+            onMouseEnter={() => {
+                hoverTimeout.current = setTimeout(() => {
+                    if (cardRef.current) setAnchor(cardRef.current.getBoundingClientRect());
+                }, 200);
+            }}
+            onMouseLeave={() => { if (hoverTimeout.current) clearTimeout(hoverTimeout.current); setAnchor(null); }}
         >
-            {hovered && <MatchTooltip match={match} organizerHint={organizerActionable} />}
+            {anchor && <MatchTooltip match={match} organizerHint={organizerActionable} anchor={anchor} />}
+            {/* Oracle pill rendered ABOVE the card (not overlaid) so it doesn't cover playerA. */}
+            {badge && (() => {
+                const color = badge.tone === "amber" ? "#f5a623" : badge.tone === "blue" ? "#5eb6ff" : "#22d47e";
+                const bg = badge.tone === "amber" ? "rgba(245,166,35,0.1)" : badge.tone === "blue" ? "rgba(94,182,255,0.1)" : "rgba(34,212,126,0.1)";
+                const border = badge.tone === "amber" ? "rgba(245,166,35,0.25)" : badge.tone === "blue" ? "rgba(94,182,255,0.25)" : "rgba(34,212,126,0.25)";
+                return (
+                    <span style={{
+                        alignSelf: "center",
+                        fontFamily: "'DM Mono', monospace", fontSize: "0.56rem", fontWeight: 600,
+                        color, background: bg, border: `1px solid ${border}`,
+                        padding: "2px 8px", borderRadius: 999, textTransform: "uppercase", letterSpacing: "0.04em",
+                    }}>{badge.label}</span>
+                );
+            })()}
             <button
+                ref={cardRef}
                 onClick={() => onClick(match)}
                 style={{
                     position: "relative",
@@ -344,7 +387,7 @@ export function BracketEmpty({
 
 // ── Main bracket ──────────────────────────────────────────────────────────────
 
-export function BracketView({ matches, canReport, onReport }: { matches: Match[]; canReport?: (m: Match) => boolean; onReport?: (m: Match) => void }) {
+export function BracketView({ matches, canReport, onReport, settlementMode }: { matches: Match[]; canReport?: (m: Match) => boolean; onReport?: (m: Match) => void; settlementMode?: "organizer_only" | "player_reported" | "oracle" }) {
     const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
     const handleMatchClick = (m: Match) => {
@@ -359,7 +402,9 @@ export function BracketView({ matches, canReport, onReport }: { matches: Match[]
 
     return (
         <>
-            <div style={{ overflowX: "auto" }}>
+            {/* `safe center` falls back to flex-start when content overflows, so
+                small brackets center horizontally while wide brackets still scroll. */}
+            <div style={{ overflowX: "auto", display: "flex", justifyContent: "safe center" }}>
                 <div style={{ display: "flex", gap: 32, padding: 24, alignItems: "center", minWidth: "max-content" }}>
                     {rounds.map((round, ri) => {
                         const roundMatches = matches.filter(m => m.round === round).sort((a, b) => a.position - b.position);
@@ -377,6 +422,7 @@ export function BracketView({ matches, canReport, onReport }: { matches: Match[]
                                             match={match}
                                             onClick={handleMatchClick}
                                             organizerActionable={!!canReport?.(match)}
+                                            oracleMode={settlementMode === "oracle"}
                                         />
                                     ))}
                                 </div>

@@ -255,6 +255,7 @@ export function TournamentPage({ id }: { id: string }) {
                                                 matches={t.matches}
                                                 canReport={(m) => matchActionable(m, t, currentAddress)}
                                                 onReport={setReportingMatch}
+                                                settlementMode={t.settlementMode}
                                             />
                                         }
                                     </div>
