@@ -63,7 +63,10 @@ export function toUiTournament(t: IndexerTournament, now: number = Date.now()): 
         name: t.name,
         game: "On-chain",
         format: "SE",
-        status: t.status,
+        // `PartialCancelled` (Stage E, mid-tournament) collapses to the
+        // 5-state UI union as `Cancelled` — same badge/filter treatment; the
+        // distinct on-chain status is preserved in the indexer for analytics.
+        status: t.status === "PartialCancelled" ? "Cancelled" : t.status,
         prizePool,
         participants,
         maxParticipants,

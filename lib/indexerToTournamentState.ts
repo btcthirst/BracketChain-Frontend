@@ -26,6 +26,10 @@ const INDEXER_STATUS_TO_KIND: Record<IndexerTournament["status"], TournamentStat
     Active: TournamentStatus.Active,
     Completed: TournamentStatus.Completed,
     Cancelled: TournamentStatus.Cancelled,
+    // Stage E mid-tournament cancel — terminal; maps to the generated enum's
+    // Cancelled until the on-chain `PartialCancelled` variant lands in the
+    // Stage F codama regen.
+    PartialCancelled: TournamentStatus.Cancelled,
 };
 
 const INDEXER_PRESET_TO_KIND: Record<IndexerTournament["payoutPreset"], PayoutPreset> = {
