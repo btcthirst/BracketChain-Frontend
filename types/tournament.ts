@@ -178,6 +178,10 @@ export interface TournamentView extends Omit<TournamentSummary, "participants" |
     // Stage B: who may report results. Drives the report-modal flow
     // (organizer-report vs player-reported propose/confirm/dispute/claim).
     settlementMode: SettlementMode;
+    // V1.1 / A-11: on-chain game. Drives the "link Steam before join" gate —
+    // non-`manual` games require a SAS identity attestation at join_tournament.
+    // Defaults to `manual` until the indexer reconciles the game field.
+    gameKind: UIGameChoice;
     // Stage C: wallet authorized to resolve disputed Oracle proposals.
     // Defaults to the organizer at create-time. Surfaced in dispute UI so
     // players know who can force a resolution. Null on pre-V1.2 indexer rows

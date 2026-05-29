@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { Suspense, useCallback, useState } from "react";
 import Link from "next/link";
 import { RefreshCw, AlertTriangle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { BracketView, BracketSkeleton, BracketEmpty } from "./BracketView";
 import { TournamentSidebar, SidebarSkeleton } from "./TournamentSidebar";
 import { ReportResultModal, matchActionable } from "./ReportResultModal";
 import { CancelModal } from "./CancelModal";
+import { SteamStatusToast } from "@/features/auth/steam/SteamStatusToast";
 import type { Match, Player } from "@/types/tournament";
 
 const darkPanel: React.CSSProperties = {
@@ -187,6 +188,11 @@ export function TournamentPage({ id }: { id: string }) {
 
     return (
         <div style={{ minHeight: "100vh", background: "transparent", display: "flex", flexDirection: "column" }}>
+            {/* A-11: reads ?steam=<status> from the indexer redirect → toast + scrub.
+                Suspense-wrapped per Next.js useSearchParams requirement. */}
+            <Suspense fallback={null}>
+                <SteamStatusToast />
+            </Suspense>
             <Navbar />
 
             <main style={{ flex: 1 }}>

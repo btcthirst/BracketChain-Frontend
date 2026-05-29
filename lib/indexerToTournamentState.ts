@@ -56,6 +56,17 @@ const INDEXER_SETTLEMENT_TO_KIND: Record<
     Oracle: SettlementMode.Oracle,
 };
 
+const INDEXER_GAME_TO_KIND: Record<
+    NonNullable<IndexerTournament["game"]>,
+    SupportedGame
+> = {
+    Manual: SupportedGame.Manual,
+    Dota2: SupportedGame.Dota2,
+    Cs2Faceit: SupportedGame.Cs2Faceit,
+    Valorant: SupportedGame.Valorant,
+    LoL: SupportedGame.LoL,
+};
+
 const INDEXER_PROPOSAL_TO_KIND: Record<
     IndexerMatch["proposalSource"],
     ProposalSource
@@ -200,9 +211,14 @@ export async function indexerToTournamentState(
         // set-once by the reconciliation cron); until that first reconcile it is
         // null, in which case we default to OrganizerOnly — the safe MVP flow,
         // and the chain reconcile corrects it within a few hundred ms if wrong.
-        // game / disputeWindowSecs / vrf state aren't cached by the indexer and
-        // aren't consumed by buildView, so they get harmless defaults here.
-        game: SupportedGame.Manual,
+        // game is backfilled set-once by the reconciliation cron (like
+        // settlementMode); null until the first reconcile → treat as Manual
+        // (the safe, no-identity-gate default). disputeWindowSecs / vrf state
+        // still aren't cached by the indexer, so they keep harmless defaults.
+        game:
+            it.game !== null
+                ? INDEXER_GAME_TO_KIND[it.game]
+                : SupportedGame.Manual,
         settlementMode:
             it.settlementMode !== null
                 ? INDEXER_SETTLEMENT_TO_KIND[it.settlementMode]

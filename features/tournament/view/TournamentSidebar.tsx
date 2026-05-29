@@ -12,7 +12,9 @@ import { useBracketChainClient } from "@/lib/sdk";
 import { useConfetti } from "@/hooks/useConfetti";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import { useDeadlineReached } from "@/hooks/useDeadlineReached";
+import { useGameIdentity } from "@/hooks/useGameIdentity";
 import { Button } from "@/components/ui/button";
+import { LinkSteamButton } from "@/features/auth/steam/LinkSteamButton";
 
 const sectionLabel: React.CSSProperties = {
     fontFamily: "'DM Mono', monospace",
@@ -263,15 +265,35 @@ function ActionArea({
     const { fire } = useConfetti();
     const { usdc: walletUsdc, refresh: refreshBalance } = useWalletBalance();
 
+    // A-11: non-Manual tournaments require a linked game identity (Steam → SAS).
+    // Prefetch the attestation so we can gate Join and pass the PDA to the SDK.
+    const gameIdentity = useGameIdentity(currentAddress, tournament.gameKind);
+    const needsIdentity =
+        tournament.gameKind !== "manual" && !!currentAddress && !gameIdentity.exists;
+    const linkSteamRef = useRef<HTMLDivElement | null>(null);
+
     const isParticipant = optimisticJoined || tournament.participants.some(p => p.address === currentAddress);
     const hasEnough = walletUsdc !== null && walletUsdc >= tournament.entryFee;
     const registrationClosed = useDeadlineReached(tournament.registrationDeadline);
 
     async function handleJoin() {
         if (!sdk) { toast.error("Connect your wallet to join"); return; }
+        // A-11: gate non-Manual tournaments on a linked game identity. Without
+        // it the program rejects with AttestationRequired, so fail fast with a
+        // clear prompt + scroll the Link Steam button into view.
+        if (tournament.gameKind !== "manual" && !gameIdentity.exists) {
+            toast.error("Link your Steam account first to join this tournament.");
+            linkSteamRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+            return;
+        }
         setJoining(true);
         try {
-            await joinTournament(sdk, { tournamentPda: address(tournament.id) });
+            await joinTournament(sdk, {
+                tournamentPda: address(tournament.id),
+                gameIdentityAttestation: gameIdentity.attestationPda
+                    ? address(gameIdentity.attestationPda)
+                    : undefined,
+            });
             toast.success("Joined tournament successfully!");
             setOptimisticJoined(true);
             fire();
@@ -450,6 +472,17 @@ function ActionArea({
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {needsIdentity && (
+                <div
+                    ref={linkSteamRef}
+                    style={{ padding: "10px 12px", background: "rgba(102,192,244,0.06)", border: "1px solid rgba(102,192,244,0.2)", borderRadius: 8, display: "flex", flexDirection: "column", gap: 8 }}
+                >
+                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(199,213,224,0.85)" }}>
+                        This is a Steam-verified tournament. Link your Steam account before joining.
+                    </span>
+                    <LinkSteamButton />
+                </div>
+            )}
             {insufficient && (
                 <div style={{ padding: "10px 12px", background: "rgba(245,166,35,0.07)", border: "1px solid rgba(245,166,35,0.2)", borderRadius: 8, fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(245,166,35,0.7)" }}>
                     <span style={{ fontWeight: 700, color: "#f5a623" }}>Low balance:</span> Your wallet has {walletUsdc?.toFixed(2) ?? "0"} USDC.

@@ -13,6 +13,7 @@ import {
     ProposalSource,
     SettlementMode,
     subscribe,
+    SupportedGame,
     TournamentStatus,
     type BracketChainClient,
     type MatchNode,
@@ -34,6 +35,7 @@ import type {
     SettlementMode as UISettlementMode,
     TournamentStatus as UITournamentStatus,
     TournamentView,
+    UIGameChoice,
 } from "@/types/tournament";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -68,6 +70,14 @@ const STATUS_MAP: Record<TournamentStatus, UITournamentStatus> = {
     [TournamentStatus.Active]: "in_progress",
     [TournamentStatus.Completed]: "completed",
     [TournamentStatus.Cancelled]: "cancelled",
+};
+
+const SUPPORTED_GAME_TO_UI: Record<SupportedGame, UIGameChoice> = {
+    [SupportedGame.Manual]: "manual",
+    [SupportedGame.Dota2]: "dota2",
+    [SupportedGame.Cs2Faceit]: "cs2faceit",
+    [SupportedGame.Valorant]: "valorant",
+    [SupportedGame.LoL]: "lol",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -326,6 +336,9 @@ function buildView(
         name: t.name,
         // No on-chain `game` field in MVP — all tournaments labelled generically.
         game: "On-chain",
+        // V1.1 / A-11: precise game enum for join-gate logic (the `game` string
+        // above is just a display label). Defaults to manual for unknown values.
+        gameKind: SUPPORTED_GAME_TO_UI[t.game] ?? "manual",
         // Single-elim only (MVP).
         format: "SE",
         status,

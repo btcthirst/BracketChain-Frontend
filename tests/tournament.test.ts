@@ -39,6 +39,7 @@ describe("Tournament Utilities", () => {
             registrationDeadline: "2026-05-02T15:00:00Z",
             status: "Registration",
             settlementMode: "OrganizerOnly",
+            game: "Manual",
             champion: null,
             grossPool: "4000000", // 4 USDC -> 4 participants
             feeAmount: null,

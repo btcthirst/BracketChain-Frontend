@@ -34,12 +34,12 @@ const SETTLEMENT_OPTIONS: { key: UISettlementChoice; label: string; available: b
     },
 ];
 
-// Game-identity options. Phase 1 supports `Manual` only in the form (Dota 2
-// needs the SAS attestation flow which lands in V1.3; the rest aren't wired
-// on chain yet and reject with `GameNotYetSupported`).
+// Game-identity options. Phase 1 supports `Manual` + `Dota 2` (the latter via
+// the Steam → SAS attestation flow, A-11). The rest aren't wired on chain yet
+// and reject with `GameNotYetSupported`.
 const GAME_OPTIONS: { key: UIGameChoice; label: string; available: boolean }[] = [
     { key: "manual", label: "Manual (no game identity)", available: true },
-    { key: "dota2", label: "Dota 2 (requires SAS attestation — V1.3)", available: false },
+    { key: "dota2", label: "Dota 2 (Steam-verified)", available: true },
     { key: "cs2faceit", label: "CS2 / FACEIT — coming soon", available: false },
     { key: "valorant", label: "Valorant — coming soon", available: false },
     { key: "lol", label: "League of Legends — coming soon", available: false },

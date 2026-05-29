@@ -1,71 +1,88 @@
 "use client";
 
+import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { getBase58Decoder } from "@solana/kit";
+import { toast } from "sonner";
 
 /**
- * "Link Steam" entry point. Sends the user through the Steam OpenID flow
- * (`/api/auth/steam/login`), carrying the connected wallet + current path so the
- * callback can bind the verified Steam identity and return here. After the
- * round-trip the page URL carries `?steam=<status>` which this component reads
- * to show inline feedback.
+ * "Link Steam" entry point (A-11, Option B — indexer-owned OpenID).
  *
- * Requires a connected wallet (the attestation binds to it). Hidden otherwise.
+ * On click the connected wallet signs `bracketchain:bind-steam:<wallet>:<nonce>`
+ * (the wallet is embedded so swapping it server-side breaks verification), then
+ * we hand off to the indexer's `/identity/steam/login`. The indexer verifies the
+ * signature, drives the Steam OpenID round-trip, issues the SAS attestation, and
+ * redirects back here with `?steam=<status>` (surfaced by `<SteamStatusToast>`).
+ *
+ * Requires a connected wallet whose adapter supports `signMessage`. Hidden when
+ * no wallet is connected.
  */
-const STATUS_TEXT: Record<string, string> = {
-    linked: "✓ Steam linked — identity attestation issued.",
-    invalid: "Steam verification failed. Please try again.",
-    verify_failed: "Couldn't reach Steam to verify. Try again.",
-    attest_failed: "Steam verified, but issuing the on-chain attestation failed.",
-    no_indexer: "Steam verified, but the indexer is not configured.",
-    error: "Something went wrong linking Steam.",
-};
-
 export function LinkSteamButton() {
-    const { publicKey } = useWallet();
-    const pathname = usePathname();
-    const steamStatus = useSearchParams().get("steam");
+    const { publicKey, signMessage } = useWallet();
+    const [pending, setPending] = useState(false);
 
     if (!publicKey) return null;
 
-    const href =
-        `/api/auth/steam/login?wallet=${publicKey.toBase58()}` +
-        `&returnTo=${encodeURIComponent(pathname)}`;
+    async function handleClick() {
+        if (!publicKey) return;
+        const indexer = process.env.NEXT_PUBLIC_INDEXER_URL;
+        if (!indexer) {
+            toast.error("Steam linking unavailable — indexer not configured.");
+            return;
+        }
+        if (!signMessage) {
+            toast.error("Your wallet doesn't support message signing.");
+            return;
+        }
+
+        setPending(true);
+        try {
+            const wallet = publicKey.toBase58();
+            const nonce = crypto.randomUUID();
+            const message = `bracketchain:bind-steam:${wallet}:${nonce}`;
+            const signature = await signMessage(new TextEncoder().encode(message));
+            const sigBase58 = getBase58Decoder().decode(signature);
+
+            const url =
+                `${indexer.replace(/\/$/, "")}/identity/steam/login` +
+                `?wallet=${encodeURIComponent(wallet)}` +
+                `&nonce=${encodeURIComponent(nonce)}` +
+                `&sig=${encodeURIComponent(sigBase58)}` +
+                `&returnTo=${encodeURIComponent(window.location.href)}`;
+            window.location.assign(url);
+        } catch (err) {
+            const msg = (err as Error)?.message?.toLowerCase() ?? "";
+            if (msg.includes("reject") || msg.includes("denied")) {
+                toast.info("Signature request cancelled");
+            } else {
+                toast.error("Couldn't start Steam linking. Please try again.");
+            }
+            setPending(false);
+        }
+    }
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <a
-                href={href}
-                style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    alignSelf: "flex-start",
-                    background: "#1b2838",
-                    color: "#c7d5e0",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                    padding: "9px 16px",
-                    borderRadius: 8,
-                    border: "1px solid rgba(102,192,244,0.3)",
-                    textDecoration: "none",
-                }}
-            >
-                Link Steam
-            </a>
-            {steamStatus && STATUS_TEXT[steamStatus] && (
-                <p
-                    style={{
-                        fontSize: "0.72rem",
-                        color:
-                            steamStatus === "linked"
-                                ? "#22d47e"
-                                : "rgba(245,158,11,0.9)",
-                    }}
-                >
-                    {STATUS_TEXT[steamStatus]}
-                </p>
-            )}
-        </div>
+        <button
+            type="button"
+            onClick={handleClick}
+            disabled={pending}
+            style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                alignSelf: "flex-start",
+                background: "#1b2838",
+                color: "#c7d5e0",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                padding: "9px 16px",
+                borderRadius: 8,
+                border: "1px solid rgba(102,192,244,0.3)",
+                cursor: pending ? "default" : "pointer",
+                opacity: pending ? 0.6 : 1,
+            }}
+        >
+            {pending ? "Opening Steam…" : "Link Steam"}
+        </button>
     );
 }
