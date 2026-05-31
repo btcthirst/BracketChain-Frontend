@@ -182,10 +182,6 @@ export function TournamentPage({ id }: { id: string }) {
         state.status === "success" ? state.data.registrationDeadline : ""
     );
 
-    const isOrganizer =
-        state.status === "success" &&
-        state.data.organizer.address === currentAddress;
-
     return (
         <div style={{ minHeight: "100vh", background: "transparent", display: "flex", flexDirection: "column" }}>
             {/* A-11: reads ?steam=<status> from the indexer redirect → toast + scrub.

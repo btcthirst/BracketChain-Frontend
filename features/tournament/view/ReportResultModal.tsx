@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { useBracketChainClient } from "@/lib/sdk";
 import { handleTxError } from "@/lib/txErrors";
 import { useConfetti } from "@/hooks/useConfetti";
+import { useDeadlineReached } from "@/hooks/useDeadlineReached";
 import type { Match, Player, TournamentView } from "@/types/tournament";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -92,6 +93,40 @@ function formatRemaining(ms: number): string {
     const s = totalSec % 60;
     const pad = (n: number) => n.toString().padStart(2, "0");
     return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
+// Self-contained dispute-window countdown. Owns its own 1s clock so only this
+// leaf re-renders each second — not the entire ReportResultModal. The interval
+// is gated on a live deadline, so it stays idle when there's no open window.
+function DisputeCountdown({
+    deadlineMs,
+    tone,
+}: {
+    deadlineMs: number | null;
+    tone: "amber" | "red";
+}) {
+    const [now, setNow] = useState(() => Date.now());
+    useEffect(() => {
+        if (deadlineMs === null) return;
+        const id = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(id);
+    }, [deadlineMs]);
+
+    if (deadlineMs === null) return null;
+    const remainingMs = deadlineMs - now;
+    const color = tone === "red" ? "#f05a5a" : "#f5a623";
+    const bg = tone === "red" ? "rgba(240,90,90,0.07)" : "rgba(245,166,35,0.07)";
+    const border = tone === "red" ? "rgba(240,90,90,0.2)" : "rgba(245,166,35,0.2)";
+    return (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: bg, border: `1px solid ${border}`, borderRadius: 8, padding: "8px 12px" }}>
+            <Clock style={{ width: 14, height: 14, color, flexShrink: 0 }} />
+            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.74rem", color }}>
+                {remainingMs > 0
+                    ? <>Window: <strong>{formatRemaining(remainingMs)}</strong> remaining</>
+                    : <>Window elapsed — may be finalized permissionlessly.</>}
+            </span>
+        </div>
+    );
 }
 
 // ── Confirmation-race settle check ───────────────────────────────────────────
@@ -197,13 +232,6 @@ export function ReportResultModal({
     const [disputeReason, setDisputeReason] = useState<number>(1);
     const [submitting, setSubmitting] = useState(false);
 
-    // Live clock for the dispute-window countdown (PRD §3.4).
-    const [now, setNow] = useState(() => Date.now());
-    useEffect(() => {
-        const id = setInterval(() => setNow(Date.now()), 1000);
-        return () => clearInterval(id);
-    }, []);
-
     // ── Roles ───────────────────────────────────────────────────────────────
     const viewer = wallet?.publicKey.toBase58() ?? null;
     const isOrganizer = viewer !== null && viewer === tournament.organizer.address;
@@ -222,8 +250,11 @@ export function ReportResultModal({
     );
     const viewerIsProposer = viewer !== null && viewer === s.proposer;
     const deadlineMs = s.claimDeadline ? Date.parse(s.claimDeadline) : null;
-    const deadlinePassed = deadlineMs !== null && now >= deadlineMs;
-    const remainingMs = deadlineMs !== null ? deadlineMs - now : null;
+    // Flip once when the dispute window elapses (one-shot setTimeout), instead
+    // of re-rendering the whole modal every second. The live per-second tick
+    // now lives only inside <DisputeCountdown>, the small leaf that needs it.
+    const reachedDeadline = useDeadlineReached(deadlineMs ?? Number.NaN);
+    const deadlinePassed = deadlineMs !== null && reachedDeadline;
 
     // ── Final-match placement context ───────────────────────────────────────
     const isFinal = useMemo(
@@ -537,23 +568,6 @@ export function ReportResultModal({
         );
     }
 
-    function Countdown({ tone }: { tone: "amber" | "red" }) {
-        if (remainingMs === null) return null;
-        const color = tone === "red" ? "#f05a5a" : "#f5a623";
-        const bg = tone === "red" ? "rgba(240,90,90,0.07)" : "rgba(245,166,35,0.07)";
-        const border = tone === "red" ? "rgba(240,90,90,0.2)" : "rgba(245,166,35,0.2)";
-        return (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, background: bg, border: `1px solid ${border}`, borderRadius: 8, padding: "8px 12px" }}>
-                <Clock style={{ width: 14, height: 14, color, flexShrink: 0 }} />
-                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.74rem", color }}>
-                    {remainingMs > 0
-                        ? <>Window: <strong>{formatRemaining(remainingMs)}</strong> remaining</>
-                        : <>Window elapsed — may be finalized permissionlessly.</>}
-                </span>
-            </div>
-        );
-    }
-
     function ProposedSummary() {
         return (
             <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
@@ -642,7 +656,7 @@ export function ReportResultModal({
                         <>
                             <InfoBox icon={<Radio style={{ width: 16, height: 16 }} />} title="Oracle proposed a winner" body="The Switchboard feed has reported the match result. Either player may dispute it; if the window closes undisputed, the result is permissionlessly claimed." tone="amber" />
                             <ProposedSummary />
-                            <Countdown tone="amber" />
+                            <DisputeCountdown deadlineMs={deadlineMs} tone="amber" />
                             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                 <label style={sectionLabel}>If you dispute — reason</label>
                                 <select
@@ -662,7 +676,7 @@ export function ReportResultModal({
                 return (
                     <>
                         <ProposedSummary />
-                        <Countdown tone="amber" />
+                        <DisputeCountdown deadlineMs={deadlineMs} tone="amber" />
                         {deadlinePassed
                             ? <InfoBox icon={<Trophy style={{ width: 16, height: 16 }} />} title="Dispute window elapsed" body="No dispute was filed. Anyone may now claim this result to finalize the match on-chain." />
                             : <InfoBox icon={<Radio style={{ width: 16, height: 16 }} />} title="Oracle proposed a winner" body="Awaiting either player's dispute or window close." tone="amber" />}
@@ -679,7 +693,7 @@ export function ReportResultModal({
                             <ProposedSummary />
                             <WinnerPicker />
                             <PlacementPicker />
-                            <Countdown tone="red" />
+                            <DisputeCountdown deadlineMs={deadlineMs} tone="red" />
                             <FinalityWarning />
                         </>
                     );
@@ -687,7 +701,7 @@ export function ReportResultModal({
                 return (
                     <>
                         <ProposedSummary />
-                        <Countdown tone="red" />
+                        <DisputeCountdown deadlineMs={deadlineMs} tone="red" />
                         {deadlinePassed
                             ? <InfoBox icon={<ShieldAlert style={{ width: 16, height: 16 }} />} title="Arbitrator did not resolve" body="The 24h resolution window elapsed. Anyone may now force-claim the disputed match for its proposed winner." tone="red" />
                             : <InfoBox icon={<Gavel style={{ width: 16, height: 16 }} />} title="Awaiting arbitrator" body="This oracle proposal is disputed and waiting for the arbitrator to resolve it. If they stay silent past the window, it can be force-claimed." tone="amber" />}
@@ -720,7 +734,7 @@ export function ReportResultModal({
                 return (
                     <>
                         <ProposedSummary />
-                        <Countdown tone="amber" />
+                        <DisputeCountdown deadlineMs={deadlineMs} tone="amber" />
                         {finalNeedsPlacements && (
                             <>
                                 <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "rgba(240,241,245,0.55)", lineHeight: 1.5 }}>
@@ -749,7 +763,7 @@ export function ReportResultModal({
             return (
                 <>
                     <ProposedSummary />
-                    <Countdown tone="amber" />
+                    <DisputeCountdown deadlineMs={deadlineMs} tone="amber" />
                     {deadlinePassed
                         ? <InfoBox icon={<Trophy style={{ width: 16, height: 16 }} />} title="Dispute window elapsed" body="No dispute was filed. Anyone may now claim this result to finalize the match on-chain." />
                         : <InfoBox icon={<Clock style={{ width: 16, height: 16 }} />} title="Awaiting opponent" body={viewerIsProposer ? "You proposed this result. Your opponent can confirm or dispute until the window closes; after that it can be claimed." : "A result is proposed. The opponent can confirm or dispute until the window closes."} tone="amber" />}
@@ -767,7 +781,7 @@ export function ReportResultModal({
                         <ProposedSummary />
                         <WinnerPicker />
                         <PlacementPicker />
-                        <Countdown tone="red" />
+                        <DisputeCountdown deadlineMs={deadlineMs} tone="red" />
                         <FinalityWarning />
                     </>
                 );
@@ -775,7 +789,7 @@ export function ReportResultModal({
             return (
                 <>
                     <ProposedSummary />
-                    <Countdown tone="red" />
+                    <DisputeCountdown deadlineMs={deadlineMs} tone="red" />
                     {deadlinePassed
                         ? <InfoBox icon={<ShieldAlert style={{ width: 16, height: 16 }} />} title="Organizer did not resolve" body="The 24h resolution window elapsed. Anyone may now force-claim the disputed match for its proposed winner." tone="red" />
                         : <InfoBox icon={<Gavel style={{ width: 16, height: 16 }} />} title="Awaiting organizer" body="This match is disputed and waiting for the organizer to resolve it. If they stay silent past the window, it can be force-claimed." tone="amber" />}

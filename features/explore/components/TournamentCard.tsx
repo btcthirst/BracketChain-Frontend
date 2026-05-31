@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import { Gamepad2, Gift, Users, Clock, Trophy } from "lucide-react";
 import { ROUTES } from "@/constants/links";
@@ -41,7 +42,7 @@ const STATUS_BADGE: Record<StatusVariant, { label: string; style: React.CSSPrope
     },
 };
 
-export function TournamentCard({ tournament }: Props) {
+function TournamentCardImpl({ tournament }: Props) {
     const isLive = tournament.status === "Active" || tournament.status === "PendingBracketInit";
     const isCancelled = tournament.status === "Cancelled";
     const isCompleted = tournament.status === "Completed";
@@ -284,3 +285,8 @@ export function TournamentCard({ tournament }: Props) {
         </motion.div>
     );
 }
+
+// Memoized: the explore grid re-renders on every filter/scroll state change in
+// ExplorePage, but a card only needs to re-render when its own tournament prop
+// changes. Props are a stable `tournament` object reference per id.
+export const TournamentCard = memo(TournamentCardImpl);
