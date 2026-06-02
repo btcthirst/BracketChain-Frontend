@@ -33,9 +33,9 @@ const INDEXER_STATUS_TO_KIND: Record<IndexerTournament["status"], TournamentStat
 };
 
 const INDEXER_PRESET_TO_KIND: Record<IndexerTournament["payoutPreset"], PayoutPreset> = {
-    WinnerTakesAll: PayoutPreset.WinnerTakesAll,
-    Standard: PayoutPreset.Standard,
-    Deep: PayoutPreset.Deep,
+    WinnerTakesAll: { __kind: "WinnerTakesAll" },
+    Standard: { __kind: "Standard" },
+    Deep: { __kind: "Deep" },
 };
 
 // The on-chain MatchNode.status only has three states. The indexer's

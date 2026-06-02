@@ -16,6 +16,7 @@ const STATUS_TO_INDEXER: Record<TournamentStatus, Tournament["status"]> = {
     [TournamentStatus.Active]: "Active",
     [TournamentStatus.Completed]: "Completed",
     [TournamentStatus.Cancelled]: "Cancelled",
+    [TournamentStatus.PartialCancelled]: "Cancelled",
 };
 
 // Synthetic status that doesn't exist on-chain — derived from
@@ -186,7 +187,6 @@ export function useExplore(filters: ExploreFilters) {
                                 const pda = address(t.id);
                                 const data = await getTournament(client, pda);
                                 if (data) {
-                                    t.participants = data.participantCount;
                                     const mappedStatus = STATUS_TO_INDEXER[data.status];
                                     if (mappedStatus) {
                                         t.status = mappedStatus;

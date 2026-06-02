@@ -17,6 +17,7 @@ const STATUS_TO_INDEXER: Record<TournamentStatus, IndexerTournamentStatus> = {
     [TournamentStatus.Active]: "Active",
     [TournamentStatus.Completed]: "Completed",
     [TournamentStatus.Cancelled]: "Cancelled",
+    [TournamentStatus.PartialCancelled]: "PartialCancelled",
 };
 
 export type DashboardFilter = "all" | "active" | "completed" | "cancelled";

@@ -70,6 +70,7 @@ const STATUS_MAP: Record<TournamentStatus, UITournamentStatus> = {
     [TournamentStatus.Active]: "in_progress",
     [TournamentStatus.Completed]: "completed",
     [TournamentStatus.Cancelled]: "cancelled",
+    [TournamentStatus.PartialCancelled]: "cancelled",
 };
 
 const SUPPORTED_GAME_TO_UI: Record<SupportedGame, UIGameChoice> = {
@@ -122,10 +123,10 @@ function findPlayerByAddress(
 }
 
 function presetKey(preset: PayoutPreset): keyof typeof PAYOUT_PRESETS {
-    switch (preset) {
-        case PayoutPreset.WinnerTakesAll: return "winnerTakesAll";
-        case PayoutPreset.Standard: return "standard";
-        case PayoutPreset.Deep: return "deep";
+    switch (preset.__kind) {
+        case "WinnerTakesAll": return "winnerTakesAll";
+        case "Standard": return "standard";
+        case "Deep": return "deep";
         default: return "winnerTakesAll";
     }
 }

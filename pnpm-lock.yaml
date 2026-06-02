@@ -399,7 +399,7 @@ packages:
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
 
   '@bracketchain/sdk@file:../BracketChain-Sdk/bracketchain-sdk-0.6.0-dev.tgz':
-    resolution: {integrity: sha512-HnaPyN5iMjDudunj6N6PQBb30D74l797ZKWacAk81PcIsHQMrzt6sd3yVx11pwS7mvdqmtCdP7DKEdjn/wRaPA==, tarball: file:../BracketChain-Sdk/bracketchain-sdk-0.6.0-dev.tgz}
+    resolution: {integrity: sha512-ecQIh9GChDvL7bc8yUXXlfZBq7nPteHFkHJ44tno4DJ7njNeIuNm+nqTLakGnXmGe1HbpwS3S9nSpFgUGFbMsg==, tarball: file:../BracketChain-Sdk/bracketchain-sdk-0.6.0-dev.tgz}
     version: 0.6.0-dev
 
   '@cspotcode/source-map-support@0.8.1':

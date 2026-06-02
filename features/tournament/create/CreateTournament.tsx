@@ -56,9 +56,9 @@ const GAME_MAP: Record<DetailsData["game"], SdkSupportedGame> = {
 const USDC_DECIMALS = 1_000_000;
 
 const PAYOUT_PRESET_MAP: Record<Exclude<PayoutPreset, "custom">, SdkPayoutPreset> = {
-    wta: SdkPayoutPreset.WinnerTakesAll,
-    standard: SdkPayoutPreset.Standard,
-    deep: SdkPayoutPreset.Deep,
+    wta: { __kind: "WinnerTakesAll" },
+    standard: { __kind: "Standard" },
+    deep: { __kind: "Deep" },
 };
 
 function buildPayoutPreset(preset: PayoutPreset): SdkPayoutPreset {

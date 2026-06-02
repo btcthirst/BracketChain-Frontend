@@ -52,11 +52,14 @@ export function toUiTournament(t: IndexerTournament, now: number = Date.now()): 
         : entryFeeMicro * BigInt(maxParticipants) + organizerDepositMicro;
     const prizePool = Number(grossMicro) / USDC_DECIMALS;
 
-    // Estimate participants from grossPool by subtracting the deposit first
-    // (grossPool includes it under Variant B).
-    const participants = entryFeeMicro > 0n && t.grossPool != null
-        ? Math.max(0, Number((BigInt(t.grossPool) - organizerDepositMicro) / entryFeeMicro))
-        : 0;
+    // Prefer the live count served directly by the indexer (Participant table
+    // row count). Fall back to deriving from grossPool for older indexer
+    // responses or Completed rows where grossPool is authoritative.
+    const participants = t.participantCount != null
+        ? t.participantCount
+        : entryFeeMicro > 0n && t.grossPool != null
+            ? Math.max(0, Number((BigInt(t.grossPool) - organizerDepositMicro) / entryFeeMicro))
+            : 0;
 
     return {
         id: t.address,
