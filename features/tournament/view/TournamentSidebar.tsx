@@ -15,6 +15,8 @@ import { useDeadlineReached } from "@/hooks/useDeadlineReached";
 import { useGameIdentity } from "@/hooks/useGameIdentity";
 import { Button } from "@/components/ui/button";
 import { LinkSteamButton } from "@/features/auth/steam/LinkSteamButton";
+import { LaunchGameButton } from "@/features/tournament/view/LaunchGameButton";
+import { steamLaunchUrl, gameLabel } from "@/constants/games";
 
 const sectionLabel: React.CSSProperties = {
     fontFamily: "'DM Mono', monospace",
@@ -294,7 +296,20 @@ function ActionArea({
                     ? address(gameIdentity.attestationPda)
                     : undefined,
             });
-            toast.success("Joined tournament successfully!");
+            // Steam-verified games: offer a one-click jump into the game client
+            // right from the success toast (user gesture keeps the protocol
+            // link reliable — browsers may block steam:// without one).
+            const launchUrl = steamLaunchUrl(tournament.gameKind);
+            if (launchUrl) {
+                toast.success("Joined tournament successfully!", {
+                    action: {
+                        label: `Launch ${gameLabel(tournament.gameKind)}`,
+                        onClick: () => { window.location.href = launchUrl; },
+                    },
+                });
+            } else {
+                toast.success("Joined tournament successfully!");
+            }
             setOptimisticJoined(true);
             fire();
             refreshBalance();
@@ -404,16 +419,29 @@ function ActionArea({
         }
 
         return (
-            <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(34,212,126,0.05)", border: "1px solid rgba(34,212,126,0.15)" }}>
-                <p style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "0.8rem", color: "#22d47e", marginBottom: 4 }}>Reporting results</p>
-                <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(34,212,126,0.6)", lineHeight: 1.5 }}>
-                    Click an <span style={{ fontWeight: 700 }}>active match</span> (glowing, pulsing) in the bracket to pick its winner. Final match auto-distributes the prize pool.
-                </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(34,212,126,0.05)", border: "1px solid rgba(34,212,126,0.15)" }}>
+                    <p style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "0.8rem", color: "#22d47e", marginBottom: 4 }}>Reporting results</p>
+                    <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(34,212,126,0.6)", lineHeight: 1.5 }}>
+                        Click an <span style={{ fontWeight: 700 }}>active match</span> (glowing, pulsing) in the bracket to pick its winner. Final match auto-distributes the prize pool.
+                    </p>
+                </div>
+                {/* Organizer is the referee in OrganizerOnly mode — jumping into
+                    the game client to spectate the lobby is how they verify
+                    results before reporting. No-op for `manual` tournaments. */}
+                <LaunchGameButton game={tournament.gameKind} />
             </div>
         );
     }
 
-    if (tournament.status !== "registration") return null;
+    if (tournament.status !== "registration") {
+        // Active tournament, joined player on a Steam game → one-click jump
+        // into the game client (renders nothing for `manual` tournaments).
+        if (tournament.status === "in_progress" && isParticipant) {
+            return <LaunchGameButton game={tournament.gameKind} />;
+        }
+        return null;
+    }
 
     if (isParticipant) {
         return (
@@ -427,6 +455,7 @@ function ActionArea({
                     <CheckCircle2 />
                     Registered
                 </Button>
+                <LaunchGameButton game={tournament.gameKind} />
                 {tournament.participants.length >= tournament.maxParticipants && (
                     <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", textAlign: "center", color: "rgba(240,241,245,0.3)", fontStyle: "italic" }}>
                         Tournament is full! Waiting for organizer to start…

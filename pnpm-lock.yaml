@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@bracketchain/sdk':
-        specifier: file:../BracketChain-Sdk/bracketchain-sdk-0.6.0-dev.tgz
-        version: file:../BracketChain-Sdk/bracketchain-sdk-0.6.0-dev.tgz(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6)
+        specifier: file:../bracket-chain-sdk/bracketchain-sdk-0.6.0-dev.tgz
+        version: file:../bracket-chain-sdk/bracketchain-sdk-0.6.0-dev.tgz(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6)
       '@radix-ui/react-accordion':
         specifier: 1.2.3
         version: 1.2.3(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -398,8 +398,8 @@ packages:
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
 
-  '@bracketchain/sdk@file:../BracketChain-Sdk/bracketchain-sdk-0.6.0-dev.tgz':
-    resolution: {integrity: sha512-ecQIh9GChDvL7bc8yUXXlfZBq7nPteHFkHJ44tno4DJ7njNeIuNm+nqTLakGnXmGe1HbpwS3S9nSpFgUGFbMsg==, tarball: file:../BracketChain-Sdk/bracketchain-sdk-0.6.0-dev.tgz}
+  '@bracketchain/sdk@file:../bracket-chain-sdk/bracketchain-sdk-0.6.0-dev.tgz':
+    resolution: {integrity: sha512-JZmWKJx9HQlGJWUOfG7PXKSbqi3e+uUQpqFzZplkdUGEJ/bcH4ySxnzll2isc7aY/VgY0zrI8DH8AhQpkvIHfA==, tarball: file:../bracket-chain-sdk/bracketchain-sdk-0.6.0-dev.tgz}
     version: 0.6.0-dev
 
   '@cspotcode/source-map-support@0.8.1':
@@ -8105,7 +8105,7 @@ snapshots:
 
   '@bcoe/v8-coverage@0.2.3': {}
 
-  '@bracketchain/sdk@file:../BracketChain-Sdk/bracketchain-sdk-0.6.0-dev.tgz(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6)':
+  '@bracketchain/sdk@file:../bracket-chain-sdk/bracketchain-sdk-0.6.0-dev.tgz(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6)':
     dependencies:
       '@solana-program/compute-budget': 0.15.0(@solana/kit@6.9.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6))
       '@solana-program/system': 0.12.1(@solana/kit@6.9.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6))

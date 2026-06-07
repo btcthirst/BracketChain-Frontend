@@ -76,7 +76,7 @@ export function DetailsStep({
         <div className="flex flex-col gap-6">
             <FieldGroup
                 label="Tournament Name"
-                hint="Choose a unique, memorable name. Up to 32 characters (Solana per-seed limit)."
+                hint="Choose a unique, memorable name. Up to 32 bytes in UTF-8 (Solana per-seed limit) — non-Latin characters count as 2+ bytes."
                 error={errors.name}
             >
                 <div className="relative">
@@ -98,7 +98,7 @@ export function DetailsStep({
                             color: "rgba(240,241,245,0.25)",
                         }}
                     >
-                        {data.name.length}/32
+                        {new TextEncoder().encode(data.name).length}/32
                     </span>
                 </div>
                 {!errors.name && <DuplicateNameWarning name={data.name} />}

@@ -12,6 +12,7 @@ import {
     claimResult,
     resolveDispute,
     forceClaimDisputed,
+    settleFinal,
     getTournamentState,
     MatchStatus,
     TournamentStatus,
@@ -175,6 +176,8 @@ export function matchActionable(
     if (match.status === "completed") return false;
 
     const isOrganizer = viewer !== null && viewer === view.organizer.address;
+    const isArbiter =
+        viewer !== null && viewer === (view.arbitrator ?? view.organizer.address);
     const isParticipant =
         viewer !== null &&
         (viewer === match.playerA?.address || viewer === match.playerB?.address);
@@ -182,6 +185,13 @@ export function matchActionable(
     const viewerIsProposer = viewer !== null && viewer === s.proposer;
     const deadlinePassed =
         s.claimDeadline !== null && Date.now() >= Date.parse(s.claimDeadline);
+    // Multi-placement finals can't be claimed/confirmed permissionlessly (H-1)
+    // — past the window only the arbitrator can act (settle_final).
+    const needsArbiterSettle =
+        isFinalMatch(match, view.matches) &&
+        derivePreset(view.payouts.length) !== "wta";
+    const postDeadlineActionable =
+        deadlinePassed && (!needsArbiterSettle || isArbiter);
 
     switch (view.settlementMode) {
         case "organizer_only":
@@ -194,14 +204,14 @@ export function matchActionable(
                 return !committed || !bound;
             }
             if (match.status === "pending_confirmation")
-                return isParticipant || deadlinePassed;
+                return isParticipant || postDeadlineActionable;
             if (match.status === "disputed") return isOrganizer || deadlinePassed;
             return false;
         }
         case "player_reported":
             if (match.status === "in_progress") return isParticipant;
             if (match.status === "pending_confirmation")
-                return (isParticipant && !viewerIsProposer) || deadlinePassed;
+                return (isParticipant && !viewerIsProposer) || postDeadlineActionable;
             if (match.status === "disputed") return isOrganizer || deadlinePassed;
             return false;
         default:
@@ -235,6 +245,11 @@ export function ReportResultModal({
     // ── Roles ───────────────────────────────────────────────────────────────
     const viewer = wallet?.publicKey.toBase58() ?? null;
     const isOrganizer = viewer !== null && viewer === tournament.organizer.address;
+    // `settle_final` is signed by `tournament.arbitrator` — defaults to the
+    // organizer at create-time (Squads reassignment is V1.3).
+    const isArbiter =
+        viewer !== null &&
+        viewer === (tournament.arbitrator ?? tournament.organizer.address);
     const isPlayerA = viewer !== null && viewer === match.playerA?.address;
     const isPlayerB = viewer !== null && viewer === match.playerB?.address;
     const isParticipant = isPlayerA || isPlayerB;
@@ -281,6 +296,9 @@ export function ReportResultModal({
 
     // Build the placements array for a known winner. Mirrors the program's
     // distribute_prizes ordering: [winner, runnerUp, third, ...qfLosers].
+    // Returns [] when incomplete OR when any wallet repeats — the program
+    // rejects duplicated placements (M-2 `DuplicatePlacement`), so we refuse
+    // to build an array that would revert on-chain.
     function buildPlacements(winnerPlayer: Player | null): Address[] {
         if (!winnerPlayer) return [];
         const winnerAddr = address(winnerPlayer.address);
@@ -288,19 +306,24 @@ export function ReportResultModal({
         if (!runnerUp) return [];
         const runnerUpAddr = address(runnerUp.address);
 
-        if (preset === "wta") return [winnerAddr];
-        if (preset === "standard") {
+        let placements: Address[];
+        if (preset === "wta") {
+            placements = [winnerAddr];
+        } else if (preset === "standard") {
             if (!thirdPlace) return [];
-            return [winnerAddr, runnerUpAddr, address(thirdPlace.address)];
+            placements = [winnerAddr, runnerUpAddr, address(thirdPlace.address)];
+        } else {
+            // deep
+            if (!thirdPlace || qfLosers.length !== 4) return [];
+            placements = [
+                winnerAddr,
+                runnerUpAddr,
+                address(thirdPlace.address),
+                ...qfLosers.map((p) => address(p.address)),
+            ];
         }
-        // deep
-        if (!thirdPlace || qfLosers.length !== 4) return [];
-        return [
-            winnerAddr,
-            runnerUpAddr,
-            address(thirdPlace.address),
-            ...qfLosers.map((p) => address(p.address)),
-        ];
+        if (new Set(placements).size !== placements.length) return [];
+        return placements;
     }
 
     // Can the configured placement picker produce a valid array for `w`?
@@ -450,6 +473,27 @@ export function ReportResultModal({
                     placements,
                 }),
             `Round ${match.round} result claimed.`,
+        );
+    }
+
+    // Arbitrator-signed settlement of an undisputed multi-placement final
+    // (H-1). The winner stays pinned to the trustless `proposedWinner`; the
+    // arbitrator only adjudicates 3rd place (+ Deep 5th–8th).
+    function handleSettle() {
+        const placements = buildPlacements(proposedWinnerPlayer);
+        if (placements.length === 0) {
+            toast.error("Pick 3rd place to settle the final standings.");
+            return;
+        }
+        void runFinalize(
+            () =>
+                settleFinal(sdk!, {
+                    tournamentPda: pda,
+                    round: onChainRound,
+                    matchIndex: match.position,
+                    placements,
+                }),
+            "Final settled.",
         );
     }
 
@@ -657,6 +701,7 @@ export function ReportResultModal({
                             <InfoBox icon={<Radio style={{ width: 16, height: 16 }} />} title="Oracle proposed a winner" body="The Switchboard feed has reported the match result. Either player may dispute it; if the window closes undisputed, the result is permissionlessly claimed." tone="amber" />
                             <ProposedSummary />
                             <DisputeCountdown deadlineMs={deadlineMs} tone="amber" />
+                            {deadlinePassed && finalNeedsPlacements && isArbiter && <PlacementPicker />}
                             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                 <label style={sectionLabel}>If you dispute — reason</label>
                                 <select
@@ -678,8 +723,13 @@ export function ReportResultModal({
                         <ProposedSummary />
                         <DisputeCountdown deadlineMs={deadlineMs} tone="amber" />
                         {deadlinePassed
-                            ? <InfoBox icon={<Trophy style={{ width: 16, height: 16 }} />} title="Dispute window elapsed" body="No dispute was filed. Anyone may now claim this result to finalize the match on-chain." />
+                            ? finalNeedsPlacements
+                                ? isArbiter
+                                    ? <InfoBox icon={<Gavel style={{ width: 16, height: 16 }} />} title="Settle the final" body="The dispute window elapsed undisputed. As arbitrator, set the remaining standings to distribute the prize pool — the winner stays pinned to the oracle proposal." />
+                                    : <InfoBox icon={<Gavel style={{ width: 16, height: 16 }} />} title="Awaiting arbitrator settlement" body="The window elapsed undisputed. This final pays multiple placements, so the arbitrator settles the standings (the winner is already pinned to the oracle proposal)." tone="amber" />
+                                : <InfoBox icon={<Trophy style={{ width: 16, height: 16 }} />} title="Dispute window elapsed" body="No dispute was filed. Anyone may now claim this result to finalize the match on-chain." />
                             : <InfoBox icon={<Radio style={{ width: 16, height: 16 }} />} title="Oracle proposed a winner" body="Awaiting either player's dispute or window close." tone="amber" />}
+                        {deadlinePassed && finalNeedsPlacements && isArbiter && <PlacementPicker />}
                     </>
                 );
             }
@@ -730,18 +780,21 @@ export function ReportResultModal({
         // Proposal live, not disputed.
         if (match.status === "pending_confirmation") {
             // Opponent (the player who did NOT propose) confirms or disputes.
+            // On a multi-placement final, confirm is NOT available — the program
+            // limits counterparty finalization to WinnerTakesAll (H-1); after
+            // the window the arbitrator settles via settle_final instead.
             if (isParticipant && !viewerIsProposer) {
                 return (
                     <>
                         <ProposedSummary />
                         <DisputeCountdown deadlineMs={deadlineMs} tone="amber" />
                         {finalNeedsPlacements && (
-                            <>
-                                <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.78rem", color: "rgba(240,241,245,0.55)", lineHeight: 1.5 }}>
-                                    This is the final. Confirming finalizes the bracket and distributes the prize pool — set the remaining standings:
-                                </p>
-                                <PlacementPicker />
-                            </>
+                            <InfoBox
+                                icon={<Gavel style={{ width: 16, height: 16 }} />}
+                                title="Final settles via the arbitrator"
+                                body="This final pays multiple placements, so it can't be confirmed directly. If you don't dispute before the window closes, the arbitrator settles the standings with this winner."
+                                tone="amber"
+                            />
                         )}
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                             <label style={sectionLabel}>If you dispute — reason</label>
@@ -759,15 +812,20 @@ export function ReportResultModal({
                     </>
                 );
             }
-            // Proposer / spectator: waiting. Past deadline → permissionless claim.
+            // Proposer / spectator: waiting. Past deadline → permissionless
+            // claim (WTA / non-final) or arbitrator settle (multi-placement final).
             return (
                 <>
                     <ProposedSummary />
                     <DisputeCountdown deadlineMs={deadlineMs} tone="amber" />
                     {deadlinePassed
-                        ? <InfoBox icon={<Trophy style={{ width: 16, height: 16 }} />} title="Dispute window elapsed" body="No dispute was filed. Anyone may now claim this result to finalize the match on-chain." />
+                        ? finalNeedsPlacements
+                            ? isArbiter
+                                ? <InfoBox icon={<Gavel style={{ width: 16, height: 16 }} />} title="Settle the final" body="The dispute window elapsed undisputed. As arbitrator, set the remaining standings to distribute the prize pool — the winner stays pinned to the proposal." />
+                                : <InfoBox icon={<Gavel style={{ width: 16, height: 16 }} />} title="Awaiting arbitrator settlement" body="The window elapsed undisputed. This final pays multiple placements, so the arbitrator settles the standings (the winner is already pinned to the proposal)." tone="amber" />
+                            : <InfoBox icon={<Trophy style={{ width: 16, height: 16 }} />} title="Dispute window elapsed" body="No dispute was filed. Anyone may now claim this result to finalize the match on-chain." />
                         : <InfoBox icon={<Clock style={{ width: 16, height: 16 }} />} title="Awaiting opponent" body={viewerIsProposer ? "You proposed this result. Your opponent can confirm or dispute until the window closes; after that it can be claimed." : "A result is proposed. The opponent can confirm or dispute until the window closes."} tone="amber" />}
-                    {deadlinePassed && finalNeedsPlacements && <PlacementPicker />}
+                    {deadlinePassed && finalNeedsPlacements && isArbiter && <PlacementPicker />}
                 </>
             );
         }
@@ -857,31 +915,38 @@ export function ReportResultModal({
             // OraclePendingPanel is informational. No footer action.
             if (match.status === "in_progress") return null;
 
-            // Oracle proposal live — either player may dispute, anyone may
-            // claim once the window passes.
+            // Oracle proposal live — either player may dispute. Once the
+            // window passes: anyone claims (WTA / non-final), or the
+            // arbitrator settles (multi-placement final, H-1).
             if (match.status === "pending_confirmation") {
+                const settleAction = (() => {
+                    if (!deadlinePassed) return null;
+                    if (finalNeedsPlacements) {
+                        if (!isArbiter) return null;
+                        const settleReady = placementsReady(proposedWinnerPlayer);
+                        return (
+                            <Button variant="primary" className="flex-1" onClick={handleSettle} disabled={!settleReady || submitting}>
+                                {busy("Settling…", "Settle Final")}
+                            </Button>
+                        );
+                    }
+                    return (
+                        <Button variant="primary" className="flex-1" onClick={handleClaim} disabled={submitting}>
+                            {busy("Claiming…", "Claim Result")}
+                        </Button>
+                    );
+                })();
                 if (isParticipant) {
                     return (
                         <>
                             <Button variant="outline" className="flex-1" onClick={handleDispute} disabled={submitting}>
                                 {submitting ? <Loader2 className="animate-spin size-[15px]" /> : "Dispute"}
                             </Button>
-                            {deadlinePassed && (
-                                <Button variant="primary" className="flex-1" onClick={handleClaim} disabled={submitting}>
-                                    {busy("Claiming…", "Claim Result")}
-                                </Button>
-                            )}
+                            {settleAction}
                         </>
                     );
                 }
-                if (deadlinePassed) {
-                    return (
-                        <Button variant="primary" className="flex-1" onClick={handleClaim} disabled={submitting}>
-                            {busy("Claiming…", "Claim Result")}
-                        </Button>
-                    );
-                }
-                return null;
+                return settleAction;
             }
 
             // Disputed: arbitrator resolves; anyone force-claims past window.
@@ -919,22 +984,41 @@ export function ReportResultModal({
 
         if (match.status === "pending_confirmation") {
             if (isParticipant && !viewerIsProposer) {
-                const confirmReady = placementsReady(proposedWinnerPlayer);
+                // Multi-placement final: counterparty confirm is rejected
+                // on-chain (H-1) — only Dispute is offered; the arbitrator
+                // settles after the window.
+                if (finalNeedsPlacements) {
+                    return (
+                        <Button variant="outline" className="flex-1" onClick={handleDispute} disabled={submitting}>
+                            {submitting ? <Loader2 className="animate-spin size-[15px]" /> : "Dispute"}
+                        </Button>
+                    );
+                }
                 return (
                     <>
                         <Button variant="outline" className="flex-1" onClick={handleDispute} disabled={submitting}>
                             {submitting ? <Loader2 className="animate-spin size-[15px]" /> : "Dispute"}
                         </Button>
-                        <Button variant="primary" className="flex-1" onClick={handleConfirm} disabled={!confirmReady || submitting}>
+                        <Button variant="primary" className="flex-1" onClick={handleConfirm} disabled={submitting}>
                             {busy("Confirming…", "Confirm")}
                         </Button>
                     </>
                 );
             }
             if (deadlinePassed) {
-                const claimReady = placementsReady(proposedWinnerPlayer);
+                // Multi-placement final → arbitrator-signed settle_final;
+                // everything else → permissionless claim_result.
+                if (finalNeedsPlacements) {
+                    if (!isArbiter) return null;
+                    const settleReady = placementsReady(proposedWinnerPlayer);
+                    return (
+                        <Button variant="primary" className="flex-1" onClick={handleSettle} disabled={!settleReady || submitting}>
+                            {busy("Settling…", "Settle Final")}
+                        </Button>
+                    );
+                }
                 return (
-                    <Button variant="primary" className="flex-1" onClick={handleClaim} disabled={!claimReady || submitting}>
+                    <Button variant="primary" className="flex-1" onClick={handleClaim} disabled={submitting}>
                         {busy("Claiming…", "Claim Result")}
                     </Button>
                 );

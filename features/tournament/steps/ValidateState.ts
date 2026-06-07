@@ -6,10 +6,17 @@ export type Step2Errors = Partial<Record<"deposit" | "customToken" | "payoutEntr
 export function validateStep1(d: DetailsData): Partial<Record<keyof DetailsData, string>> {
     const errs: Partial<Record<keyof DetailsData, string>> = {};
     if (!d.name.trim()) errs.name = "Tournament name is required.";
-    // Solana per-seed limit + program enforces ≤ 32 bytes. UTF-8 byte length
-    // ≤ char count for ASCII; for multi-byte chars the SDK may still throw —
-    // the client-side cap here is best-effort UX, not authoritative.
-    if (d.name.length > 32) errs.name = "Name must be 32 characters or fewer.";
+    // Solana per-seed limit + program enforce ≤ 32 BYTES (UTF-8), not
+    // characters — Cyrillic is 2 bytes/char, emoji up to 4. Validate the
+    // encoded length so multi-byte names fail here instead of reverting
+    // on-chain with NameTooLong after a wallet signature.
+    const nameBytes = new TextEncoder().encode(d.name).length;
+    if (nameBytes > 32) {
+        errs.name =
+            d.name.length <= 32
+                ? `Name is ${nameBytes} bytes in UTF-8 (limit 32) — non-Latin characters count as 2+ bytes each.`
+                : "Name must be 32 bytes or fewer.";
+    }
     // Empty input means free entry (0 fee). Any other value must be a
     // non-negative finite number.
     if (d.entryFee.trim() !== "") {
