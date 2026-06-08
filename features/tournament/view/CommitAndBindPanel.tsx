@@ -3,16 +3,19 @@
 import { useState } from "react";
 import { Check, Copy, KeyRound, Loader2, Radio } from "lucide-react";
 import { address } from "@solana/kit";
-import {
-    bindMatchFeed,
-    commitMatchLobby,
-} from "@bracketchain/sdk";
+import { commitMatchLobby, computeDotaFeedHash } from "@bracketchain/sdk";
 import { toast } from "sonner";
 
 import { useBracketChainClient } from "@/lib/sdk";
+import {
+    dotaFeedParams,
+    fetchDotaIdentityHash,
+    switchboardQueue,
+} from "@/lib/switchboardFeed";
 import { handleTxError } from "@/lib/txErrors";
 import { Button } from "@/components/ui/button";
 import type { Match, TournamentView } from "@/types/tournament";
+import { BindFeedFlow } from "./BindFeedFlow";
 
 // ── Styling primitives (mirrors ReportResultModal idiom — inline styles) ─────
 
@@ -79,23 +82,6 @@ interface Props {
     onSuccess: () => void;
 }
 
-/**
- * Stage C (V1.2 Oracle) — two-step organizer ceremony that arms an Oracle-mode
- * match for permissionless settlement.
- *
- * 1. **Commit lobby:** roll a random 16-byte `lobby_id`, paste it into the
- *    Dota 2 lobby name, then `commit_match_lobby` snapshots both players'
- *    identity hashes + the off-chain-computed `expected_feed_hash`.
- * 2. **Bind feed:** organizer creates a Switchboard PullFeed via the (future)
- *    feed-factory and pastes its address; `bind_match_feed` cryptographically
- *    binds the feed to the committed identities.
- *
- * After step 2, the oracle-relayer cron is unblocked and the match is in the
- * "awaiting oracle proposal" state rendered by `OraclePendingPanel`.
- *
- * NOTE: the Switchboard feed-factory (SDK side) is gated on external validation
- * #1/#4; until that lands, the feed address must be sourced externally.
- */
 export function CommitAndBindPanel({ tournament, match, onSuccess }: Props) {
     const sdk = useBracketChainClient();
     const [submitting, setSubmitting] = useState(false);
@@ -103,7 +89,6 @@ export function CommitAndBindPanel({ tournament, match, onSuccess }: Props) {
         match.oracle.lobbyId ? hexToBytes(match.oracle.lobbyId) ?? randomLobbyId() : randomLobbyId(),
     );
     const [lobbyCopied, setLobbyCopied] = useState(false);
-    const [feedInput, setFeedInput] = useState("");
 
     const committed = match.oracle.lobbyId !== null;
     const bound = match.oracle.switchboardFeed !== null;
@@ -133,12 +118,29 @@ export function CommitAndBindPanel({ tournament, match, onSuccess }: Props) {
             toast.error("Match has no players assigned yet");
             return;
         }
-        // V1.2 supports only a placeholder expected_feed_hash until the
-        // feed-factory ships (external validation #4). Use a deterministic
-        // hash of the lobby id as a stand-in so commit_match_lobby succeeds;
-        // bind_match_feed will reject any real feed until the factory lands.
-        const expectedFeedHash = await derivePlaceholderFeedHash(lobbyIdBytes);
         setSubmitting(true);
+        let expectedFeedHash: Uint8Array;
+        try {
+            const [aHash, bHash] = await Promise.all([
+                fetchDotaIdentityHash(match.playerA.address),
+                fetchDotaIdentityHash(match.playerB.address),
+            ]);
+            if (!aHash || !bHash) {
+                toast.error(
+                    "Both players must link Steam before committing an Oracle match.",
+                );
+                setSubmitting(false);
+                return;
+            }
+            expectedFeedHash = computeDotaFeedHash(
+                switchboardQueue(),
+                dotaFeedParams(lobbyHex, aHash, bHash),
+            );
+        } catch (err) {
+            toast.error((err as Error).message || "Could not compute feed hash");
+            setSubmitting(false);
+            return;
+        }
         try {
             await commitMatchLobby(sdk, {
                 tournamentPda: pda,
@@ -153,36 +155,6 @@ export function CommitAndBindPanel({ tournament, match, onSuccess }: Props) {
             onSuccess();
         } catch (err) {
             handleTxError(err, "commit_match_lobby");
-        } finally {
-            setSubmitting(false);
-        }
-    }
-
-    async function handleBind() {
-        if (!sdk) {
-            toast.error("Connect your wallet to continue");
-            return;
-        }
-        const trimmed = feedInput.trim();
-        let feedAddress;
-        try {
-            feedAddress = address(trimmed);
-        } catch {
-            toast.error("Feed address is not a valid Solana pubkey");
-            return;
-        }
-        setSubmitting(true);
-        try {
-            await bindMatchFeed(sdk, {
-                tournamentPda: pda,
-                round: onChainRound,
-                matchIndex: match.position,
-                switchboardFeed: feedAddress,
-            });
-            toast.success("Feed bound — the oracle relayer will propose the winner once the feed resolves.");
-            onSuccess();
-        } catch (err) {
-            handleTxError(err, "bind_match_feed");
         } finally {
             setSubmitting(false);
         }
@@ -246,9 +218,9 @@ export function CommitAndBindPanel({ tournament, match, onSuccess }: Props) {
                 )}
             </div>
 
-            {/* Step 2: feed input + bind */}
+            {/* Step 2: one-click feed creation + bind (Phase 1.5) */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <label style={{ ...sectionLabel, opacity: committed ? 1 : 0.4 }}>Step 2 — Switchboard feed address</label>
+                <label style={{ ...sectionLabel, opacity: committed ? 1 : 0.4 }}>Step 2 — Switchboard feed</label>
                 {!committed ? (
                     <p style={helperText}>Bind feed unlocks after the lobby commit lands.</p>
                 ) : bound ? (
@@ -256,43 +228,18 @@ export function CommitAndBindPanel({ tournament, match, onSuccess }: Props) {
                         <div style={fieldShell}>{match.oracle.switchboardFeed}</div>
                         <p style={{ ...helperText, color: "#22d47e", display: "flex", alignItems: "center", gap: 6 }}>
                             <Radio style={{ width: 12, height: 12 }} />
-                            Feed bound. Awaiting oracle proposal — the permissionless relayer will fire <code style={{ fontFamily: "'DM Mono', monospace", background: "rgba(34,212,126,0.08)", padding: "0 4px", borderRadius: 4 }}>propose_result_oracle</code> once the feed has enough samples.
+                            Feed bound. Awaiting oracle proposal — the permissionless relayer will fire <code style={{ fontFamily: "'DM Mono', monospace", background: "rgba(34,212,126,0.08)", padding: "0 4px", borderRadius: 4 }}>propose_result_oracle</code> once the match resolves.
                         </p>
                     </>
                 ) : (
-                    <>
-                        <input
-                            type="text"
-                            value={feedInput}
-                            disabled={submitting}
-                            placeholder="Switchboard PullFeed address (base58)"
-                            onChange={(e) => setFeedInput(e.target.value)}
-                            style={{ ...fieldShell, outline: "none" }}
-                        />
-                        <p style={helperText}>
-                            Paste the Switchboard On-Demand feed PDA created by the feed-factory for this match. The program rejects any feed whose <code>feed_hash</code> doesn&apos;t match the committed <code>expected_feed_hash</code>.
-                        </p>
-                        <Button onClick={handleBind} disabled={submitting || !sdk || feedInput.trim().length === 0}>
-                            {submitting ? <Loader2 style={{ width: 14, height: 14, marginRight: 6 }} className="animate-spin" /> : null}
-                            Bind feed
-                        </Button>
-                    </>
+                    <BindFeedFlow
+                        tournament={tournament}
+                        match={match}
+                        lobbyHex={lobbyHex}
+                        onBound={onSuccess}
+                    />
                 )}
             </div>
         </>
     );
-}
-
-// ── Placeholder feed-hash derivation (V1.2 dev-only) ──────────────────────────
-// The real `expected_feed_hash` is SHA-256 over the OracleJob schema (which
-// embeds lobby_id + both player_*_game_id). Until the feed-factory ships
-// (external validation #1/#4), commit with a deterministic hash of the lobby
-// id so the on-chain `commit_match_lobby` succeeds. `bind_match_feed` will
-// reject any real Switchboard feed under this placeholder — that's intentional;
-// it prevents accidental production use.
-async function derivePlaceholderFeedHash(lobbyId: Uint8Array): Promise<Uint8Array> {
-    // .slice() copies into a fresh ArrayBuffer (not SharedArrayBuffer),
-    // which is what crypto.subtle.digest requires under strict TS DOM types.
-    const buf = await crypto.subtle.digest("SHA-256", lobbyId.slice());
-    return new Uint8Array(buf);
 }

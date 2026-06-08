@@ -18,10 +18,8 @@ import {
     type Transaction,
     type TransactionModifyingSigner,
 } from "@solana/kit";
-import {
-    BracketChainClient,
-    BracketChainIndexerClient,
-} from "@bracketchain/sdk";
+import { BracketChainClient } from "@bracketchain/sdk";
+import { BracketChainIndexerClient } from "./indexerClient";
 
 type AnchorWallet = NonNullable<ReturnType<typeof useAnchorWallet>>;
 

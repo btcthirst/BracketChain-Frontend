@@ -1,5 +1,5 @@
 import { formatStartsIn, toUiTournament } from "../lib/tournament";
-import type { IndexerTournament } from "@bracketchain/sdk";
+import type { IndexerTournament } from "../lib/indexerClient";
 
 describe("Tournament Utilities", () => {
     describe("formatStartsIn", () => {

@@ -1,4 +1,4 @@
-import { IndexerTournament } from "@bracketchain/sdk";
+import type { IndexerTournament } from "./indexerClient";
 
 
 export interface Tournament {

@@ -3,9 +3,6 @@ import {
     findMatchPda,
     findParticipantPda,
     findVaultPda,
-    IndexerMatch,
-    IndexerParticipant,
-    IndexerTournament,
     MatchStatus,
     PayoutPreset,
     ProposalSource,
@@ -20,6 +17,11 @@ import {
     type Tournament,
     type TournamentState,
 } from "@bracketchain/sdk";
+import type {
+    IndexerMatch,
+    IndexerParticipant,
+    IndexerTournament,
+} from "./indexerClient";
 
 const INDEXER_STATUS_TO_KIND: Record<IndexerTournament["status"], TournamentStatus> = {
     Registration: TournamentStatus.Registration,

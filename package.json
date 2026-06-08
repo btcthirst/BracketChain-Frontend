@@ -11,7 +11,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@bracketchain/sdk": "file:../bracket-chain-sdk/bracketchain-sdk-0.6.0-dev.tgz",
+    "@bracketchain/sdk": "^0.6.0",
     "@radix-ui/react-accordion": "1.2.3",
     "@radix-ui/react-alert-dialog": "1.1.6",
     "@radix-ui/react-aspect-ratio": "^1.1.2",
@@ -47,7 +47,10 @@
     "@solana/wallet-adapter-react-ui": "^0.9.39",
     "@solana/wallet-adapter-wallets": "^0.19.38",
     "@solana/web3.js": "^1.98.4",
+    "@switchboard-xyz/common": "^5.8.2",
+    "@switchboard-xyz/on-demand": "^3.10.2",
     "@vercel/analytics": "^2.0.1",
+    "buffer": "^6.0.3",
     "canvas-confetti": "1.9.4",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",

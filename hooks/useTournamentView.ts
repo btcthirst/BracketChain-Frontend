@@ -4,10 +4,6 @@ import { useEffect, useReducer, useCallback } from "react";
 import { address, isSome, type Address } from "@solana/kit";
 import {
     getTournamentState,
-    IndexerMatch,
-    IndexerParticipant,
-    IndexerPayout,
-    IndexerTournament,
     MatchStatus,
     PayoutPreset,
     ProposalSource,
@@ -22,6 +18,12 @@ import {
     type Tournament,
     type TournamentState,
 } from "@bracketchain/sdk";
+import type {
+    IndexerMatch,
+    IndexerParticipant,
+    IndexerPayout,
+    IndexerTournament,
+} from "@/lib/indexerClient";
 
 import { useReadOnlySdkClient, getIndexerClient } from "@/lib/sdk";
 import { indexerToTournamentState } from "@/lib/indexerToTournamentState";
