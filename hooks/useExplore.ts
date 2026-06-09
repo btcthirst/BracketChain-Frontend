@@ -3,15 +3,17 @@
 import { useState, useReducer, useEffect, useCallback } from "react";
 import { toUiTournament, type Tournament } from "@/lib/tournament";
 import { useBracketChainClient, getIndexerClient } from "@/lib/sdk";
-import { getTournament, getEnumKind, type IndexerTournamentStatus } from "@bracketchain/sdk";
-import { PublicKey } from "@solana/web3.js";
+import { getTournament, TournamentStatus } from "@bracketchain/sdk";
+import type { IndexerTournamentStatus } from "@/lib/indexerClient";
+import { address } from "@solana/kit";
 
-const ANCHOR_TO_INDEXER_STATUS: Record<string, Tournament["status"]> = {
-    registration: "Registration",
-    pendingBracketInit: "PendingBracketInit",
-    active: "Active",
-    completed: "Completed",
-    cancelled: "Cancelled",
+const STATUS_TO_INDEXER: Record<TournamentStatus, Tournament["status"]> = {
+    [TournamentStatus.Registration]: "Registration",
+    [TournamentStatus.PendingBracketInit]: "PendingBracketInit",
+    [TournamentStatus.Active]: "Active",
+    [TournamentStatus.Completed]: "Completed",
+    [TournamentStatus.Cancelled]: "Cancelled",
+    [TournamentStatus.PartialCancelled]: "Cancelled",
 };
 
 // Synthetic status that doesn't exist on-chain — derived from
@@ -179,12 +181,10 @@ export function useExplore(filters: ExploreFilters) {
                         await Promise.all(paginatedData.map(async (t) => {
                             if (!t.id || t.id.startsWith("TestPDA") || t.id.length < 32) return;
                             try {
-                                const pubkey = new PublicKey(t.id);
-                                const data = await getTournament(client, pubkey);
+                                const pda = address(t.id);
+                                const data = await getTournament(client, pda);
                                 if (data) {
-                                    t.participants = data.participantCount;
-                                    const kind = getEnumKind(data.status as never);
-                                    const mappedStatus = ANCHOR_TO_INDEXER_STATUS[kind];
+                                    const mappedStatus = STATUS_TO_INDEXER[data.status];
                                     if (mappedStatus) {
                                         t.status = mappedStatus;
                                     }

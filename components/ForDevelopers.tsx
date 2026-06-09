@@ -1,6 +1,7 @@
 "use client";
 
 import { Copy, Check, Shield, ArrowUpRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { MotionDiv } from "./ui/motion-wraper";
 import { EXTERNAL_LINKS } from "@/constants/links";
@@ -192,37 +193,12 @@ export function ForDevelopers() {
 
                         {/* CTA row */}
                         <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-                            <a
-                                href={EXTERNAL_LINKS.docs}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 7,
-                                    padding: "11px 22px",
-                                    background: "#22d47e",
-                                    color: "#06070b",
-                                    borderRadius: 8,
-                                    fontWeight: 700,
-                                    fontSize: "0.875rem",
-                                    textDecoration: "none",
-                                    fontFamily: "'Inter', sans-serif",
-                                    transition: "background 0.15s, box-shadow 0.15s",
-                                    boxShadow: "0 0 20px rgba(34,212,126,0.30)",
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = "#16c062";
-                                    e.currentTarget.style.boxShadow = "0 0 32px rgba(34,212,126,0.50)";
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = "#22d47e";
-                                    e.currentTarget.style.boxShadow = "0 0 20px rgba(34,212,126,0.30)";
-                                }}
-                            >
-                                Read the Docs
-                                <ArrowUpRight size={14} />
-                            </a>
+                            <Button variant="primary" asChild>
+                                <a href={EXTERNAL_LINKS.docs} target="_blank" rel="noopener noreferrer">
+                                    Read the Docs
+                                    <ArrowUpRight className="size-[14px]" />
+                                </a>
+                            </Button>
                             <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                                 <Shield size={14} style={{ color: "#22d47e" }} />
                                 <span style={{ fontSize: "0.83rem", color: "rgba(240,241,245,0.35)" }}>

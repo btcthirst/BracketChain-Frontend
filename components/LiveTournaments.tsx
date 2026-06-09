@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Users, Clock, Trophy, RefreshCw, PlusCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { MotionDiv } from "@/components/ui/motion-wraper";
 import { ROUTES } from "@/constants/links";
 import { useTournaments } from "@/hooks/useTournaments";
@@ -71,25 +72,12 @@ function EmptyState() {
                     Be the first to create one and start competing on-chain.
                 </p>
             </div>
-            <Link
-                href={ROUTES.create}
-                style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 7,
-                    padding: "10px 20px",
-                    background: "#22d47e",
-                    color: "#06070b",
-                    borderRadius: 8,
-                    fontWeight: 600,
-                    fontSize: "0.85rem",
-                    textDecoration: "none",
-                    fontFamily: "'Inter', sans-serif",
-                }}
-            >
-                <PlusCircle size={14} />
-                Create the first tournament
-            </Link>
+            <Button variant="primary" asChild>
+                <Link href={ROUTES.create}>
+                    <PlusCircle className="size-[14px]" />
+                    Create the first tournament
+                </Link>
+            </Button>
         </div>
     );
 }
@@ -109,34 +97,10 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
         >
             <RefreshCw size={24} style={{ color: "rgba(255,255,255,0.15)" }} />
             <p style={{ fontSize: "0.83rem", color: "rgba(240,241,245,0.3)" }}>Unable to load tournaments</p>
-            <button
-                onClick={onRetry}
-                style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "7px 14px",
-                    background: "transparent",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 7,
-                    color: "rgba(240,241,245,0.5)",
-                    fontSize: "0.8rem",
-                    cursor: "pointer",
-                    fontFamily: "'Inter', sans-serif",
-                    transition: "border-color 0.15s, color 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
-                    e.currentTarget.style.color = "rgba(240,241,245,0.8)";
-                }}
-                onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-                    e.currentTarget.style.color = "rgba(240,241,245,0.5)";
-                }}
-            >
-                <RefreshCw size={12} />
+            <Button variant="outline" size="sm" onClick={onRetry}>
+                <RefreshCw className="size-3" />
                 Try again
-            </button>
+            </Button>
         </div>
     );
 }

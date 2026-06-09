@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Trophy } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { inputCls, totalPool } from "../utils/utils";
 import { PROTOCOL_FEE, PAYOUT_PRESETS, TOKEN_INFO } from "@/constants/tournament";
 import { DetailsData, PayoutPreset, PrizeData, Token } from "@/types/tournament";
@@ -23,7 +24,9 @@ export function PrizeStep({
     onConnect: () => void;
     errors?: Step2Errors;
 }) {
-    const pool = totalPool(data.deposit, detailsData.entryFee, detailsData.maxParticipants, detailsData.freeEntry);
+    const pool = totalPool(data.deposit, detailsData.entryFee, detailsData.maxParticipants);
+    // Empty / 0 entry fee implies free entry (no toggle anymore).
+    const isFreeEntry = !detailsData.entryFee.trim() || parseFloat(detailsData.entryFee) === 0;
     const afterFee = pool * (1 - PROTOCOL_FEE);
     const pctSum = data.payoutEntries.reduce((a, e) => a + e.pct, 0);
 
@@ -103,36 +106,9 @@ export function PrizeStep({
                 <p style={{ fontSize: "0.85rem", color: "rgba(240,241,245,0.4)", maxWidth: 300 }}>
                     You need a connected Solana wallet to configure the prize pool and sign the on-chain transaction.
                 </p>
-                <button
-                    onClick={onConnect}
-                    style={{
-                        marginTop: 8,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "12px 28px",
-                        background: "#22d47e",
-                        color: "#06070b",
-                        border: "none",
-                        borderRadius: 8,
-                        fontFamily: "'Inter', sans-serif",
-                        fontWeight: 700,
-                        fontSize: "0.875rem",
-                        cursor: "pointer",
-                        transition: "background 0.15s, box-shadow 0.15s",
-                        boxShadow: "0 0 20px rgba(34,212,126,0.30)",
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#16c062";
-                        e.currentTarget.style.boxShadow = "0 0 32px rgba(34,212,126,0.50)";
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "#22d47e";
-                        e.currentTarget.style.boxShadow = "0 0 20px rgba(34,212,126,0.30)";
-                    }}
-                >
+                <Button variant="primary" onClick={onConnect} className="mt-2 px-7">
                     Connect Wallet
-                </button>
+                </Button>
             </div>
         );
     }
@@ -245,8 +221,8 @@ export function PrizeStep({
                             const title = !available
                                 ? "Coming in V2"
                                 : tooFewPlayers
-                                ? `Requires ≥${minParticipants} players (currently ${detailsData.maxParticipants})`
-                                : undefined;
+                                    ? `Requires ≥${minParticipants} players (currently ${detailsData.maxParticipants})`
+                                    : undefined;
                             return (
                                 <button
                                     key={key}
@@ -266,8 +242,8 @@ export function PrizeStep({
                                         ...(!enabled
                                             ? { background: "transparent", borderColor: "rgba(255,255,255,0.05)", color: "rgba(240,241,245,0.2)" }
                                             : isSelected
-                                            ? { background: "rgba(34,212,126,0.12)", borderColor: "rgba(34,212,126,0.35)", color: "#22d47e" }
-                                            : { background: "transparent", borderColor: "rgba(255,255,255,0.1)", color: "rgba(240,241,245,0.5)" }),
+                                                ? { background: "rgba(34,212,126,0.12)", borderColor: "rgba(34,212,126,0.35)", color: "#22d47e" }
+                                                : { background: "transparent", borderColor: "rgba(255,255,255,0.1)", color: "rgba(240,241,245,0.5)" }),
                                     }}
                                 >
                                     {label}
@@ -456,7 +432,7 @@ export function PrizeStep({
                     >
                         {[
                             { label: "Organizer deposit", value: `${parseFloat(data.deposit) || 0} ${data.token}`, color: undefined },
-                            ...(!detailsData.freeEntry ? [{
+                            ...(!isFreeEntry ? [{
                                 label: `Entry fees (${detailsData.maxParticipants} × ${parseFloat(detailsData.entryFee) || 0})`,
                                 value: `${((parseFloat(detailsData.entryFee) || 0) * detailsData.maxParticipants).toFixed(2)} ${data.token}`,
                                 color: undefined,

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ExternalLink, CheckCircle2, Loader2, ChevronDown, ChevronUp, Clock, Wallet } from "lucide-react";
-import { PublicKey } from "@solana/web3.js";
+import { address } from "@solana/kit";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { joinTournament, startTournament, mapError } from "@bracketchain/sdk";
 import { toast } from "sonner";
@@ -12,6 +12,11 @@ import { useBracketChainClient } from "@/lib/sdk";
 import { useConfetti } from "@/hooks/useConfetti";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import { useDeadlineReached } from "@/hooks/useDeadlineReached";
+import { useGameIdentity } from "@/hooks/useGameIdentity";
+import { Button } from "@/components/ui/button";
+import { LinkSteamButton } from "@/features/auth/steam/LinkSteamButton";
+import { LaunchGameButton } from "@/features/tournament/view/LaunchGameButton";
+import { steamLaunchUrl, gameLabel } from "@/constants/games";
 
 const sectionLabel: React.CSSProperties = {
     fontFamily: "'DM Mono', monospace",
@@ -47,7 +52,6 @@ function ParticipantList({ participants, currentAddress, maxParticipants }: { pa
                 </span>
             </div>
 
-            {/* Progress bar */}
             <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 999, overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${fillPct}%`, background: "linear-gradient(90deg, #22d47e, #4ade80)", borderRadius: 999, transition: "width 0.4s ease" }} />
             </div>
@@ -91,7 +95,6 @@ function ParticipantList({ participants, currentAddress, maxParticipants }: { pa
                     );
                 })}
 
-                {/* Empty slots */}
                 {Array.from({ length: Math.max(0, maxParticipants - participants.length) }).map((_, i) => (
                     <div key={`empty-${i}`} style={{ ...darkRow, border: "1px dashed rgba(255,255,255,0.07)", opacity: 0.5 }}>
                         <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.72rem", color: "rgba(240,241,245,0.2)", fontStyle: "italic" }}>Open slot</span>
@@ -139,7 +142,6 @@ function EscrowPanel({ tournament, payoutsExpanded, setPayoutsExpanded, payoutsR
                 </p>
             </div>
 
-            {/* Completed payouts expander */}
             {tournament.status === "completed" && (
                 <div ref={payoutsRef} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <button
@@ -179,7 +181,12 @@ function EscrowPanel({ tournament, payoutsExpanded, setPayoutsExpanded, payoutsR
 
 // ── Organizer panel ───────────────────────────────────────────────────────────
 
-function OrganizerPanel({ organizer }: { organizer: Player }) {
+function OrganizerPanel({ organizer, arbitrator, showArbitrator }: { organizer: Player; arbitrator: string | null; showArbitrator: boolean }) {
+    // V1.2 always sets arbitrator = organizer at create-time; suppress the
+    // redundant row in that case. The row appears only if a Squads multisig
+    // (V1.3) is configured, OR if the indexer hasn't reconciled yet and the
+    // arbitrator differs from the organizer for some other reason.
+    const showRow = showArbitrator && arbitrator !== null && arbitrator !== organizer.address;
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <span style={sectionLabel}>Organizer</span>
@@ -187,6 +194,9 @@ function OrganizerPanel({ organizer }: { organizer: Player }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                     <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.75rem", color: "rgba(240,241,245,0.65)" }}>{organizer.display}</span>
                     <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", fontWeight: 600, color: "#22d47e", background: "rgba(34,212,126,0.08)", border: "1px solid rgba(34,212,126,0.18)", padding: "1px 6px", borderRadius: 999 }}>ORG</span>
+                    {showArbitrator && arbitrator === organizer.address && (
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", fontWeight: 600, color: "#5eb6ff", background: "rgba(94,182,255,0.08)", border: "1px solid rgba(94,182,255,0.18)", padding: "1px 6px", borderRadius: 999 }} title="Resolves disputed oracle proposals">ARB</span>
+                    )}
                 </div>
                 <a href={SOLANA.explorerAddr(organizer.address)} target="_blank" rel="noopener noreferrer" style={{ color: "rgba(240,241,245,0.2)", transition: "color 0.15s" }}
                     onMouseEnter={e => (e.currentTarget.style.color = "#22d47e")}
@@ -196,22 +206,34 @@ function OrganizerPanel({ organizer }: { organizer: Player }) {
                     <ExternalLink style={{ width: 13, height: 13 }} />
                 </a>
             </div>
+            {showRow && (
+                <>
+                    <span style={sectionLabel}>Arbitrator</span>
+                    <div style={darkRow}>
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.75rem", color: "rgba(240,241,245,0.65)" }} title={arbitrator!}>
+                            {arbitrator!.slice(0, 4)}…{arbitrator!.slice(-4)}
+                        </span>
+                        <a href={SOLANA.explorerAddr(arbitrator!)} target="_blank" rel="noopener noreferrer" style={{ color: "rgba(240,241,245,0.2)", transition: "color 0.15s" }}
+                            onMouseEnter={e => (e.currentTarget.style.color = "#22d47e")}
+                            onMouseLeave={e => (e.currentTarget.style.color = "rgba(240,241,245,0.2)")}
+                            title="View on Solana Explorer"
+                        >
+                            <ExternalLink style={{ width: 13, height: 13 }} />
+                        </a>
+                    </div>
+                </>
+            )}
         </div>
     );
 }
 
 // ── Cancel danger zone ────────────────────────────────────────────────────────
-// Surfaced only in organizer branches where SDK `cancelTournament` accepts the
-// status: Registration + PendingBracketInit. Active/Completed reject on-chain.
 
 function CancelDangerZone({ onCancel }: { onCancel: () => void }) {
     return (
-        <button
-            onClick={onCancel}
-            className="w-full py-2.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 text-xs font-semibold transition-colors"
-        >
+        <Button variant="destructive" className="w-full" onClick={onCancel}>
             Cancel Tournament & Refund
-        </button>
+        </Button>
     );
 }
 
@@ -230,10 +252,6 @@ function ActionArea({
     tournament: TournamentView;
     currentAddress: string | null;
     isOrganizer: boolean;
-    // Split into three semantic callbacks so the parent can apply the right
-    // optimistic patch for each: join → patch participants list, start →
-    // patch status to in_progress, refresh → no optimistic patch (used after
-    // failed join when our cached view is stale).
     onJoinSuccess: () => void;
     onStartSuccess: () => void;
     onRefresh: () => void;
@@ -249,21 +267,49 @@ function ActionArea({
     const { fire } = useConfetti();
     const { usdc: walletUsdc, refresh: refreshBalance } = useWalletBalance();
 
+    // A-11: non-Manual tournaments require a linked game identity (Steam → SAS).
+    // Prefetch the attestation so we can gate Join and pass the PDA to the SDK.
+    const gameIdentity = useGameIdentity(currentAddress, tournament.gameKind);
+    const needsIdentity =
+        tournament.gameKind !== "manual" && !!currentAddress && !gameIdentity.exists;
+    const linkSteamRef = useRef<HTMLDivElement | null>(null);
+
     const isParticipant = optimisticJoined || tournament.participants.some(p => p.address === currentAddress);
     const hasEnough = walletUsdc !== null && walletUsdc >= tournament.entryFee;
-
-    // Client-side deadline guard. The program rejects join with RegistrationClosed
-    // once the deadline passes, even while UI status is still "registration"
-    // (status only flips on the next on-chain interaction). Without this gate the
-    // user sees an active Join button → signs → eats a confusing rejection.
     const registrationClosed = useDeadlineReached(tournament.registrationDeadline);
 
     async function handleJoin() {
         if (!sdk) { toast.error("Connect your wallet to join"); return; }
+        // A-11: gate non-Manual tournaments on a linked game identity. Without
+        // it the program rejects with AttestationRequired, so fail fast with a
+        // clear prompt + scroll the Link Steam button into view.
+        if (tournament.gameKind !== "manual" && !gameIdentity.exists) {
+            toast.error("Link your Steam account first to join this tournament.");
+            linkSteamRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+            return;
+        }
         setJoining(true);
         try {
-            await joinTournament(sdk, { tournamentPda: new PublicKey(tournament.id) });
-            toast.success("Joined tournament successfully!");
+            await joinTournament(sdk, {
+                tournamentPda: address(tournament.id),
+                gameIdentityAttestation: gameIdentity.attestationPda
+                    ? address(gameIdentity.attestationPda)
+                    : undefined,
+            });
+            // Steam-verified games: offer a one-click jump into the game client
+            // right from the success toast (user gesture keeps the protocol
+            // link reliable — browsers may block steam:// without one).
+            const launchUrl = steamLaunchUrl(tournament.gameKind);
+            if (launchUrl) {
+                toast.success("Joined tournament successfully!", {
+                    action: {
+                        label: `Launch ${gameLabel(tournament.gameKind)}`,
+                        onClick: () => { window.location.href = launchUrl; },
+                    },
+                });
+            } else {
+                toast.success("Joined tournament successfully!");
+            }
             setOptimisticJoined(true);
             fire();
             refreshBalance();
@@ -289,12 +335,6 @@ function ActionArea({
             } else {
                 toast.error(sdkErr.message);
             }
-            // RegistrationClosed / TournamentFull / status-mismatch errors mean
-            // our cached view is stale. Refresh so the disabled-state branches
-            // below pick up the current on-chain truth on next render. Note:
-            // this is a refresh-only path (join failed) — we deliberately call
-            // onRefresh, not onJoinSuccess, so the parent doesn't apply the
-            // optimistic-participant patch for a join that didn't happen.
             if (/registration|closed|full|status/i.test(sdkErr.message)) {
                 onRefresh();
             }
@@ -306,7 +346,7 @@ function ActionArea({
         if (!sdk) return;
         setStarting(true);
         try {
-            await startTournament(sdk, { tournamentPda: new PublicKey(tournament.id) });
+            await startTournament(sdk, { tournamentPda: address(tournament.id) });
             toast.success("Tournament started! Bracket is being initialized.");
             onStartSuccess();
         } catch (err) {
@@ -316,21 +356,13 @@ function ActionArea({
         } finally { setStarting(false); }
     }
 
-    const btnGreen: React.CSSProperties = { width: "100%", padding: "12px 0", borderRadius: 10, background: "#22d47e", color: "#06070b", border: "none", fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer", boxShadow: "0 0 18px rgba(34,212,126,0.28)", transition: "background 0.15s, box-shadow 0.15s", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 };
-    const btnDisabled: React.CSSProperties = { ...btnGreen, background: "rgba(255,255,255,0.06)", color: "rgba(240,241,245,0.25)", boxShadow: "none", cursor: "not-allowed" };
-
     if (tournament.status === "cancelled") return null;
 
     if (tournament.status === "completed") {
         return (
-            <button
-                onClick={onViewPayouts}
-                style={{ width: "100%", padding: "12px 0", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(240,241,245,0.5)", fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", transition: "border-color 0.15s, color 0.15s" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(34,212,126,0.3)"; e.currentTarget.style.color = "#22d47e"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(240,241,245,0.5)"; }}
-            >
+            <Button variant="outline" size="lg" className="w-full" onClick={onViewPayouts}>
                 View Payouts →
-            </button>
+            </Button>
         );
     }
 
@@ -338,24 +370,22 @@ function ActionArea({
         if (tournament.status === "registration") {
             const isFull = tournament.participants.length >= tournament.maxParticipants;
             const canStart = tournament.participants.length >= 2;
+            const isDisabled = starting || !canStart;
 
             return (
-                <div className="flex flex-col gap-3">
-                    <button
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <Button
                         onClick={handleStart}
-                        disabled={starting || !canStart}
-                        className={`w-full py-3 rounded-xl font-bold text-sm transition-colors ${isFull
-                            ? "bg-green-600 hover:bg-green-700 text-white"
-                            : "bg-purple-600 hover:bg-purple-700 text-white"
-                            } disabled:bg-gray-100 disabled:text-gray-400`}
+                        disabled={isDisabled}
+                        variant={isFull ? "primary" : "warning"}
+                        size="lg"
+                        className="w-full"
                     >
                         {starting
-                            ? <span className="flex items-center justify-center gap-2">
-                                <Loader2 className="w-4 h-4 animate-spin" /> Initializing...
-                            </span>
+                            ? <><Loader2 className="animate-spin" /> Initializing…</>
                             : isFull ? "Start Tournament" : "Start Early (Lock Bracket)"
                         }
-                    </button>
+                    </Button>
                     <CancelDangerZone onCancel={onCancel} />
                 </div>
             );
@@ -374,37 +404,58 @@ function ActionArea({
                             <div style={{ height: "100%", width: `${pct}%`, background: "#f5a623", borderRadius: 999, transition: "width 0.5s ease" }} />
                         </div>
                     </div>
-                    <button
+                    <Button
                         onClick={handleStart}
                         disabled={starting}
-                        style={{ width: "100%", padding: "12px 0", borderRadius: 10, background: "rgba(245,166,35,0.1)", border: "1px solid rgba(245,166,35,0.3)", color: "#f5a623", fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: "0.875rem", cursor: starting ? "not-allowed" : "pointer", transition: "background 0.15s", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                        variant="warning"
+                        size="lg"
+                        className="w-full"
                     >
-                        {starting ? <><Loader2 style={{ width: 15, height: 15, animation: "spin 1s linear infinite" }} /> Continuing…</> : "Continue Bracket Init"}
-                    </button>
+                        {starting ? <><Loader2 className="animate-spin" /> Continuing…</> : "Continue Bracket Init"}
+                    </Button>
                     <CancelDangerZone onCancel={onCancel} />
                 </div>
             );
         }
 
         return (
-            <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(34,212,126,0.05)", border: "1px solid rgba(34,212,126,0.15)" }}>
-                <p style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "0.8rem", color: "#22d47e", marginBottom: 4 }}>Reporting results</p>
-                <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(34,212,126,0.6)", lineHeight: 1.5 }}>
-                    Click an <span style={{ fontWeight: 700 }}>active match</span> (glowing, pulsing) in the bracket to pick its winner. Final match auto-distributes the prize pool.
-                </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(34,212,126,0.05)", border: "1px solid rgba(34,212,126,0.15)" }}>
+                    <p style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "0.8rem", color: "#22d47e", marginBottom: 4 }}>Reporting results</p>
+                    <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(34,212,126,0.6)", lineHeight: 1.5 }}>
+                        Click an <span style={{ fontWeight: 700 }}>active match</span> (glowing, pulsing) in the bracket to pick its winner. Final match auto-distributes the prize pool.
+                    </p>
+                </div>
+                {/* Organizer is the referee in OrganizerOnly mode — jumping into
+                    the game client to spectate the lobby is how they verify
+                    results before reporting. No-op for `manual` tournaments. */}
+                <LaunchGameButton game={tournament.gameKind} />
             </div>
         );
     }
 
-    if (tournament.status !== "registration") return null;
+    if (tournament.status !== "registration") {
+        // Active tournament, joined player on a Steam game → one-click jump
+        // into the game client (renders nothing for `manual` tournaments).
+        if (tournament.status === "in_progress" && isParticipant) {
+            return <LaunchGameButton game={tournament.gameKind} />;
+        }
+        return null;
+    }
 
     if (isParticipant) {
         return (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <button disabled style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 0", borderRadius: 10, background: "rgba(34,212,126,0.07)", border: "1px solid rgba(34,212,126,0.2)", color: "#22d47e", fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: "0.875rem", cursor: "default" }}>
-                    <CheckCircle2 style={{ width: 16, height: 16 }} />
+                <Button
+                    disabled
+                    variant="primary"
+                    size="lg"
+                    className="w-full border border-accent/20 bg-accent/[0.07] text-accent shadow-none cursor-default"
+                >
+                    <CheckCircle2 />
                     Registered
-                </button>
+                </Button>
+                <LaunchGameButton game={tournament.gameKind} />
                 {tournament.participants.length >= tournament.maxParticipants && (
                     <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", textAlign: "center", color: "rgba(240,241,245,0.3)", fontStyle: "italic" }}>
                         Tournament is full! Waiting for organizer to start…
@@ -414,23 +465,13 @@ function ActionArea({
         );
     }
 
-    // ── Wallet not connected ─────────────────────────────────────────────────
-    // Without an address we can't tell if the viewer is a participant, can't
-    // estimate balance, and can't sign a join tx. Show a single Connect CTA
-    // instead of a disabled Join button (whose label "Join — X USDC" reads as
-    // "you can't afford it" rather than "you're not signed in").
     if (!currentAddress) {
         return (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button
-                    onClick={() => setWalletModalVisible(true)}
-                    style={{ ...btnGreen, gap: 8 }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "#16c062"; e.currentTarget.style.boxShadow = "0 0 28px rgba(34,212,126,0.48)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "#22d47e"; e.currentTarget.style.boxShadow = "0 0 18px rgba(34,212,126,0.28)"; }}
-                >
-                    <Wallet style={{ width: 16, height: 16 }} />
+                <Button variant="primary" size="lg" className="w-full" onClick={() => setWalletModalVisible(true)}>
+                    <Wallet />
                     Connect to Join
-                </button>
+                </Button>
                 <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", textAlign: "center", color: "rgba(240,241,245,0.3)" }}>
                     {tournament.entryFee > 0
                         ? `Entry fee ${tournament.entryFee} ${tournament.token}. Connect a Solana wallet to register.`
@@ -440,14 +481,13 @@ function ActionArea({
         );
     }
 
-    // ── Registration closed (deadline passed) ────────────────────────────────
     if (registrationClosed) {
         return (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button disabled style={{ ...btnDisabled, gap: 8 }}>
-                    <Clock style={{ width: 16, height: 16 }} />
+                <Button variant="primary" size="lg" className="w-full" disabled>
+                    <Clock />
                     Registration Closed
-                </button>
+                </Button>
                 <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", textAlign: "center", color: "rgba(240,241,245,0.3)", fontStyle: "italic" }}>
                     The deadline has passed. Waiting for organizer to start the bracket.
                 </p>
@@ -455,33 +495,43 @@ function ActionArea({
         );
     }
 
-    // ── Join button ──────────────────────────────────────────────────────────
     const isFull = tournament.participants.length >= tournament.maxParticipants;
     const insufficient = !hasEnough && !!currentAddress && !joining && tournament.entryFee > 0;
     const joinDisabled = joining || insufficient || isFull;
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {needsIdentity && (
+                <div
+                    ref={linkSteamRef}
+                    style={{ padding: "10px 12px", background: "rgba(102,192,244,0.06)", border: "1px solid rgba(102,192,244,0.2)", borderRadius: 8, display: "flex", flexDirection: "column", gap: 8 }}
+                >
+                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(199,213,224,0.85)" }}>
+                        This is a Steam-verified tournament. Link your Steam account before joining.
+                    </span>
+                    <LinkSteamButton />
+                </div>
+            )}
             {insufficient && (
                 <div style={{ padding: "10px 12px", background: "rgba(245,166,35,0.07)", border: "1px solid rgba(245,166,35,0.2)", borderRadius: 8, fontFamily: "'Inter', sans-serif", fontSize: "0.75rem", color: "rgba(245,166,35,0.7)" }}>
                     <span style={{ fontWeight: 700, color: "#f5a623" }}>Low balance:</span> Your wallet has {walletUsdc?.toFixed(2) ?? "0"} USDC.
                 </div>
             )}
-            <button
+            <Button
                 id="join-btn"
+                variant="primary"
+                size="lg"
+                className="w-full"
                 onClick={handleJoin}
                 disabled={joinDisabled}
-                style={joinDisabled ? btnDisabled : btnGreen}
-                onMouseEnter={e => { if (!joinDisabled) { e.currentTarget.style.background = "#16c062"; e.currentTarget.style.boxShadow = "0 0 28px rgba(34,212,126,0.48)"; } }}
-                onMouseLeave={e => { if (!joinDisabled) { e.currentTarget.style.background = "#22d47e"; e.currentTarget.style.boxShadow = "0 0 18px rgba(34,212,126,0.28)"; } }}
             >
                 {joining
-                    ? <><Loader2 style={{ width: 15, height: 15, animation: "spin 1s linear infinite" }} /> Awaiting wallet…</>
+                    ? <><Loader2 className="animate-spin" /> Awaiting wallet…</>
                     : isFull ? "Tournament Full"
                         : insufficient ? "Insufficient Balance"
                             : <>Join Tournament {tournament.entryFee > 0 ? `— ${tournament.entryFee} ${tournament.token}` : "— Free"}</>
                 }
-            </button>
+            </Button>
         </div>
     );
 }
@@ -543,7 +593,7 @@ export function TournamentSidebar({
             <div style={{ height: 1, background: "rgba(255,255,255,0.05)" }} />
             <EscrowPanel tournament={tournament} payoutsExpanded={payoutsExpanded} setPayoutsExpanded={setPayoutsExpanded} payoutsRef={payoutsRef} />
             <div style={{ height: 1, background: "rgba(255,255,255,0.05)" }} />
-            <OrganizerPanel organizer={tournament.organizer} />
+            <OrganizerPanel organizer={tournament.organizer} arbitrator={tournament.arbitrator} showArbitrator={tournament.settlementMode === "oracle"} />
             <ActionArea
                 tournament={tournament}
                 currentAddress={currentAddress}

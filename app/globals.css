@@ -1,5 +1,34 @@
 @import "tailwindcss";
 
+/* Footer nav links — hover handled in CSS so <Footer> can stay a Server
+   Component (no client-side onMouseEnter/onMouseLeave handlers needed). */
+.footer-link {
+  color: rgba(240, 241, 245, 0.4);
+  transition: color 0.15s;
+}
+.footer-link:hover {
+  color: rgba(240, 241, 245, 0.85);
+}
+
+/* ── Design tokens → Tailwind utilities ────────────────────────────────────
+   Colors defined here become bg-*, text-*, border-* Tailwind utilities.
+   To add a new theme, override these variables in [data-theme="..."] selector.
+   ──────────────────────────────────────────────────────────────────────── */
+@theme {
+  --color-accent: #22d47e;
+  --color-accent-hover: #16c062;
+  --color-red: #f04e66;
+  --color-amber: #f5a623;
+  --color-surface: #0d0f18;
+  --color-surface-2: #12141f;
+  --color-text: #f0f1f5;
+  --color-text-muted: #7b7e96;
+
+  --font-mono: 'DM Mono', monospace;
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Syne', sans-serif;
+}
+
 :root {
   --bg: #06070b;
   --bg-1: #0d0f18;
@@ -34,12 +63,15 @@
   --radius-xl: 20px;
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@layer base {
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 html {
@@ -191,6 +223,7 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   min-height: unset;
   padding: 0;
 }
+
 .range-slider input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   pointer-events: all;
@@ -202,9 +235,11 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   box-shadow: 0 0 8px rgba(34, 212, 126, 0.4);
   cursor: grab;
 }
+
 .range-slider input[type="range"]::-webkit-slider-thumb:active {
   cursor: grabbing;
 }
+
 .range-slider input[type="range"]::-moz-range-thumb {
   pointer-events: all;
   width: 14px;

@@ -5,7 +5,9 @@ import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js"; // ask about @solana/web3-compat
 import { getAssociatedTokenAddress } from "@solana/spl-token";
 
-const USDC_MINT = new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
+const USDC_MINT_ADDRESS = process.env.NEXT_PUBLIC_USDC_MINT;
+if (!USDC_MINT_ADDRESS) throw new Error("NEXT_PUBLIC_USDC_MINT is not set");
+const USDC_MINT = new PublicKey(USDC_MINT_ADDRESS);
 
 // ── State & Reducer ────────────────────────────────────────────────────────────
 
