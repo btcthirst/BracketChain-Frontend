@@ -15,12 +15,11 @@ import {
     type SignatureDictionary,
     type SolanaRpcApi,
     type SolanaRpcSubscriptionsApi,
-    type TransactionPartialSigner,
+    type Transaction,
+    type TransactionModifyingSigner,
 } from "@solana/kit";
-import {
-    BracketChainClient,
-    BracketChainIndexerClient,
-} from "@bracketchain/sdk";
+import { BracketChainClient } from "@bracketchain/sdk";
+import { BracketChainIndexerClient } from "./indexerClient";
 
 type AnchorWallet = NonNullable<ReturnType<typeof useAnchorWallet>>;
 
@@ -29,25 +28,42 @@ type AnchorWallet = NonNullable<ReturnType<typeof useAnchorWallet>>;
  *
  * `@solana/wallet-adapter-react` is still web3.js v1-shaped (it yields an
  * AnchorWallet with `publicKey: PublicKey` and `signAllTransactions(Vt[])`).
- * SDK (0.5.0+) is Kit-native and expects a `TransactionPartialSigner` whose
- * `signTransactions` returns `SignatureDictionary[]` keyed by Kit `Address`.
+ * SDK (0.5.0+) is Kit-native and expects a Kit `TransactionSigner`.
  *
- * The bridge round-trips each Kit `Transaction.messageBytes` through a v1
- * `VersionedTransaction`, lets the wallet adapter sign it, then extracts our
- * signature byte slot back into a `SignatureDictionary`. Existing signatures
- * on the Kit tx (e.g. a co-signer that already signed) are forwarded into
- * the v1 tx before signing so the wallet doesn't overwrite them.
+ * This is a `TransactionModifyingSigner` (NOT a partial signer) because
+ * browser wallets are allowed to MODIFY the transaction before signing —
+ * Phantom injects its own priority-fee ComputeBudget instructions (and
+ * Lighthouse guard ixs on mainnet). A partial-signer bridge that re-attaches
+ * the wallet's signature to the ORIGINAL message fails preflight with
+ * "Transaction did not pass signature verification" whenever the wallet
+ * touched the message. So we round-trip each Kit `Transaction.messageBytes`
+ * through a v1 `VersionedTransaction`, let the wallet sign (and possibly
+ * rewrite) it, then hand Kit back the WALLET'S message + signatures.
+ * Mirrors Kit's own `useWalletAccountTransactionSigner` contract.
+ *
+ * Existing signatures on the Kit tx (e.g. a co-signer that already signed in
+ * a prior pipe step) are forwarded into the v1 tx before signing. NOTE: if
+ * the wallet does modify the message, prior co-signatures become invalid by
+ * construction — for our flows the wallet is the only signer, so this is
+ * theoretical.
  *
  * `@solana/compat` provides the `PublicKey → Address` conversion. There is no
  * first-party wallet-adapter→Kit bridge, hence this local adapter.
  */
 function bridgeAnchorWalletToSigner(
     wallet: AnchorWallet,
-): TransactionPartialSigner {
+): TransactionModifyingSigner {
     const myAddress = fromLegacyPublicKey(wallet.publicKey);
     return {
         address: myAddress,
-        async signTransactions(transactions) {
+        // Cast: Kit brands the return type with TransactionWithinSizeLimit &
+        // TransactionWithLifetime. The wallet's tx keeps our blockhash
+        // lifetime, and size is enforced by the RPC at send time — mirroring
+        // Kit's own useWalletAccountTransactionSigner, which asserts these
+        // brands rather than proving them structurally.
+        modifyAndSignTransactions: (async (
+            transactions: readonly Transaction[],
+        ) => {
             const v1Txs = transactions.map((tx) => {
                 const compiled = VersionedMessage.deserialize(
                     tx.messageBytes as unknown as Uint8Array,
@@ -66,17 +82,34 @@ function bridgeAnchorWalletToSigner(
                 return vt;
             });
             const signed = await wallet.signAllTransactions(v1Txs);
-            return signed.map((vt): SignatureDictionary => {
-                const idx = vt.message.staticAccountKeys.findIndex((k) =>
-                    k.equals(wallet.publicKey),
-                );
-                const sig = idx >= 0 ? vt.signatures[idx] : null;
-                if (!sig || sig.every((b) => b === 0)) return {};
-                return {
-                    [myAddress]: new Uint8Array(sig) as SignatureBytes,
-                };
+            return transactions.map((tx, i) => {
+                const vt = signed[i];
+                // The wallet may have rewritten the message (priority fees,
+                // guards) — serialize ITS message, not our original one.
+                const messageBytes = vt.message.serialize();
+                const signatures: Record<Address, SignatureBytes | null> = {};
+                const { numRequiredSignatures } = vt.message.header;
+                vt.message.staticAccountKeys
+                    .slice(0, numRequiredSignatures)
+                    .forEach((key, idx) => {
+                        const sig = vt.signatures[idx];
+                        signatures[fromLegacyPublicKey(key)] =
+                            sig && !sig.every((b) => b === 0)
+                                ? (new Uint8Array(sig) as SignatureBytes)
+                                : null;
+                    });
+                // Spread keeps the input tx's type brands (lifetime, size);
+                // messageBytes/signatures are overridden with the wallet's.
+                return Object.freeze({
+                    ...tx,
+                    messageBytes:
+                        messageBytes as unknown as typeof tx.messageBytes,
+                    signatures: Object.freeze(
+                        signatures,
+                    ) as SignatureDictionary,
+                });
             });
-        },
+        }) as unknown as TransactionModifyingSigner["modifyAndSignTransactions"],
     };
 }
 

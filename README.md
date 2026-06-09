@@ -15,7 +15,7 @@ BracketChain is a decentralized tournament platform that enables organizers to c
 | Styling | Tailwind CSS v4 |
 | UI Components | shadcn/ui + Radix UI + MUI v7 |
 | Animations | Motion (`motion/react`) |
-| Blockchain | Solana — `@solana/kit` + `@solana/compat` + `@bracketchain/sdk` 0.5.0 (Kit + Codama edition) |
+| Blockchain | Solana — `@solana/kit` + `@solana/compat` + `@bracketchain/sdk` `0.6.0-dev` (Phase 1; consumed via local tarball — see [SDK Integration](#sdk-integration)) |
 | Wallet adapter | `@solana/wallet-adapter-react` + Wallet Standard auto-discovery (Phantom, Solflare) |
 | Testing | Jest + ts-jest |
 | Package Manager | pnpm 10 |
@@ -144,8 +144,8 @@ NEXT_PUBLIC_RPC_URL=https://api.devnet.solana.com
 # Optional: Helius RPC for better performance
 # NEXT_PUBLIC_RPC_URL=https://devnet.helius-rpc.com/?api-key=YOUR_KEY
 
-# Override the on-chain program ID. Falls back to the SDK 0.5.0 default
-# (AuXJKpuZtkegs2ZSgopgckhN7Ev8bUz4zBc238LD2F1 on devnet) when unset.
+# Override the on-chain program ID. Falls back to the SDK default when unset
+# (MVP AuXJKpuZtkegs2ZSgopgckhN7Ev8bUz4zBc238LD2F1; Phase 1 dev = 3YpkUKBh8288XN2dCKSwBnEdyc5UozSJ19A1ZCLpUZsZ).
 # NEXT_PUBLIC_PROGRAM_ID=<program-pubkey>
 
 # Indexer base URL. When unset, the app reads tournament state directly from
@@ -215,7 +215,7 @@ Sync:   Solana event → Helius webhook → Indexer → PostgreSQL
 
 ### SDK Integration
 
-The frontend talks to the on-chain program through [`@bracketchain/sdk`](https://www.npmjs.com/package/@bracketchain/sdk) (currently `^0.5.0` — Kit + Codama edition). All writes are real Solana transactions signed by the connected wallet.
+The frontend talks to the on-chain program through [`@bracketchain/sdk`](https://www.npmjs.com/package/@bracketchain/sdk). For **Phase 1** it consumes the unpublished `0.6.0-dev` build via a local tarball (`file:../BracketChain-Sdk/*.tgz`) rather than npm — after any SDK change run `pnpm pack` in the SDK repo and reinstall here (no live-reload). The published `^0.5.x` line remains the MVP edition. All writes are real Solana transactions signed by the connected wallet.
 
 `lib/sdk.ts` bridges the wallet-adapter v1 surface to Kit: `useAnchorWallet()` (v1 `PublicKey` + `signAllTransactions(VersionedTransaction[])`) is wrapped into a Kit `TransactionPartialSigner` via `@solana/compat`'s `fromLegacyPublicKey` plus a `VersionedTransaction` round-trip for signing. RPC + RpcSubscriptions are derived from `NEXT_PUBLIC_RPC_URL` (HTTP) with the WS endpoint auto-flipped from `https://` → `wss://`.
 
@@ -229,10 +229,12 @@ Mutating call-sites (real, not simulated):
 
 | Call | File |
 |---|---|
-| `createTournament` | `features/tournament/create/CreateTournament.tsx` |
-| `joinTournament`, `startTournament` | `features/tournament/view/TournamentSidebar.tsx` |
-| `reportResult` (incl. final-match payout `remaining_accounts`) | `features/tournament/view/ReportResultModal.tsx` |
+| `createTournament` (game + settlement mode + payout preset incl. Custom) | `features/tournament/create/CreateTournament.tsx` |
+| `joinTournament` (Steam/identity-gated for non-Manual games), `startTournament` | `features/tournament/view/TournamentSidebar.tsx` |
+| `reportResult` / `proposeResult` / `confirmResult` / `disputeResult` / `claimResult` / `resolveDispute` / `forceClaimDisputed` — viewer-and-state-aware dispatcher | `features/tournament/view/ReportResultModal.tsx` |
+| `commitMatchLobby` + `bindMatchFeed` (Oracle mode) | `features/tournament/view/CommitAndBindPanel.tsx` |
 | `cancelTournament` (chunked refund + `remaining_accounts`) | `features/tournament/view/CancelModal.tsx` |
+| Steam OpenID link → SAS identity | `features/auth/steam/LinkSteamButton.tsx`, `features/auth/steam/SteamStatusToast.tsx`, `hooks/useGameIdentity.ts` |
 
 Errors are surfaced via typed SDK error classes (`BracketChainSDKError` + `mapError`) — see `describeError` in `CreateTournament.tsx` for the user-facing mapping (insufficient funds, registration closed, name taken, etc.).
 
@@ -304,25 +306,30 @@ Every data-fetching component handles:
 
 ## Current Limitations
 
-> MVP (devnet) is live. The frontend is wired to `@bracketchain/sdk` 0.5.0 (Kit + Codama) — every write is a real signed Solana transaction, every read comes from the indexer (when configured) with on-chain RPC fallback, and the tournament page subscribes to account changes over Kit `rpcSubscriptions.accountNotifications`.
+> MVP (devnet) is live. For **Phase 1** the frontend is wired to `@bracketchain/sdk` `0.6.0-dev` (local tarball) against the dev program `3YpkUK` — every write is a real signed Solana transaction, every read comes from the indexer (when configured) with on-chain RPC fallback, and the tournament page subscribes to account changes over Kit `rpcSubscriptions.accountNotifications`.
 >
 > Remaining scope gaps, by area:
 
-**Create wizard (MVP scope guards)**
+**Create wizard**
 
-- Only `SE` format reaches the on-chain `createTournament` call.
+- Only `SE` (single-elimination) format reaches the on-chain `createTournament` call (other formats are Phase 4).
 - Only `USDC` is accepted as the prize token.
-- Custom payout splits (`PayoutPreset::Custom`) ship with the V1 program redeploy — UI exposes `WTA` / `Standard` / `Deep` only.
+- Game (Manual / Dota 2) + settlement mode (OrganizerOnly / PlayerReported / Oracle) are exposed; `Custom` payout splits are wired to the program's `PayoutPreset::Custom` (the data-enum `{ __kind: "Custom", fields: [[…8 bps…]] }`).
 
-**Pending indexer endpoints**
+**Indexer endpoints**
 
-- `DuplicateNameWarning` in `features/tournament/steps/` still uses a hardcoded list — the live `GET /tournaments/check-name` endpoint and the matching `useNameCheck` hook are tracked under Phase 0 § 3.3.
+- ✅ `DuplicateNameWarning` is wired to the live `GET /tournaments/check-name?organizer=&name=` endpoint via the `useNameCheck` hook (`hooks/useNameCheck.ts`, 300ms debounce, organizer-scoped). Advisory: degrades to "clear" on error / when `NEXT_PUBLIC_INDEXER_URL` is unset (Phase 0 § 3.3 done).
+- Landing-page `useStats` still returns mocked numbers — no `/stats` aggregation endpoint exists yet (tracked separately).
 
-**Phase 1+ features (not yet started)**
+**Phase 1 features — ✅ implemented (pending the Stage F live promotion)**
 
-- Steam OpenID linking + SAS attestation flow (V1.1).
-- Player-reported / Oracle settlement modes, dispute window, claim panels — `ReportResultModal` currently implements the `OrganizerOnly` path only.
-- BindFeedModal for Switchboard-backed match commitments.
+- ✅ Steam OpenID linking + SAS attestation flow (V1.1): `LinkSteamButton` (signMessage → redirect), `SteamStatusToast`, `useGameIdentity`, join-gate in `TournamentSidebar` for non-Manual games.
+- ✅ Player-reported + Oracle settlement: `ReportResultModal` is a viewer-and-state-aware dispatcher (propose / confirm / dispute / claim / resolve / force-claim), no longer OrganizerOnly-only.
+- ✅ Oracle commit + bind feed: `CommitAndBindPanel` (`commitMatchLobby` + `bindMatchFeed`).
+
+**Phase 1 features — remaining**
+
+- `partialCancelTournament` has an SDK wrapper but **no UI control yet** — the organizer can't trigger a mid-tournament partial cancel from the frontend.
 
 **Phase 2+ features (not yet started)**
 

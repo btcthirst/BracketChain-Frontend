@@ -1,66 +1,17 @@
 "use client";
 
-import { useEffect, useReducer } from "react";
-import { Info } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import { useWallet } from "@solana/wallet-adapter-react";
+
+import { useNameCheck } from "@/hooks/useNameCheck";
 
 interface Props {
     name: string;
 }
 
-type State =
-    | { status: "idle" }
-    | { status: "checking" }
-    | { status: "exists" }
-    | { status: "clear" };
-
-type Action =
-    | { type: "CHECK_START" }
-    | { type: "CHECK_DONE"; exists: boolean }
-    | { type: "RESET" };
-
-function reducer(_: State, action: Action): State {
-    switch (action.type) {
-        case "RESET": return { status: "idle" };
-        case "CHECK_START": return { status: "checking" };
-        case "CHECK_DONE": return { status: action.exists ? "exists" : "clear" };
-        default: return { status: "idle" };
-    }
-}
-
-// TODO: replace with real API call:
-// GET /api/tournaments/check-name?name=<name>
-async function checkNameExists(name: string): Promise<boolean> {
-    const knownNames = [
-        "spring championship",
-        "weekend warriors",
-        "pro circuit finals",
-        "rookie rumble",
-    ];
-    await new Promise(r => setTimeout(r, 400));
-    return knownNames.includes(name.trim().toLowerCase());
-}
-
 export function DuplicateNameWarning({ name }: Props) {
-    const [state, dispatch] = useReducer(reducer, { status: "idle" });
-
-    useEffect(() => {
-        if (name.trim().length < 3) {
-            dispatch({ type: "RESET" });
-            return;
-        }
-
-        const timer = setTimeout(async () => {
-            dispatch({ type: "CHECK_START" });
-            try {
-                const exists = await checkNameExists(name);
-                dispatch({ type: "CHECK_DONE", exists });
-            } catch {
-                dispatch({ type: "CHECK_DONE", exists: false });
-            }
-        }, 600);
-
-        return () => clearTimeout(timer);
-    }, [name]);
+    const { publicKey } = useWallet();
+    const state = useNameCheck(name, publicKey ? publicKey.toBase58() : null);
 
     if (state.status === "checking") {
         return (
@@ -81,7 +32,7 @@ export function DuplicateNameWarning({ name }: Props) {
         );
     }
 
-    if (state.status !== "exists") return null;
+    if (state.status !== "taken") return null;
 
     return (
         <div
@@ -90,17 +41,17 @@ export function DuplicateNameWarning({ name }: Props) {
                 alignItems: "flex-start",
                 gap: 8,
                 marginTop: 6,
-                background: "rgba(34,212,126,0.06)",
-                border: "1px solid rgba(34,212,126,0.18)",
+                background: "rgba(245,158,11,0.07)",
+                border: "1px solid rgba(245,158,11,0.25)",
                 borderRadius: 8,
                 padding: "8px 12px",
             }}
         >
-            <Info size={14} style={{ color: "#22d47e", flexShrink: 0, marginTop: 1 }} />
-            <p style={{ fontSize: "0.75rem", color: "rgba(240,241,245,0.5)", lineHeight: 1.55 }}>
-                A tournament with this name already exists. Tournament names are not
-                unique on-chain, but consider a different name to avoid confusion for
-                participants.
+            <AlertTriangle size={14} style={{ color: "#f59e0b", flexShrink: 0, marginTop: 1 }} />
+            <p style={{ fontSize: "0.75rem", color: "rgba(240,241,245,0.6)", lineHeight: 1.55 }}>
+                You already have a tournament named “{name.trim()}”. Its on-chain
+                address derives from your wallet + name, so creating another with
+                this name will fail. Pick a different name.
             </p>
         </div>
     );

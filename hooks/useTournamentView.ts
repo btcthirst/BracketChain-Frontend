@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useReducer, useCallback } from "react";
-import { address, type Address } from "@solana/kit";
+import { address, isSome, type Address } from "@solana/kit";
 import {
     getTournamentState,
-    IndexerMatch,
-    IndexerParticipant,
-    IndexerPayout,
-    IndexerTournament,
     MatchStatus,
     PayoutPreset,
+    ProposalSource,
+    SettlementMode,
     subscribe,
+    SupportedGame,
     TournamentStatus,
     type BracketChainClient,
     type MatchNode,
@@ -19,15 +18,26 @@ import {
     type Tournament,
     type TournamentState,
 } from "@bracketchain/sdk";
+import type {
+    IndexerMatch,
+    IndexerParticipant,
+    IndexerPayout,
+    IndexerTournament,
+} from "@/lib/indexerClient";
 
 import { useReadOnlySdkClient, getIndexerClient } from "@/lib/sdk";
 import { indexerToTournamentState } from "@/lib/indexerToTournamentState";
 import type {
     Match,
+    MatchOracleCommit,
+    MatchSettlement,
     Player,
     PayoutDistribution,
+    ProposalSource as UIProposalSource,
+    SettlementMode as UISettlementMode,
     TournamentStatus as UITournamentStatus,
     TournamentView,
+    UIGameChoice,
 } from "@/types/tournament";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -62,6 +72,15 @@ const STATUS_MAP: Record<TournamentStatus, UITournamentStatus> = {
     [TournamentStatus.Active]: "in_progress",
     [TournamentStatus.Completed]: "completed",
     [TournamentStatus.Cancelled]: "cancelled",
+    [TournamentStatus.PartialCancelled]: "cancelled",
+};
+
+const SUPPORTED_GAME_TO_UI: Record<SupportedGame, UIGameChoice> = {
+    [SupportedGame.Manual]: "manual",
+    [SupportedGame.Dota2]: "dota2",
+    [SupportedGame.Cs2Faceit]: "cs2faceit",
+    [SupportedGame.Valorant]: "valorant",
+    [SupportedGame.LoL]: "lol",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -106,21 +125,92 @@ function findPlayerByAddress(
 }
 
 function presetKey(preset: PayoutPreset): keyof typeof PAYOUT_PRESETS {
-    switch (preset) {
-        case PayoutPreset.WinnerTakesAll: return "winnerTakesAll";
-        case PayoutPreset.Standard: return "standard";
-        case PayoutPreset.Deep: return "deep";
+    switch (preset.__kind) {
+        case "WinnerTakesAll": return "winnerTakesAll";
+        case "Standard": return "standard";
+        case "Deep": return "deep";
         default: return "winnerTakesAll";
     }
 }
 
-function matchUiStatus(status: MatchStatus): Match["status"] {
-    switch (status) {
-        case MatchStatus.Pending: return "pending";
-        case MatchStatus.Active: return "in_progress";
-        case MatchStatus.Completed: return "completed";
-        default: return "pending";
+function settlementModeToUi(mode: SettlementMode): UISettlementMode {
+    switch (mode) {
+        case SettlementMode.PlayerReported: return "player_reported";
+        case SettlementMode.Oracle: return "oracle";
+        case SettlementMode.OrganizerOnly:
+        default: return "organizer_only";
     }
+}
+
+// Derive the 5-state UI status from the on-chain MatchNode. The chain status
+// only has Pending/Active/Completed — while a player-reported proposal or a
+// dispute is open the match stays Active, and the envelope distinguishes the
+// two intermediate UI states. Precedence: completed wins (a finalized result
+// is terminal regardless of stale envelope bytes), then disputed, then a live
+// proposal, then the base Active/Pending.
+function matchUiStatus(node: MatchNode): Match["status"] {
+    if (node.status === MatchStatus.Completed) return "completed";
+    if (node.disputed) return "disputed";
+    if (node.proposalSource !== ProposalSource.None) return "pending_confirmation";
+    if (node.status === MatchStatus.Active) return "in_progress";
+    return "pending";
+}
+
+function proposalSourceToUi(source: ProposalSource): UIProposalSource {
+    switch (source) {
+        case ProposalSource.Player: return "player";
+        case ProposalSource.Oracle: return "oracle";
+        case ProposalSource.GameServer: return "game_server";
+        default: return "none";
+    }
+}
+
+// On-chain unix-seconds bigint → ISO string. Zero means "unset" → null.
+function bigSecToIso(n: bigint): string | null {
+    if (n <= 0n) return null;
+    return new Date(Number(n) * 1000).toISOString();
+}
+
+function addrOrNull(addr: Address): string | null {
+    return isDefaultAddress(addr) ? null : addr.toString();
+}
+
+// Accepts both Uint8Array (chain reads) and ReadonlyUint8Array (Codama types)
+// without requiring the mutating methods — only length + indexed access.
+function bytesToHex(b: { readonly length: number; readonly [i: number]: number }): string {
+    let s = "";
+    for (let i = 0; i < b.length; i++) s += b[i].toString(16).padStart(2, "0");
+    return s;
+}
+
+// On-chain MatchNode → UI commit/feed snapshot. `commitment` is Codama's
+// tagged-union Option<MatchCommitment> (`{ __option: 'None' | 'Some' }`) —
+// must be unwrapped with `isSome` rather than a `?? null` truthiness check.
+// `switchboardFeed` is a default-pubkey sentinel until `bind_match_feed`.
+function buildOracleCommit(node: MatchNode): MatchOracleCommit {
+    const c = isSome(node.commitment) ? node.commitment.value : null;
+    return {
+        lobbyId: c ? bytesToHex(c.lobbyId) : null,
+        committedAt: c ? bigSecToIso(c.committedAt) : null,
+        playerAGameId: c ? bytesToHex(c.playerAGameId) : null,
+        playerBGameId: c ? bytesToHex(c.playerBGameId) : null,
+        expectedFeedHash: c ? bytesToHex(c.expectedFeedHash) : null,
+        switchboardFeed: addrOrNull(node.switchboardFeed),
+    };
+}
+
+function buildSettlement(node: MatchNode): MatchSettlement {
+    return {
+        proposalSource: proposalSourceToUi(node.proposalSource),
+        proposer: addrOrNull(node.proposer),
+        proposedWinner: addrOrNull(node.proposedWinner),
+        proposedAt: bigSecToIso(node.proposedAt),
+        claimDeadline: bigSecToIso(node.claimDeadline),
+        disputed: node.disputed,
+        // disputeReason is only meaningful while disputed; 0 is the
+        // "unspecified" sentinel — surface null when there's no open dispute.
+        disputeReason: node.disputed ? node.disputeReason : null,
+    };
 }
 
 function buildMatch(
@@ -136,7 +226,9 @@ function buildMatch(
         playerA: findPlayerByAddress(node.playerA, participants, organizerAddress),
         playerB: findPlayerByAddress(node.playerB, participants, organizerAddress),
         winner: findPlayerByAddress(node.winner, participants, organizerAddress),
-        status: matchUiStatus(node.status),
+        status: matchUiStatus(node),
+        settlement: buildSettlement(node),
+        oracle: buildOracleCommit(node),
         // Scores + match-tx signature are not tracked on-chain in MVP.
         // Bracket UI conditionally renders this block — null is safe.
         result: null,
@@ -204,6 +296,7 @@ function buildView(
         maxParticipants = 2;
     }
     const presetKind = presetKey(t.payoutPreset);
+    const settlementMode = settlementModeToUi(t.settlementMode);
 
     const entryFeeUsdc = Number(t.entryFee) / USDC_DECIMALS;
     const participantCount = state.participants.length;
@@ -246,6 +339,9 @@ function buildView(
         name: t.name,
         // No on-chain `game` field in MVP — all tournaments labelled generically.
         game: "On-chain",
+        // V1.1 / A-11: precise game enum for join-gate logic (the `game` string
+        // above is just a display label). Defaults to manual for unknown values.
+        gameKind: SUPPORTED_GAME_TO_UI[t.game] ?? "manual",
         // Single-elim only (MVP).
         format: "SE",
         status,
@@ -271,6 +367,8 @@ function buildView(
         matchesInitialized,
         totalMatches,
         bracketReady,
+        settlementMode,
+        arbitrator: addrOrNull(t.arbitrator),
     };
 }
 

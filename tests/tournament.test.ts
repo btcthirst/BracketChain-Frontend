@@ -1,5 +1,5 @@
 import { formatStartsIn, toUiTournament } from "../lib/tournament";
-import type { IndexerTournament } from "@bracketchain/sdk";
+import type { IndexerTournament } from "../lib/indexerClient";
 
 describe("Tournament Utilities", () => {
     describe("formatStartsIn", () => {
@@ -38,6 +38,8 @@ describe("Tournament Utilities", () => {
             payoutPreset: "Standard",
             registrationDeadline: "2026-05-02T15:00:00Z",
             status: "Registration",
+            settlementMode: "OrganizerOnly",
+            game: "Manual",
             champion: null,
             grossPool: "4000000", // 4 USDC -> 4 participants
             feeAmount: null,
@@ -47,6 +49,7 @@ describe("Tournament Utilities", () => {
             createdTxSig: "sig123",
             completedTxSig: null,
             chainSlotAtWrite: "0",
+            arbitrator: null,
         };
 
         it("calculates participant count correctly from grossPool", () => {

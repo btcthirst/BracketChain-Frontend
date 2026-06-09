@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, DM_Mono } from "next/font/google";
 import "./globals.css";
-import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import Providers from "@/components/Providers";
 import { Toaster } from "@/components/ui/sonner";
 import { BackgroundGlow } from "@/components/ui/background-glow";
@@ -40,9 +39,7 @@ export default function RootLayout({
       <body className="relative min-h-full flex flex-col">
         <BackgroundGlow />
         <Providers>
-          <AppRouterCacheProvider>
-            {children}
-          </AppRouterCacheProvider>
+          {children}
         </Providers>
         <Toaster richColors position="top-right" />
       </body>

@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { NAV_LINKS, EXTERNAL_LINKS } from "@/constants/links";
 
@@ -16,10 +14,8 @@ const RESOURCE_LINKS = [
 const linkStyle: React.CSSProperties = {
     fontFamily: "'DM Mono', monospace",
     fontSize: "0.7rem",
-    color: "rgba(240,241,245,0.4)",
     textDecoration: "none",
     letterSpacing: "0.06em",
-    transition: "color 0.15s",
 };
 
 export function Footer() {
@@ -80,9 +76,8 @@ export function Footer() {
                         <li key={item.label}>
                             <Link
                                 href={item.href}
+                                className="footer-link"
                                 style={linkStyle}
-                                onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(240,241,245,0.85)"; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(240,241,245,0.4)"; }}
                             >
                                 {item.label}
                             </Link>
@@ -98,9 +93,8 @@ export function Footer() {
                                 href={item.href}
                                 target={item.external ? "_blank" : undefined}
                                 rel={item.external ? "noopener noreferrer" : undefined}
+                                className="footer-link"
                                 style={linkStyle}
-                                onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(240,241,245,0.85)"; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(240,241,245,0.4)"; }}
                             >
                                 {item.label}
                             </a>

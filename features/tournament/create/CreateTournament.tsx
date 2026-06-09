@@ -35,14 +35,30 @@ import {
     mapError,
     createTournament,
     PayoutPreset as SdkPayoutPreset,
+    SettlementMode as SdkSettlementMode,
+    SupportedGame as SdkSupportedGame,
 } from "@bracketchain/sdk";
+
+const SETTLEMENT_MODE_MAP: Record<DetailsData["settlementMode"], SdkSettlementMode> = {
+    organizer_only: SdkSettlementMode.OrganizerOnly,
+    player_reported: SdkSettlementMode.PlayerReported,
+    oracle: SdkSettlementMode.Oracle,
+};
+
+const GAME_MAP: Record<DetailsData["game"], SdkSupportedGame> = {
+    manual: SdkSupportedGame.Manual,
+    dota2: SdkSupportedGame.Dota2,
+    cs2faceit: SdkSupportedGame.Cs2Faceit,
+    valorant: SdkSupportedGame.Valorant,
+    lol: SdkSupportedGame.LoL,
+};
 
 const USDC_DECIMALS = 1_000_000;
 
 const PAYOUT_PRESET_MAP: Record<Exclude<PayoutPreset, "custom">, SdkPayoutPreset> = {
-    wta: SdkPayoutPreset.WinnerTakesAll,
-    standard: SdkPayoutPreset.Standard,
-    deep: SdkPayoutPreset.Deep,
+    wta: { __kind: "WinnerTakesAll" },
+    standard: { __kind: "Standard" },
+    deep: { __kind: "Deep" },
 };
 
 function buildPayoutPreset(preset: PayoutPreset): SdkPayoutPreset {
@@ -58,8 +74,11 @@ function microUsdcFromUsd(amount: string): bigint {
     return BigInt(Math.round(n * USDC_DECIMALS));
 }
 
-function unixSecondsFromForm(date: string, time: string): number {
-    return Math.floor(new Date(`${date}T${time}:00Z`).getTime() / 1000);
+function unixSecondsFromForm(startAt: string): number {
+    // Single <input type="datetime-local"> value is "YYYY-MM-DDTHH:MM" in the
+    // browser's LOCAL timezone (not UTC). Append no `Z` so JS parses as local —
+    // matches what the user typed against their local clock.
+    return Math.floor(new Date(startAt).getTime() / 1000);
 }
 
 // Map raw tx errors to user-friendly text. Raw `.message` from the program
@@ -121,10 +140,11 @@ export function CreateTournament() {
         name: "",
         format: "SE",
         maxParticipants: 16,
-        startDate: "",
-        startTime: "",
-        freeEntry: false,
+        startAt: "",
         entryFee: "",
+        settlementMode: "organizer_only",
+        game: "manual",
+        arbitrator: "organizer",
     });
     const [prizeData, setPrizeData] = useState<PrizeData>({
         token: "USDC",
@@ -206,9 +226,11 @@ export function CreateTournament() {
             return;
         }
 
-        const entryFeeMicro = detailsData.freeEntry ? BigInt(0) : microUsdcFromUsd(detailsData.entryFee);
+        // microUsdcFromUsd returns 0n for empty / NaN / negative input, so
+        // "blank or 0 = free" works without an explicit toggle.
+        const entryFeeMicro = microUsdcFromUsd(detailsData.entryFee);
         const organizerDepositMicro = microUsdcFromUsd(prizeData.deposit);
-        const deadlineSec = unixSecondsFromForm(detailsData.startDate, detailsData.startTime);
+        const deadlineSec = unixSecondsFromForm(detailsData.startAt);
 
         setTxState("signing");
         try {
@@ -216,6 +238,8 @@ export function CreateTournament() {
                 name: detailsData.name.trim(),
                 entryFee: entryFeeMicro,
                 maxParticipants: detailsData.maxParticipants,
+                settlementMode: SETTLEMENT_MODE_MAP[detailsData.settlementMode],
+                game: GAME_MAP[detailsData.game],
                 payoutPreset: presetVariant,
                 registrationDeadline: deadlineSec,
                 // Phase 2.5: optional top-up to the prize pool. The SDK

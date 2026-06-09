@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Footer nav links — hover handled in CSS so <Footer> can stay a Server
+   Component (no client-side onMouseEnter/onMouseLeave handlers needed). */
+.footer-link {
+  color: rgba(240, 241, 245, 0.4);
+  transition: color 0.15s;
+}
+.footer-link:hover {
+  color: rgba(240, 241, 245, 0.85);
+}
+
 /* ── Design tokens → Tailwind utilities ────────────────────────────────────
    Colors defined here become bg-*, text-*, border-* Tailwind utilities.
    To add a new theme, override these variables in [data-theme="..."] selector.
