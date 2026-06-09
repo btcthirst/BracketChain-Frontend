@@ -48,7 +48,14 @@ export interface IndexerTournament {
   payoutPreset: IndexerPayoutPreset;
   registrationDeadline: string;
   status: IndexerTournamentStatus;
-  statusUpdatedAt: string;
+  /**
+   * On-chain settlement mode (who may report results). Backfilled set-once
+   * from chain by the reconciliation cron, so `null` only on freshly-indexed
+   * rows before the first reconcile. Frontend uses it to pick the result flow
+   * (organizer-report vs player-reported vs oracle). Restored 2026-06-09 — a
+   * merge dropped it while `indexerToTournamentState.ts` still consumes it.
+   */
+  settlementMode: IndexerSettlementMode | null;
   game: IndexerGame | null;
   champion: string | null;
   grossPool: string | null;
