@@ -12,6 +12,7 @@ const STATUS_TO_INDEXER: Record<TournamentStatus, Tournament["status"]> = {
     [TournamentStatus.Active]: "Active",
     [TournamentStatus.Completed]: "Completed",
     [TournamentStatus.Cancelled]: "Cancelled",
+    [TournamentStatus.PartialCancelled]: "Cancelled",
 };
 
 export type { Tournament };
@@ -89,7 +90,6 @@ export function useTournaments() {
                                 const pda = address(t.id);
                                 const data = await getTournament(client, pda);
                                 if (data) {
-                                    t.participants = data.participantCount;
                                     const mappedStatus = STATUS_TO_INDEXER[data.status];
                                     if (mappedStatus) {
                                         t.status = mappedStatus;

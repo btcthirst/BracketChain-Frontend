@@ -1,6 +1,8 @@
-export function totalPool(deposit: string, fee: string, max: number, freeEntry: boolean): number {
+export function totalPool(deposit: string, fee: string, max: number): number {
     const d = parseFloat(deposit) || 0;
-    const f = freeEntry ? 0 : (parseFloat(fee) || 0);
+    // Empty / NaN / negative → 0 (free entry). Match microUsdcFromUsd semantics.
+    const fParsed = parseFloat(fee);
+    const f = Number.isFinite(fParsed) && fParsed > 0 ? fParsed : 0;
     return d + f * max;
 }
 

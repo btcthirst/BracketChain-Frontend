@@ -24,7 +24,9 @@ export function PrizeStep({
     onConnect: () => void;
     errors?: Step2Errors;
 }) {
-    const pool = totalPool(data.deposit, detailsData.entryFee, detailsData.maxParticipants, detailsData.freeEntry);
+    const pool = totalPool(data.deposit, detailsData.entryFee, detailsData.maxParticipants);
+    // Empty / 0 entry fee implies free entry (no toggle anymore).
+    const isFreeEntry = !detailsData.entryFee.trim() || parseFloat(detailsData.entryFee) === 0;
     const afterFee = pool * (1 - PROTOCOL_FEE);
     const pctSum = data.payoutEntries.reduce((a, e) => a + e.pct, 0);
 
@@ -430,7 +432,7 @@ export function PrizeStep({
                     >
                         {[
                             { label: "Organizer deposit", value: `${parseFloat(data.deposit) || 0} ${data.token}`, color: undefined },
-                            ...(!detailsData.freeEntry ? [{
+                            ...(!isFreeEntry ? [{
                                 label: `Entry fees (${detailsData.maxParticipants} × ${parseFloat(detailsData.entryFee) || 0})`,
                                 value: `${((parseFloat(detailsData.entryFee) || 0) * detailsData.maxParticipants).toFixed(2)} ${data.token}`,
                                 color: undefined,

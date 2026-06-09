@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { Suspense, useCallback, useState } from "react";
 import Link from "next/link";
 import { RefreshCw, AlertTriangle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,9 @@ import { useDeadlineReached } from "@/hooks/useDeadlineReached";
 import { TournamentHeader } from "./TournamentHeader";
 import { BracketView, BracketSkeleton, BracketEmpty } from "./BracketView";
 import { TournamentSidebar, SidebarSkeleton } from "./TournamentSidebar";
-import { ReportResultModal } from "./ReportResultModal";
+import { ReportResultModal, matchActionable } from "./ReportResultModal";
 import { CancelModal } from "./CancelModal";
+import { SteamStatusToast } from "@/features/auth/steam/SteamStatusToast";
 import type { Match, Player } from "@/types/tournament";
 
 const darkPanel: React.CSSProperties = {
@@ -181,12 +182,13 @@ export function TournamentPage({ id }: { id: string }) {
         state.status === "success" ? state.data.registrationDeadline : ""
     );
 
-    const isOrganizer =
-        state.status === "success" &&
-        state.data.organizer.address === currentAddress;
-
     return (
         <div style={{ minHeight: "100vh", background: "transparent", display: "flex", flexDirection: "column" }}>
+            {/* A-11: reads ?steam=<status> from the indexer redirect → toast + scrub.
+                Suspense-wrapped per Next.js useSearchParams requirement. */}
+            <Suspense fallback={null}>
+                <SteamStatusToast />
+            </Suspense>
             <Navbar />
 
             <main style={{ flex: 1 }}>
@@ -253,8 +255,9 @@ export function TournamentPage({ id }: { id: string }) {
                                             />
                                             : <BracketView
                                                 matches={t.matches}
-                                                isOrganizer={isOrganizer && t.status === "in_progress" && t.bracketReady}
+                                                canReport={(m) => matchActionable(m, t, currentAddress)}
                                                 onReport={setReportingMatch}
+                                                settlementMode={t.settlementMode}
                                             />
                                         }
                                     </div>

@@ -90,6 +90,8 @@ function StatusPill({ status }: { status: Match["status"] }) {
     const config = {
         completed: { label: "Done", cls: "bg-green-100 text-green-700" },
         in_progress: { label: "Live", cls: "bg-blue-100  text-blue-700  animate-pulse" },
+        pending_confirmation: { label: "Confirm", cls: "bg-amber-100 text-amber-700" },
+        disputed: { label: "Disputed", cls: "bg-red-100   text-red-700" },
         pending: { label: "Pending", cls: "bg-gray-100  text-gray-500" },
     }[status];
     return (

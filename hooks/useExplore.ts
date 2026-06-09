@@ -3,11 +3,8 @@
 import { useState, useReducer, useEffect, useCallback } from "react";
 import { toUiTournament, type Tournament } from "@/lib/tournament";
 import { useBracketChainClient, getIndexerClient } from "@/lib/sdk";
-import {
-    getTournament,
-    TournamentStatus,
-    type IndexerTournamentStatus,
-} from "@bracketchain/sdk";
+import { getTournament, TournamentStatus } from "@bracketchain/sdk";
+import type { IndexerTournamentStatus } from "@/lib/indexerClient";
 import { address } from "@solana/kit";
 
 const STATUS_TO_INDEXER: Record<TournamentStatus, Tournament["status"]> = {
@@ -16,6 +13,7 @@ const STATUS_TO_INDEXER: Record<TournamentStatus, Tournament["status"]> = {
     [TournamentStatus.Active]: "Active",
     [TournamentStatus.Completed]: "Completed",
     [TournamentStatus.Cancelled]: "Cancelled",
+    [TournamentStatus.PartialCancelled]: "Cancelled",
 };
 
 // Synthetic status that doesn't exist on-chain — derived from
@@ -186,7 +184,6 @@ export function useExplore(filters: ExploreFilters) {
                                 const pda = address(t.id);
                                 const data = await getTournament(client, pda);
                                 if (data) {
-                                    t.participants = data.participantCount;
                                     const mappedStatus = STATUS_TO_INDEXER[data.status];
                                     if (mappedStatus) {
                                         t.status = mappedStatus;

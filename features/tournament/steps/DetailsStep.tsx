@@ -1,8 +1,57 @@
 import { FORMAT_INFO } from "@/constants/tournament";
 import { inputCls } from "../utils/utils";
-import { DetailsData, TournamentFormat } from "@/types/tournament";
+import {
+    DetailsData,
+    TournamentFormat,
+    UIArbitratorChoice,
+    UIGameChoice,
+    UISettlementChoice,
+} from "@/types/tournament";
 import { FieldGroup } from "./FieldGroup";
 import { DuplicateNameWarning } from "./DuplicateNameWarning";
+
+// Settlement-mode options. All three are valid on-chain today, but Oracle
+// only fully works after the organizer commits + binds a Switchboard feed
+// (the feed-factory is gated on external validation — see Stage C plan).
+const SETTLEMENT_OPTIONS: { key: UISettlementChoice; label: string; available: boolean; hint: string }[] = [
+    {
+        key: "organizer_only",
+        label: "Organizer reports",
+        available: true,
+        hint: "You sign every match result. Simplest flow.",
+    },
+    {
+        key: "player_reported",
+        label: "Players report",
+        available: true,
+        hint: "Loser confirms or disputes within a window; permissionless claim after.",
+    },
+    {
+        key: "oracle",
+        label: "Oracle (Switchboard)",
+        available: true,
+        hint: "Organizer commits a lobby + binds a Switchboard feed; a relayer reports the winner.",
+    },
+];
+
+// Game-identity options. Phase 1 supports `Manual` + `Dota 2` (the latter via
+// the Steam → SAS attestation flow, A-11). The rest aren't wired on chain yet
+// and reject with `GameNotYetSupported`.
+const GAME_OPTIONS: { key: UIGameChoice; label: string; available: boolean }[] = [
+    { key: "manual", label: "Manual (no game identity)", available: true },
+    { key: "dota2", label: "Dota 2 (Steam-verified)", available: true },
+    { key: "cs2faceit", label: "CS2 / FACEIT — coming soon", available: false },
+    { key: "valorant", label: "Valorant — coming soon", available: false },
+    { key: "lol", label: "League of Legends — coming soon", available: false },
+];
+
+// Arbitrator options. V1.2 hard-codes arbitrator = organizer at create-time;
+// Squads + custom address reassignment land in V1.3.
+const ARBITRATOR_OPTIONS: { key: UIArbitratorChoice; label: string; available: boolean }[] = [
+    { key: "organizer", label: "Organizer wallet (you)", available: true },
+    { key: "squads", label: "Squads multisig — V1.3", available: false },
+    { key: "custom", label: "Custom address — V1.3", available: false },
+];
 
 export function DetailsStep({
     data,
@@ -13,13 +62,21 @@ export function DetailsStep({
     onChange: (d: Partial<DetailsData>) => void;
     errors: Partial<Record<keyof DetailsData, string>>;
 }) {
-    const today = new Date().toISOString().split("T")[0];
+    // <input type="datetime-local"> uses LOCAL time; pre-compute a sane `min`
+    // for "right now" in the same format ("YYYY-MM-DDTHH:MM").
+    const nowLocal = (() => {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); // shift to local
+        return d.toISOString().slice(0, 16);
+    })();
+
+    const settlementHint = SETTLEMENT_OPTIONS.find(o => o.key === data.settlementMode)?.hint ?? "";
 
     return (
         <div className="flex flex-col gap-6">
             <FieldGroup
                 label="Tournament Name"
-                hint="Choose a unique, memorable name. Up to 32 characters (Solana per-seed limit)."
+                hint="Choose a unique, memorable name. Up to 32 bytes in UTF-8 (Solana per-seed limit) — non-Latin characters count as 2+ bytes."
                 error={errors.name}
             >
                 <div className="relative">
@@ -41,37 +98,39 @@ export function DetailsStep({
                             color: "rgba(240,241,245,0.25)",
                         }}
                     >
-                        {data.name.length}/32
+                        {new TextEncoder().encode(data.name).length}/32
                     </span>
                 </div>
                 {!errors.name && <DuplicateNameWarning name={data.name} />}
             </FieldGroup>
 
-            <FieldGroup
-                label="Format"
-                hint={FORMAT_INFO[data.format].desc}
-                error={errors.format}
-            >
-                <select
-                    className={inputCls(errors.format)}
-                    value={data.format}
-                    onChange={e => onChange({ format: e.target.value as TournamentFormat })}
+            {/* 2×2 grid: format / max-participants on top row, entry-fee /
+                registration-close on the second. Single column on phones. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <FieldGroup
+                    label="Format"
+                    hint={FORMAT_INFO[data.format].desc}
+                    error={errors.format}
                 >
-                    {(Object.entries(FORMAT_INFO) as [
-                        TournamentFormat,
-                        { label: string; available: boolean }
-                    ][]).map(([key, { label, available }]) => (
-                        <option key={key} value={key} disabled={!available}>
-                            {label}
-                        </option>
-                    ))}
-                </select>
-            </FieldGroup>
+                    <select
+                        className={inputCls(errors.format)}
+                        value={data.format}
+                        onChange={e => onChange({ format: e.target.value as TournamentFormat })}
+                    >
+                        {(Object.entries(FORMAT_INFO) as [
+                            TournamentFormat,
+                            { label: string; available: boolean }
+                        ][]).map(([key, { label, available }]) => (
+                            <option key={key} value={key} disabled={!available}>
+                                {label}
+                            </option>
+                        ))}
+                    </select>
+                </FieldGroup>
 
-            <div className="grid grid-cols-2 gap-4">
                 <FieldGroup
                     label="Max Participants"
-                    hint="Brackets are filled first-come first-served."
+                    hint="First-come first-served."
                     error={errors.maxParticipants}
                 >
                     <select
@@ -87,78 +146,82 @@ export function DetailsStep({
 
                 <FieldGroup
                     label="Entry Fee (USD)"
-                    hint={data.freeEntry ? "Free entry — open to all." : "Charged in the selected prize token."}
+                    hint="Leave blank or 0 for free entry."
                     error={errors.entryFee}
                 >
-                    <div className="flex gap-2 items-center">
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                            <div
-                                onClick={() => onChange({ freeEntry: !data.freeEntry })}
-                                style={{
-                                    position: "relative",
-                                    display: "inline-flex",
-                                    height: 20,
-                                    width: 36,
-                                    borderRadius: 999,
-                                    transition: "background 0.2s",
-                                    background: data.freeEntry ? "#22d47e" : "rgba(255,255,255,0.12)",
-                                    cursor: "pointer",
-                                    flexShrink: 0,
-                                }}
-                            >
-                                <span
-                                    style={{
-                                        display: "inline-block",
-                                        width: 16,
-                                        height: 16,
-                                        borderRadius: "50%",
-                                        background: "#f0f1f5",
-                                        position: "absolute",
-                                        top: 2,
-                                        left: data.freeEntry ? 18 : 2,
-                                        transition: "left 0.2s",
-                                        boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
-                                    }}
-                                />
-                            </div>
-                            <span style={{ fontSize: "0.75rem", color: "rgba(240,241,245,0.45)" }}>Free</span>
-                        </label>
-                        {!data.freeEntry && (
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                className={inputCls(errors.entryFee) + " flex-1"}
-                                placeholder="0.00"
-                                value={data.entryFee}
-                                onChange={e => onChange({ entryFee: e.target.value })}
-                            />
-                        )}
-                    </div>
+                    <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className={inputCls(errors.entryFee)}
+                        placeholder="0.00 (free)"
+                        value={data.entryFee}
+                        onChange={e => onChange({ entryFee: e.target.value })}
+                    />
+                </FieldGroup>
+
+                <FieldGroup
+                    label="Registration Closes"
+                    hint="Local time; must be in the future."
+                    error={errors.startAt}
+                >
+                    <input
+                        type="datetime-local"
+                        min={nowLocal}
+                        className={inputCls(errors.startAt)}
+                        value={data.startAt}
+                        onChange={e => onChange({ startAt: e.target.value })}
+                    />
                 </FieldGroup>
             </div>
 
+            <FieldGroup
+                label="Result Settlement"
+                hint={settlementHint}
+                error={errors.settlementMode}
+            >
+                <select
+                    className={inputCls(errors.settlementMode)}
+                    value={data.settlementMode}
+                    onChange={e => onChange({ settlementMode: e.target.value as UISettlementChoice })}
+                >
+                    {SETTLEMENT_OPTIONS.map(({ key, label, available }) => (
+                        <option key={key} value={key} disabled={!available}>{label}</option>
+                    ))}
+                </select>
+            </FieldGroup>
+
             <div className="grid grid-cols-2 gap-4">
                 <FieldGroup
-                    label="Registration Closes"
-                    hint="Players can join until this moment. Must be in the future."
-                    error={errors.startDate}
+                    label="Game"
+                    hint="Match identity verification. Phase 1 supports Manual only."
+                    error={errors.game}
                 >
-                    <input
-                        type="date"
-                        min={today}
-                        className={inputCls(errors.startDate)}
-                        value={data.startDate}
-                        onChange={e => onChange({ startDate: e.target.value })}
-                    />
+                    <select
+                        className={inputCls(errors.game)}
+                        value={data.game}
+                        onChange={e => onChange({ game: e.target.value as UIGameChoice })}
+                    >
+                        {GAME_OPTIONS.map(({ key, label, available }) => (
+                            <option key={key} value={key} disabled={!available}>{label}</option>
+                        ))}
+                    </select>
                 </FieldGroup>
-                <FieldGroup label="Time (UTC)" error={errors.startTime}>
-                    <input
-                        type="time"
-                        className={inputCls(errors.startTime)}
-                        value={data.startTime}
-                        onChange={e => onChange({ startTime: e.target.value })}
-                    />
+
+                <FieldGroup
+                    label="Arbitrator"
+                    hint="Resolves disputed oracle results. V1.2: always the organizer."
+                    error={errors.arbitrator}
+                >
+                    <select
+                        className={inputCls(errors.arbitrator)}
+                        value={data.arbitrator}
+                        onChange={e => onChange({ arbitrator: e.target.value as UIArbitratorChoice })}
+                    >
+                        {ARBITRATOR_OPTIONS.map(({ key, label, available }) => (
+                            <option key={key} value={key} disabled={!available}>{label}</option>
+                        ))}
+                    </select>
                 </FieldGroup>
             </div>
         </div>
