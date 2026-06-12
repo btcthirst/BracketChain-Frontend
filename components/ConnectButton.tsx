@@ -56,7 +56,7 @@ export function ConnectButton() {
         const linkedSolana = user?.linkedAccounts?.find(
             (acc) =>
                 acc.type === "wallet" &&
-                ((acc as any).chainType === "solana" || (acc.address && !acc.address.startsWith("0x")))
+                (acc.chainType === "solana" || (acc.address && !acc.address.startsWith("0x")))
         );
         if (linkedSolana && "address" in linkedSolana) {
             return linkedSolana.address;

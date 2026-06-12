@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Clock, Gavel, Loader2, Radio, ShieldAlert, Trophy } from "lucide-react";
 import { address, type Address } from "@solana/kit";
-import { useAnchorWallet } from "@solana/wallet-adapter-react";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
 import {
     reportResult,
     proposeResult,
@@ -233,7 +233,7 @@ export function ReportResultModal({
     onSuccess: () => void;
 }) {
     const sdk = useBracketChainClient();
-    const wallet = useAnchorWallet();
+    const { address: viewer } = useActiveWallet();
     const { fire } = useConfetti();
 
     // Selections shared by the propose (player) and resolve (organizer) panels.
@@ -243,7 +243,6 @@ export function ReportResultModal({
     const [submitting, setSubmitting] = useState(false);
 
     // ── Roles ───────────────────────────────────────────────────────────────
-    const viewer = wallet?.publicKey.toBase58() ?? null;
     const isOrganizer = viewer !== null && viewer === tournament.organizer.address;
     // `settle_final` is signed by `tournament.arbitrator` — defaults to the
     // organizer at create-time (Squads reassignment is V1.3).

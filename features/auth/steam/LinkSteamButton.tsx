@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useSignMessage } from "@privy-io/react-auth/solana";
 import { getBase58Decoder } from "@solana/kit";
 import { toast } from "sonner";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
 
 /**
  * "Link Steam" entry point (A-11, Option B — indexer-owned OpenID).
@@ -18,29 +19,29 @@ import { toast } from "sonner";
  * no wallet is connected.
  */
 export function LinkSteamButton() {
-    const { publicKey, signMessage } = useWallet();
+    const { wallet: activeWallet, address } = useActiveWallet();
+    const { signMessage } = useSignMessage();
     const [pending, setPending] = useState(false);
 
-    if (!publicKey) return null;
+    if (!activeWallet || !address) return null;
 
     async function handleClick() {
-        if (!publicKey) return;
+        if (!activeWallet || !address) return;
         const indexer = process.env.NEXT_PUBLIC_INDEXER_URL;
         if (!indexer) {
             toast.error("Steam linking unavailable — indexer not configured.");
             return;
         }
-        if (!signMessage) {
-            toast.error("Your wallet doesn't support message signing.");
-            return;
-        }
 
         setPending(true);
         try {
-            const wallet = publicKey.toBase58();
+            const wallet = address;
             const nonce = crypto.randomUUID();
             const message = `bracketchain:bind-steam:${wallet}:${nonce}`;
-            const signature = await signMessage(new TextEncoder().encode(message));
+            const { signature } = await signMessage({
+                message: new TextEncoder().encode(message),
+                wallet: activeWallet,
+            });
             const sigBase58 = getBase58Decoder().decode(signature);
 
             const url =

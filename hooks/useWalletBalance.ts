@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useReducer, useCallback } from "react";
-import { useWallet, useConnection } from "@solana/wallet-adapter-react";
+import { useEffect, useMemo, useReducer, useCallback } from "react";
+import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js"; // ask about @solana/web3-compat
 import { getAssociatedTokenAddress } from "@solana/spl-token";
+import { useActiveWallet } from "./useActiveWallet";
 
 const USDC_MINT_ADDRESS = process.env.NEXT_PUBLIC_USDC_MINT;
 if (!USDC_MINT_ADDRESS) throw new Error("NEXT_PUBLIC_USDC_MINT is not set");
@@ -49,7 +50,12 @@ function reducer(state: BalanceState, action: Action): BalanceState {
 // ── Hook ───────────────────────────────────────────────────────────────────────
 
 export function useWalletBalance() {
-    const { publicKey, connected } = useWallet();
+    const { address: walletAddress } = useActiveWallet();
+    const publicKey = useMemo(
+        () => (walletAddress ? new PublicKey(walletAddress) : null),
+        [walletAddress],
+    );
+    const connected = !!publicKey;
     const { connection } = useConnection();
 
     const [state, dispatch] = useReducer(reducer, initialState);

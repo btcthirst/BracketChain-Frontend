@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { PlusCircle, RefreshCw, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useWallet } from "@solana/wallet-adapter-react";
 import { usePrivy } from "@privy-io/react-auth";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ROUTES } from "@/constants/links";
@@ -133,7 +133,7 @@ function applyFilter(rows: DashboardTournament[], filter: DashboardFilter): Dash
 }
 
 function DashboardContent() {
-    const { publicKey } = useWallet();
+    const { address: walletAddress } = useActiveWallet();
     const [filter, setFilter] = useState<DashboardFilter>("all");
     const [managingId, setManagingId] = useState<string | null>(null);
 
@@ -151,8 +151,8 @@ function DashboardContent() {
         [allTournaments, filter],
     );
 
-    const walletDisplay = publicKey
-        ? `${publicKey.toBase58().slice(0, 4)}…${publicKey.toBase58().slice(-4)}`
+    const walletDisplay = walletAddress
+        ? `${walletAddress.slice(0, 4)}…${walletAddress.slice(-4)}`
         : "";
 
     if (managingId) {
@@ -232,14 +232,13 @@ function DashboardContent() {
 // ── Page wrapper with Navbar / wallet gate ────────────────────────────────────
 
 export function DashboardPage() {
-    const { connected } = useWallet();
     const { authenticated } = usePrivy();
 
     return (
         <div className="min-h-screen bg-transparent flex flex-col font-sans selection:bg-[#22d47e]/30">
             <Navbar />
             <main className="flex-1 relative z-10">
-                {authenticated || connected ? <DashboardContent /> : <WalletGate />}
+                {authenticated ? <DashboardContent /> : <WalletGate />}
             </main>
             <Footer />
         </div>

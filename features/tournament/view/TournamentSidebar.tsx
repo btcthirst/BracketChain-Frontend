@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { ExternalLink, CheckCircle2, Loader2, ChevronDown, ChevronUp, Clock, Wallet } from "lucide-react";
 import { address } from "@solana/kit";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { usePrivy } from "@privy-io/react-auth";
 import { joinTournament, startTournament, mapError } from "@bracketchain/sdk";
 import { toast } from "sonner";
 import type { TournamentView, Player } from "@/types/tournament";
@@ -263,7 +263,7 @@ function ActionArea({
     const [optimisticJoined, setOptimisticJoined] = useState(false);
 
     const sdk = useBracketChainClient();
-    const { setVisible: setWalletModalVisible } = useWalletModal();
+    const { login } = usePrivy();
     const { fire } = useConfetti();
     const { usdc: walletUsdc, refresh: refreshBalance } = useWalletBalance();
 
@@ -468,14 +468,14 @@ function ActionArea({
     if (!currentAddress) {
         return (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <Button variant="primary" size="lg" className="w-full" onClick={() => setWalletModalVisible(true)}>
+                <Button variant="primary" size="lg" className="w-full" onClick={login}>
                     <Wallet />
-                    Connect to Join
+                    Sign in to Join
                 </Button>
                 <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", textAlign: "center", color: "rgba(240,241,245,0.3)" }}>
                     {tournament.entryFee > 0
-                        ? `Entry fee ${tournament.entryFee} ${tournament.token}. Connect a Solana wallet to register.`
-                        : "Free entry. Connect a Solana wallet to register."}
+                        ? `Entry fee ${tournament.entryFee} ${tournament.token}. Sign in to register.`
+                        : "Free entry. Sign in to register."}
                 </p>
             </div>
         );
