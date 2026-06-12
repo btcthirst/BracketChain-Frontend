@@ -2,13 +2,14 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { LayoutDashboard, LogOut, ChevronDown, Copy, Check } from "lucide-react";
+import { LayoutDashboard, LogOut, ChevronDown, Settings } from "lucide-react";
 import { ROUTES } from "@/constants/links";
 import { Button } from "@/components/ui/button";
 import { usePrivy } from "@privy-io/react-auth";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
 import { shortenAddress } from "@/lib/format";
 import { getUserIdentity } from "@/lib/privyAuth";
+import { CopyButton } from "@/components/ui/CopyButton";
 
 export function ConnectButton() {
     const { login, logout, authenticated, ready, user } = usePrivy();
@@ -17,24 +18,7 @@ export function ConnectButton() {
     const { address: pubkey } = useActiveWallet();
 
     const [open, setOpen] = useState(false);
-    const [copied, setCopied] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
-    const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    useEffect(() => () => {
-        if (copyTimer.current) clearTimeout(copyTimer.current);
-    }, []);
-
-    async function copyAddress(addr: string) {
-        try {
-            await navigator.clipboard.writeText(addr);
-            setCopied(true);
-            if (copyTimer.current) clearTimeout(copyTimer.current);
-            copyTimer.current = setTimeout(() => setCopied(false), 1500);
-        } catch {
-            // Clipboard API unavailable (insecure context / denied) — no-op.
-        }
-    }
 
     useEffect(() => {
         function onClickOutside(e: MouseEvent) {
@@ -158,6 +142,23 @@ export function ConnectButton() {
                         Dashboard
                     </Link>
 
+                    <Link
+                        href={ROUTES.account}
+                        role="menuitem"
+                        onClick={() => setOpen(false)}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            padding: "9px 12px",
+                            color: "rgba(240,241,245,0.7)",
+                            textDecoration: "none",
+                        }}
+                    >
+                        <Settings size={14} style={{ color: "#22d47e" }} />
+                        My Account
+                    </Link>
+
                     <div
                         style={{
                             height: 1,
@@ -175,36 +176,21 @@ export function ConnectButton() {
                             wordBreak: "break-word",
                         }}
                     >
-                        {email && <div>Email: {email}</div>}
                         {phone && <div>Phone: {phone}</div>}
                         {pubkey && (
-                            <button
-                                type="button"
-                                onClick={() => copyAddress(pubkey)}
-                                title={copied ? "Copied!" : "Copy address"}
+                            <CopyButton
+                                value={pubkey}
+                                title="Copy address"
                                 style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 6,
                                     width: "100%",
                                     marginTop: 2,
-                                    padding: 0,
-                                    border: "none",
-                                    background: "transparent",
                                     color: "rgba(255,255,255,0.6)",
                                     fontSize: "0.75rem",
                                     textAlign: "left",
-                                    cursor: "pointer",
-                                    wordBreak: "break-all",
                                 }}
                             >
-                                <span style={{ flex: 1 }}>Wallet: {pubkey}</span>
-                                {copied ? (
-                                    <Check size={13} style={{ color: "#22d47e", flexShrink: 0 }} />
-                                ) : (
-                                    <Copy size={13} style={{ flexShrink: 0, opacity: 0.7 }} />
-                                )}
-                            </button>
+                                <span style={{ flex: 1 }}>Wallet: {shortenAddress(pubkey)}</span>
+                            </CopyButton>
                         )}
                     </div>
 

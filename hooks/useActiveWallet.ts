@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useWallets } from "@privy-io/react-auth/solana";
 import type { ConnectedStandardSolanaWallet } from "@privy-io/react-auth/solana";
+import { useActiveWalletSelection } from "@/lib/activeWalletStore";
 
 /**
  * Single source of truth for the active Solana wallet.
@@ -23,7 +24,13 @@ export function useActiveWallet(): {
     ready: boolean;
 } {
     const { wallets, ready } = useWallets();
-    const wallet = wallets[0] ?? null;
+    const selected = useActiveWalletSelection();
+    // Honor the user's chosen active wallet when it's currently connected;
+    // otherwise fall back to the first connected wallet.
+    const wallet =
+        (selected ? wallets.find((w) => w.address === selected) : undefined) ??
+        wallets[0] ??
+        null;
     return useMemo(
         () => ({ wallet, address: wallet?.address ?? null, ready }),
         [wallet, ready],
