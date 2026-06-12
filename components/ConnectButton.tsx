@@ -2,18 +2,39 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { LayoutDashboard, LogOut, ChevronDown } from "lucide-react";
+import { LayoutDashboard, LogOut, ChevronDown, Copy, Check } from "lucide-react";
 import { ROUTES } from "@/constants/links";
 import { Button } from "@/components/ui/button";
 import { usePrivy } from "@privy-io/react-auth";
-import { useWallets as useSolanaWallets } from "@privy-io/react-auth/solana";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { shortenAddress } from "@/lib/format";
+import { getUserIdentity } from "@/lib/privyAuth";
 
 export function ConnectButton() {
-    const { login, logout, authenticated, user } = usePrivy();
-    const { wallets } = useSolanaWallets();
+    const { login, logout, authenticated, ready, user } = usePrivy();
+    // Single source of truth for the active wallet — same address the rest of
+    // the app uses for balance, signing and join gating (see useActiveWallet).
+    const { address: pubkey } = useActiveWallet();
 
     const [open, setOpen] = useState(false);
+    const [copied, setCopied] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
+    const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => () => {
+        if (copyTimer.current) clearTimeout(copyTimer.current);
+    }, []);
+
+    async function copyAddress(addr: string) {
+        try {
+            await navigator.clipboard.writeText(addr);
+            setCopied(true);
+            if (copyTimer.current) clearTimeout(copyTimer.current);
+            copyTimer.current = setTimeout(() => setCopied(false), 1500);
+        } catch {
+            // Clipboard API unavailable (insecure context / denied) — no-op.
+        }
+    }
 
     useEffect(() => {
         function onClickOutside(e: MouseEvent) {
@@ -21,12 +42,29 @@ export function ConnectButton() {
                 setOpen(false);
             }
         }
+        function onKeyDown(e: KeyboardEvent) {
+            if (e.key === "Escape") setOpen(false);
+        }
 
         document.addEventListener("mousedown", onClickOutside);
-        return () => document.removeEventListener("mousedown", onClickOutside);
+        document.addEventListener("keydown", onKeyDown);
+        return () => {
+            document.removeEventListener("mousedown", onClickOutside);
+            document.removeEventListener("keydown", onKeyDown);
+        };
     }, []);
 
-    // 📌 1. Не залогінений
+    // Privy hasn't hydrated yet — render a neutral placeholder so we don't
+    // flash the "Login / Signup" button for an already-authenticated user.
+    if (!ready) {
+        return (
+            <Button variant="primary" disabled style={{ opacity: 0.6 }}>
+                Loading…
+            </Button>
+        );
+    }
+
+    // Not authenticated.
     if (!authenticated) {
         return (
             <Button variant="primary" onClick={login}>
@@ -35,48 +73,23 @@ export function ConnectButton() {
         );
     }
 
-    // 📌 2. Витягуємо дані користувача (з підтримкою Google, Apple та linked accounts)
-    const email = user?.email?.address || user?.google?.email || user?.apple?.email;
-    const phone = user?.phone?.number || user?.telegram?.username;
-
-    // Шукаємо Solana-адресу в усіх можливих місцях:
-    // 1. Активні підключені гаманці
-    // 2. Первинний гаманець користувача
-    // 3. Усі лінковані акаунти
-    const getSolanaAddress = () => {
-        const activeSolana = wallets.find(
-            (w) => w.address && !w.address.startsWith("0x")
-        );
-        if (activeSolana?.address) return activeSolana.address;
-
-        if (user?.wallet?.address && !user.wallet.address.startsWith("0x")) {
-            return user.wallet.address;
-        }
-
-        const linkedSolana = user?.linkedAccounts?.find(
-            (acc) =>
-                acc.type === "wallet" &&
-                (acc.chainType === "solana" || (acc.address && !acc.address.startsWith("0x")))
-        );
-        if (linkedSolana && "address" in linkedSolana) {
-            return linkedSolana.address;
-        }
-
-        return undefined;
-    };
-
-    const pubkey = getSolanaAddress();
+    // Display identity for the dropdown — extraction branches live in
+    // lib/privyAuth.ts, kept in sync with the enabled login methods.
+    const { email, phone } = getUserIdentity(user);
 
     const display =
         email ||
         phone ||
-        (pubkey ? `${pubkey.slice(0, 4)}…${pubkey.slice(-4)}` : null) ||
+        (pubkey ? shortenAddress(pubkey) : null) ||
         "Account";
 
     return (
         <div style={{ position: "relative" }} ref={ref}>
             <button
                 onClick={() => setOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={open}
+                aria-label="Account menu"
                 style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -114,6 +127,7 @@ export function ConnectButton() {
 
             {open && (
                 <div
+                    role="menu"
                     style={{
                         position: "absolute",
                         right: 0,
@@ -129,6 +143,7 @@ export function ConnectButton() {
                     {/* Dashboard */}
                     <Link
                         href={ROUTES.dashboard}
+                        role="menuitem"
                         onClick={() => setOpen(false)}
                         style={{
                             display: "flex",
@@ -151,7 +166,7 @@ export function ConnectButton() {
                         }}
                     />
 
-                    {/* Wallet info (optional debug / UX) */}
+                    {/* Account identity + click-to-copy wallet address */}
                     <div
                         style={{
                             padding: "8px 12px",
@@ -162,7 +177,35 @@ export function ConnectButton() {
                     >
                         {email && <div>Email: {email}</div>}
                         {phone && <div>Phone: {phone}</div>}
-                        {pubkey && <div>Wallet: {pubkey}</div>}
+                        {pubkey && (
+                            <button
+                                type="button"
+                                onClick={() => copyAddress(pubkey)}
+                                title={copied ? "Copied!" : "Copy address"}
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    width: "100%",
+                                    marginTop: 2,
+                                    padding: 0,
+                                    border: "none",
+                                    background: "transparent",
+                                    color: "rgba(255,255,255,0.6)",
+                                    fontSize: "0.75rem",
+                                    textAlign: "left",
+                                    cursor: "pointer",
+                                    wordBreak: "break-all",
+                                }}
+                            >
+                                <span style={{ flex: 1 }}>Wallet: {pubkey}</span>
+                                {copied ? (
+                                    <Check size={13} style={{ color: "#22d47e", flexShrink: 0 }} />
+                                ) : (
+                                    <Copy size={13} style={{ flexShrink: 0, opacity: 0.7 }} />
+                                )}
+                            </button>
+                        )}
                     </div>
 
                     <div
@@ -175,11 +218,15 @@ export function ConnectButton() {
 
                     {/* Logout */}
                     <button
+                        role="menuitem"
                         onClick={() => {
                             logout();
                             setOpen(false);
                         }}
                         style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
                             width: "100%",
                             padding: "9px 12px",
                             border: "none",

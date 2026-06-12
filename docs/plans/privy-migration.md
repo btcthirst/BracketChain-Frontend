@@ -66,6 +66,16 @@
 
 ---
 
+## Статус верифікації (2026-06-12)
+
+- ✅ **Зовнішні гаманці (Phantom, Backpack):** логін, баланс, створення турніру — підпис проходить.
+- ✅ **Embedded-гаманець (Google login):** створення турніру І приєднання (join) —
+  підпис через Privy `useSignTransaction` проходить. Закриває колишній ризик Фази 2-B/3.
+- ✅ Виправлено: нескінченний цикл `useBracketChainClient` (refs + memo по адресі);
+  `config.solana.rpcs` (Privy `No RPC configuration found`).
+- ⏳ Лишилось перевірити (некритичне): Steam-link, BindFeed (oracle) — обидва не на
+  основному шляху create/join.
+
 ## Фаза 2 — Верифікація підпису (DECISION GATE)
 
 Тестувати наживо на devnet через `/verify` flow або вручну. Три сценарії:

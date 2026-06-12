@@ -6,6 +6,7 @@ import { PlusCircle, RefreshCw, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePrivy } from "@privy-io/react-auth";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { shortenAddress } from "@/lib/format";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ROUTES } from "@/constants/links";
@@ -151,9 +152,7 @@ function DashboardContent() {
         [allTournaments, filter],
     );
 
-    const walletDisplay = walletAddress
-        ? `${walletAddress.slice(0, 4)}…${walletAddress.slice(-4)}`
-        : "";
+    const walletDisplay = walletAddress ? shortenAddress(walletAddress) : "";
 
     if (managingId) {
         return (
