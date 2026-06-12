@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { usePrivy } from "@privy-io/react-auth";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { NAV_LINKS } from "@/constants/links";
@@ -129,8 +129,7 @@ function describeError(err: unknown): string {
 
 export function CreateTournament() {
     const router = useRouter();
-    const { connected } = useWallet();
-    const { setVisible } = useWalletModal();
+    const { login, authenticated } = usePrivy();
     const client = useBracketChainClient();
 
     const [step, setStep] = useState(0);
@@ -359,8 +358,8 @@ export function CreateTournament() {
                                 // Clear errors as user edits — same UX as Step 1.
                                 if (Object.keys(errors2).length > 0) setErrors2({});
                             }}
-                            connected={connected}
-                            onConnect={() => setVisible(true)}
+                            connected={authenticated}
+                            onConnect={login}
                             errors={errors2}
                         />
                     )}
