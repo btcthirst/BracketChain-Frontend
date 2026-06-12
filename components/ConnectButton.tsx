@@ -59,11 +59,12 @@ export function ConnectButton() {
 
     // Display identity for the dropdown — extraction branches live in
     // lib/privyAuth.ts, kept in sync with the enabled login methods.
-    const { email, phone } = getUserIdentity(user);
+    const { email, phone, username } = getUserIdentity(user);
 
     const display =
         email ||
         phone ||
+        (username ? `@${username}` : null) ||
         (pubkey ? shortenAddress(pubkey) : null) ||
         "Account";
 

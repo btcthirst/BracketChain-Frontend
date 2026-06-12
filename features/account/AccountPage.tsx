@@ -7,9 +7,10 @@ import {
     useUnlinkPhone,
     useUnlinkWallet,
     useUnlinkOAuth,
+    useUnlinkTelegram,
 } from "@privy-io/react-auth";
 import { useFundWallet, useWallets as useSolanaWallets } from "@privy-io/react-auth/solana";
-import { Mail, Phone, Plus, LogOut, ExternalLink, Wallet, CreditCard, User as UserIcon, Check } from "lucide-react";
+import { Mail, Phone, Plus, LogOut, ExternalLink, Wallet, CreditCard, User as UserIcon, Check, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -146,11 +147,12 @@ function isEmbeddedWallet(walletClientType?: string): boolean {
 }
 
 function AccountContent() {
-    const { user, logout, linkEmail, linkPhone, linkGoogle, linkWallet } = usePrivy();
+    const { user, logout, linkEmail, linkPhone, linkGoogle, linkTelegram, linkWallet } = usePrivy();
     const { unlink: unlinkEmail } = useUnlinkEmail();
     const { unlink: unlinkPhone } = useUnlinkPhone();
     const { unlink: unlinkWallet } = useUnlinkWallet();
     const { unlink: unlinkOAuth } = useUnlinkOAuth();
+    const { unlink: unlinkTelegram } = useUnlinkTelegram();
     const { address } = useActiveWallet();
     const { wallets: connectedWallets } = useSolanaWallets();
     const connectedAddrs = new Set(connectedWallets.map((w) => w.address));
@@ -225,6 +227,22 @@ function AccountContent() {
                     onUnlink={
                         user?.phone?.number
                             ? () => runUnlink(() => unlinkPhone({ phoneNumber: user.phone!.number }))
+                            : undefined
+                    }
+                />
+                <LinkedRow
+                    icon={<Send size={16} />}
+                    label="Telegram"
+                    value={
+                        user?.telegram?.username
+                            ? `@${user.telegram.username}`
+                            : user?.telegram?.firstName ?? undefined
+                    }
+                    onLink={linkTelegram}
+                    canUnlink={canUnlink}
+                    onUnlink={
+                        user?.telegram?.telegramUserId
+                            ? () => runUnlink(() => unlinkTelegram({ telegramUserId: user.telegram!.telegramUserId }))
                             : undefined
                     }
                 />

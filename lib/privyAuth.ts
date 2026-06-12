@@ -6,6 +6,8 @@ type LoginMethod = NonNullable<PrivyClientConfig["loginMethods"]>[number];
 export interface UserIdentity {
     email?: string;
     phone?: string;
+    /** Handle-style identity (e.g. Telegram @username) — no email/phone. */
+    username?: string;
 }
 
 interface MethodEntry {
@@ -28,9 +30,12 @@ const METHODS: MethodEntry[] = [
     { method: "email", identity: (u) => ({ email: u.email?.address }) },
     { method: "sms", identity: (u) => ({ phone: u.phone?.number }) },
     { method: "google", identity: (u) => ({ email: u.google?.email ?? undefined }) },
+    {
+        method: "telegram",
+        identity: (u) => ({ username: u.telegram?.username ?? undefined }),
+    },
     // Enable more by adding an entry — its identity is picked up automatically:
     // { method: "apple", identity: (u) => ({ email: u.apple?.email ?? undefined }) },
-    // { method: "telegram", identity: (u) => ({ phone: u.telegram?.username }) },
 ];
 
 /** Passed to `<PrivyProvider config={{ loginMethods }}>`. */
@@ -48,6 +53,7 @@ export function getUserIdentity(user: User | null): UserIdentity {
         const id = identity(user);
         if (id.email && !out.email) out.email = id.email;
         if (id.phone && !out.phone) out.phone = id.phone;
+        if (id.username && !out.username) out.username = id.username;
     }
     return out;
 }
