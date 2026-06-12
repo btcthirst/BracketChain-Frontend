@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { Check, CircleDashed, Loader2, Radio, TriangleAlert } from "lucide-react";
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { useConnection } from "@solana/wallet-adapter-react";
+import { useSignTransaction } from "@privy-io/react-auth/solana";
+import { PublicKey, Transaction } from "@solana/web3.js";
 import { address } from "@solana/kit";
 import { bindMatchFeed, computeDotaFeedHash } from "@bracketchain/sdk";
 import { toast } from "sonner";
 
 import { useBracketChainClient } from "@/lib/sdk";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
 import {
     createDotaPullFeed,
     dotaFeedParams,
@@ -69,7 +72,24 @@ interface Props {
 export function BindFeedFlow({ tournament, match, lobbyHex, onBound }: Props) {
     const sdk = useBracketChainClient();
     const { connection } = useConnection();
-    const { publicKey, signTransaction } = useWallet();
+    const { wallet, address: walletAddress } = useActiveWallet();
+    const { signTransaction: privySignTransaction } = useSignTransaction();
+
+    // Adapt Privy's signer to the legacy web3.js `(tx) => Promise<Transaction>`
+    // shape Switchboard's stack expects (lib/switchboardFeed.ts). Preserves the
+    // feed keypair's partial signature via requireAllSignatures:false.
+    const signLegacyTransaction = async (tx: Transaction): Promise<Transaction> => {
+        if (!wallet) throw new Error("No connected wallet");
+        const { signedTransaction } = await privySignTransaction({
+            transaction: tx.serialize({ requireAllSignatures: false }),
+            wallet,
+            chain:
+                process.env.NEXT_PUBLIC_SOLANA_NETWORK === "mainnet-beta"
+                    ? "solana:mainnet"
+                    : "solana:devnet",
+        });
+        return Transaction.from(signedTransaction);
+    };
 
     const [running, setRunning] = useState(false);
     const [step, setStep] = useState<FlowStep | null>(null);
@@ -80,7 +100,7 @@ export function BindFeedFlow({ tournament, match, lobbyHex, onBound }: Props) {
     const onChainRound = match.round - 1;
 
     async function run() {
-        if (!sdk || !publicKey || !signTransaction) {
+        if (!sdk || !wallet || !walletAddress) {
             toast.error("Connect your wallet to continue");
             return;
         }
@@ -115,8 +135,8 @@ export function BindFeedFlow({ tournament, match, lobbyHex, onBound }: Props) {
                 // ②–③ Crossbar store + feed creation (web3.js v1 lane).
                 const created = await createDotaPullFeed({
                     connection,
-                    walletPublicKey: publicKey,
-                    signTransaction,
+                    walletPublicKey: new PublicKey(walletAddress),
+                    signTransaction: signLegacyTransaction,
                     feedParams: params,
                     expectedFeedHash,
                     name: `BracketChain ${lobbyHex.slice(0, 8)}`,

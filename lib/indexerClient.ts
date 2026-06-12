@@ -37,6 +37,46 @@ export type IndexerProposalSource =
   | "Oracle"
   | "GameServer";
 
+export type IndexerBracketFormat =
+  | "SingleElimination"
+  | "DoubleElimination"
+  | "Swiss"
+  | "RoundRobin";
+
+/**
+ * Aggregated player profile for `/player/:wallet`. Shape shared by the mock
+ * (lib/mocks/playerProfile.ts) and the planned indexer endpoint
+ * `GET /players/:wallet`, so swapping the source touches no UI.
+ */
+export interface IndexerPlayerHistoryRow {
+  tournamentAddress: string;
+  name: string;
+  game: IndexerGame | null;
+  format: IndexerBracketFormat;
+  /** Final placement (1 = champion); null if still ongoing / unranked. */
+  placement: number | null;
+  /** Prize won in USDC micro-units (1e6). */
+  prizeMicro: string;
+  date: string;
+  status: IndexerTournamentStatus;
+}
+
+export interface IndexerPlayerStats {
+  played: number;
+  wins: number;
+  losses: number;
+  /** Fraction in [0, 1]; UI formats as a percentage. */
+  winRate: number;
+  /** Total earnings in USDC micro-units (1e6). */
+  totalEarnedMicro: string;
+}
+
+export interface IndexerPlayer {
+  wallet: string;
+  stats: IndexerPlayerStats;
+  history: IndexerPlayerHistoryRow[];
+}
+
 export interface IndexerTournament {
   address: string;
   organizer: string;

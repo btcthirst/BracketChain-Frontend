@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "privy": {
+      "type": "http",
+      "url": "https://docs.privy.io/mcp"
+    }
+  }
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useReducer, useCallback } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
 import { useBracketChainClient, getIndexerClient } from "@/lib/sdk";
 import { getTournament, TournamentStatus } from "@bracketchain/sdk";
 import type {
@@ -96,7 +96,7 @@ function toEntry(t: IndexerTournament): DashboardTournament {
  *      (fixes indexer lag and Variant B grossPool/entryFee math errors)
  */
 export function useDashboard() {
-    const { publicKey, connected } = useWallet();
+    const { address: walletAddress } = useActiveWallet();
     const client = useBracketChainClient();
     const [state, dispatch] = useReducer(reducer, { status: "idle" });
     const [tick, retry] = useReducer((n: number) => n + 1, 0);
@@ -104,7 +104,7 @@ export function useDashboard() {
     const refresh = useCallback(() => retry(), []);
 
     useEffect(() => {
-        if (!connected || !publicKey) {
+        if (!walletAddress) {
             dispatch({ type: "RESET" });
             return;
         }
@@ -122,7 +122,7 @@ export function useDashboard() {
             .then(async (rows) => {
                 if (ac.signal.aborted) return;
                 const mine = rows
-                    .filter(r => r.organizer === publicKey.toBase58())
+                    .filter(r => r.organizer === walletAddress)
                     .map(toEntry);
 
                 // ── on-chain enrichment ─────────────────────────────────
@@ -178,7 +178,7 @@ export function useDashboard() {
             });
 
         return () => ac.abort();
-    }, [connected, publicKey, tick, client]);
+    }, [walletAddress, tick, client]);
 
     return { state, refresh };
 }

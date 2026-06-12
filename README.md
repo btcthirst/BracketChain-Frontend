@@ -13,12 +13,12 @@ BracketChain is a decentralized tournament platform that enables organizers to c
 | Framework | Next.js 16 (App Router) |
 | Language | TypeScript 5 |
 | Styling | Tailwind CSS v4 |
-| UI Components | shadcn/ui + Radix UI + MUI v7 |
+| UI Components | shadcn/ui + Radix UI |
 | Animations | Motion (`motion/react`) |
 | Blockchain | Solana — `@solana/kit` + `@solana/compat` + `@bracketchain/sdk` `0.6.0-dev` (Phase 1; consumed via local tarball — see [SDK Integration](#sdk-integration)) |
-| Wallet adapter | `@solana/wallet-adapter-react` + Wallet Standard auto-discovery (Phantom, Solflare) |
+| Auth & Wallets | [Privy](https://privy.io) (`@privy-io/react-auth`) — owns authentication + wallet connection (email, SMS, Google, Telegram, embedded + external Solana wallets) |
 | Testing | Jest + ts-jest |
-| Package Manager | pnpm 10 |
+| Package Manager | pnpm 11 |
 | Deployment | Vercel |
 
 ## Project Structure
@@ -30,7 +30,10 @@ bracketchain-frontend/
 │   ├── dashboard/              # /dashboard — organizer dashboard
 │   ├── t/[id]/                 # /t/:id — public tournament view
 │   ├── explore/                # /explore — tournament browser
+│   ├── account/                # /account — signed-in user account + linked methods
+│   ├── player/[wallet]/        # /player/:wallet — public player profile
 │   ├── about/                  # /about — placeholder
+│   ├── styles/
 │   ├── layout.tsx
 │   └── page.tsx                # Landing page
 │
@@ -44,10 +47,14 @@ bracketchain-frontend/
 │   ├── AnimatedCounter.tsx
 │   ├── ForDevelopers.tsx
 │   ├── Footer.tsx
-│   ├── ConnectButton.tsx
-│   └── Providers.tsx           # Solana wallet context
+│   ├── ConnectButton.tsx        # Privy login/account dropdown
+│   └── Providers.tsx            # Privy auth + wallet context (see Authentication)
 │
 ├── features/
+│   ├── account/                # /account — AccountPage (linked methods, wallet, fund)
+│   ├── player/                 # /player/[wallet] — public player profile
+│   ├── auth/
+│   │   └── steam/              # Steam OpenID link → SAS identity flow
 │   ├── dashboard/              # Organizer dashboard
 │   │   ├── DashboardPage.tsx   # Page shell — wallet gate, tabs
 │   │   ├── TournamentTable.tsx # Table of owned tournaments
@@ -68,7 +75,11 @@ bracketchain-frontend/
 │       │   ├── RoundRobinBracket.tsx # Round Robin standings view
 │       │   ├── SwissBracket.tsx      # Swiss bracket view
 │       │   ├── TournamentSidebar.tsx # Participants, escrow, actions
-│       │   ├── ReportResultModal.tsx
+│       │   ├── ReportResultModal.tsx # Report/propose/confirm/dispute/claim
+│       │   ├── CommitAndBindPanel.tsx# Oracle: commitMatchLobby + bindMatchFeed
+│       │   ├── BindFeedFlow.tsx      # Oracle feed binding
+│       │   ├── OraclePendingPanel.tsx
+│       │   ├── LaunchGameButton.tsx
 │       │   └── CancelModal.tsx
 │       ├── steps/                    # Create wizard steps
 │       │   ├── DetailsStep.tsx
@@ -82,23 +93,35 @@ bracketchain-frontend/
 │       └── utils/utils.ts
 │
 ├── hooks/                      # Custom React hooks
+│   ├── useActiveWallet.ts      # Active Privy/external wallet address
 │   ├── useWalletBalance.ts     # SOL + USDC balance fetcher
+│   ├── useGameIdentity.ts      # Steam/SAS game-identity state + link gate
+│   ├── usePlayerProfile.ts     # Public player profile data
+│   ├── useNameCheck.ts         # Debounced duplicate-name check (indexer)
 │   ├── useStats.ts             # Landing page stats
 │   ├── useTournaments.ts       # Live tournaments list
-│   ├── useTournamentView.ts    # Single tournament detail
+│   ├── useTournamentView.ts    # Single tournament detail + live subscription
 │   ├── useDashboard.ts         # Dashboard data
 │   ├── useExplore.ts           # Explore page data + filters
 │   ├── useDeadlineReached.ts   # Registration deadline watcher
 │   └── useConfetti.ts          # Success animation
 │
 ├── lib/                        # Utilities and SDK wrappers
-│   ├── sdk.ts                  # @bracketchain/sdk hook wrapper
+│   ├── sdk.ts                  # @bracketchain/sdk hook wrapper (Privy → Kit signer)
+│   ├── privyAuth.ts            # Single source of truth for login methods
+│   ├── activeWalletStore.ts    # Active-wallet selection store
+│   ├── indexerClient.ts        # Indexer REST client
+│   ├── indexerToTournamentState.ts
+│   ├── playerSource.ts         # Player profile data source
+│   ├── switchboardFeed.ts      # Oracle (Switchboard) feed helpers
+│   ├── txErrors.ts             # SDK error → user-facing message mapping
 │   ├── tournament.ts           # Tournament helpers
-│   └── indexerToTournamentState.ts
+│   └── mocks/
 │
 ├── constants/
 │   ├── links.ts                # ROUTES, EXTERNAL_LINKS, SOLANA
-│   └── tournament.ts           # FORMAT_INFO, PAYOUT_PRESETS, PROTOCOL_FEE
+│   ├── games.ts                # GAMES (Manual / Dota 2 / CS2 + Steam app IDs)
+│   └── tournament.ts           # FORMAT_INFO, PAYOUT_PRESETS, TOKEN_INFO, PROTOCOL_FEE
 │
 ├── types/
 │   └── tournament.ts           # All shared TypeScript types
@@ -114,7 +137,7 @@ bracketchain-frontend/
 ### Prerequisites
 
 - Node.js 24+
-- pnpm 10+ (`npm i -g pnpm@10` if missing)
+- pnpm 11+ (`npm i -g pnpm@11` if missing)
 
 ### Installation
 
@@ -137,12 +160,23 @@ make env   # copies .env.example → .env.local
 
 Configure `.env.local`:
 
+The block below covers the most common variables; see [`.env.example`](./.env.example) for the full annotated list (USDC mint, mock-oracle pubkey, game-adapter API keys, etc.).
+
 ```env
 # Solana RPC endpoint (required)
 NEXT_PUBLIC_RPC_URL=https://api.devnet.solana.com
 
 # Optional: Helius RPC for better performance
 # NEXT_PUBLIC_RPC_URL=https://devnet.helius-rpc.com/?api-key=YOUR_KEY
+
+# Cluster the UI talks to: localnet | devnet | mainnet-beta.
+# Mirrored server-side as SOLANA_NETWORK for routes that need a gate.
+NEXT_PUBLIC_SOLANA_NETWORK=devnet
+SOLANA_NETWORK=devnet
+
+# Default tournament collateral mint (mock USDC on dev clusters).
+# Generated by the protocol init script.
+NEXT_PUBLIC_USDC_MINT=
 
 # Override the on-chain program ID. Falls back to the SDK default when unset
 # (MVP AuXJKpuZtkegs2ZSgopgckhN7Ev8bUz4zBc238LD2F1; Phase 1 dev = 3YpkUKBh8288XN2dCKSwBnEdyc5UozSJ19A1ZCLpUZsZ).
@@ -152,7 +186,19 @@ NEXT_PUBLIC_RPC_URL=https://api.devnet.solana.com
 # RPC; with it set, list/detail pages prefer the indexer and fall back to
 # chain reads if the indexer is stale or down.
 # NEXT_PUBLIC_INDEXER_URL=https://indexer.example.com
+
+# Privy App ID (required for auth) — from https://dashboard.privy.io
+# (App Settings → App ID). Enabled login methods live in lib/privyAuth.ts.
+NEXT_PUBLIC_PRIVY_APP_ID=
 ```
+
+> **Telegram login** is enabled in `lib/privyAuth.ts` but also needs dashboard
+> setup: create a bot via [@BotFather](https://t.me/BotFather), run `/setdomain`
+> with the domain the widget renders on, and paste the bot **token + handle**
+> into the Privy Dashboard. A bot is tied to a single domain, so use a separate
+> dev bot pointed at a tunnel (ngrok / Cloudflare) for local testing —
+> `localhost` is not accepted. If you enforce CSP, allow `https://telegram.org`
+> in `script-src` and `https://oauth.telegram.org` in `frame-src`.
 
 ### Development
 
@@ -217,7 +263,7 @@ Sync:   Solana event → Helius webhook → Indexer → PostgreSQL
 
 The frontend talks to the on-chain program through [`@bracketchain/sdk`](https://www.npmjs.com/package/@bracketchain/sdk). For **Phase 1** it consumes the unpublished `0.6.0-dev` build via a local tarball (`file:../BracketChain-Sdk/*.tgz`) rather than npm — after any SDK change run `pnpm pack` in the SDK repo and reinstall here (no live-reload). The published `^0.5.x` line remains the MVP edition. All writes are real Solana transactions signed by the connected wallet.
 
-`lib/sdk.ts` bridges the wallet-adapter v1 surface to Kit: `useAnchorWallet()` (v1 `PublicKey` + `signAllTransactions(VersionedTransaction[])`) is wrapped into a Kit `TransactionPartialSigner` via `@solana/compat`'s `fromLegacyPublicKey` plus a `VersionedTransaction` round-trip for signing. RPC + RpcSubscriptions are derived from `NEXT_PUBLIC_RPC_URL` (HTTP) with the WS endpoint auto-flipped from `https://` → `wss://`.
+`lib/sdk.ts` bridges the Privy wallet to Kit: the active wallet (`hooks/useActiveWallet.ts`) plus Privy's `useSignTransaction` (`@privy-io/react-auth/solana`, works for both embedded and external wallets like Phantom) are wrapped into a Kit `TransactionModifyingSigner` — modifying, not partial, because wallets return a fully-signed transaction. Addresses cross the legacy boundary via `@solana/compat`'s `fromLegacyPublicKey`. RPC + RpcSubscriptions are derived from `NEXT_PUBLIC_RPC_URL` (HTTP) with the WS endpoint auto-flipped from `https://` → `wss://`.
 
 It exposes three accessors:
 
@@ -255,19 +301,21 @@ Every data-fetching hook follows the same structure: `dispatch` is stable (unlik
 
 `hooks/useTournamentView.ts` subscribes to the Tournament account through the SDK's `subscribe()` helper. Every account-change notification triggers a refetch, and a 30-second inactivity timer arms a safety-net poll so a silently-dropped WebSocket can't strand the UI on stale data.
 
-### Wallet Integration
+### Authentication & Wallets
 
-Wallet connection is handled globally via `Providers.tsx`, which wraps the app with `ConnectionProvider`, `WalletProvider`, and `WalletModalProvider` from `@solana/wallet-adapter-react`. `WalletProvider` is configured with `wallets={[]}` — connection works through Wallet Standard auto-discovery, so any WS-compliant wallet the user has installed (Phantom + Solflare on devnet today) appears in the modal without an explicit adapter import.
+Authentication **and** wallet connection are both owned by **Privy**, wired in `Providers.tsx` via `PrivyProvider`. Users sign in through any enabled login method (email, SMS, Google, Telegram) and get a Privy embedded Solana wallet, or connect an external wallet (Phantom, Solflare, Backpack) — all surfaced through Privy's `useWallets()` / `useSignTransaction()` hooks.
 
-RPC endpoint is configured via `NEXT_PUBLIC_RPC_URL` — defaults to Solana devnet.
+The enabled login methods are a single source of truth in [`lib/privyAuth.ts`](./lib/privyAuth.ts): add or remove an entry in `METHODS` and both the `PrivyProvider` config (`LOGIN_METHODS`) and the account-page identity readout (`getUserIdentity`) update together, so they can't drift. Each method optionally declares how to read a display identity (email / phone / username) off the Privy `User`.
+
+`ConnectionProvider` from `@solana/wallet-adapter-react` is kept **only** as a convenient RPC source for `useConnection()` (balances, feed creation). The app does **not** use `WalletProvider` — wallet state flows through Privy, never through wallet-adapter. RPC endpoint comes from `NEXT_PUBLIC_RPC_URL` (defaults to Solana devnet); Privy is also given a Kit RPC per Solana chain so its signing hooks resolve.
 
 ```ts
-// Access wallet anywhere
-const { publicKey, connected, signTransaction } = useWallet();
-const { connection } = useConnection();
+// Active wallet + balance live behind app hooks
+const { address } = useActiveWallet();      // hooks/useActiveWallet.ts
+const { sol, usdc } = useWalletBalance();    // hooks/useWalletBalance.ts
 ```
 
-`lib/sdk.ts` consumes the same wallet via `useAnchorWallet()` and bridges it into a Kit `TransactionSigner` (see [SDK Integration](#sdk-integration)). Component code never needs to touch the bridge directly.
+`lib/sdk.ts` consumes the Privy wallet and bridges it into a Kit `TransactionSigner` (see [SDK Integration](#sdk-integration)). Component code never touches the bridge directly. Account linking/unlinking per method lives in `features/account/AccountPage.tsx`.
 
 ### Tournament Formats
 
@@ -293,6 +341,8 @@ The Create wizard currently rejects anything other than `SE` (see `ConfirmStep.t
 | `/t/[id]` | ✅ Live | Public bracket view, participants, escrow |
 | `/dashboard` | ✅ Live | Organizer dashboard — manage tournaments, report results, analytics |
 | `/explore` | ✅ Live | Tournament browser with filters |
+| `/account` | ✅ Live | Signed-in account — linked login methods, wallet balance, fund |
+| `/player/[wallet]` | ✅ Live | Public player profile by wallet address |
 | `/about` | 🚧 Placeholder | About page |
 
 ## Edge States
@@ -314,7 +364,7 @@ Every data-fetching component handles:
 
 - Only `SE` (single-elimination) format reaches the on-chain `createTournament` call (other formats are Phase 4).
 - Only `USDC` is accepted as the prize token.
-- Game (Manual / Dota 2) + settlement mode (OrganizerOnly / PlayerReported / Oracle) are exposed; `Custom` payout splits are wired to the program's `PayoutPreset::Custom` (the data-enum `{ __kind: "Custom", fields: [[…8 bps…]] }`).
+- Game (Manual / Dota 2 / CS2 — see `constants/games.ts`) + settlement mode (OrganizerOnly / PlayerReported / Oracle) are exposed; `Custom` payout splits are wired to the program's `PayoutPreset::Custom` (the data-enum `{ __kind: "Custom", fields: [[…8 bps…]] }`).
 
 **Indexer endpoints**
 
@@ -331,12 +381,12 @@ Every data-fetching component handles:
 
 - `partialCancelTournament` has an SDK wrapper but **no UI control yet** — the organizer can't trigger a mid-tournament partial cancel from the frontend.
 
-**Phase 2+ features (not yet started)**
+**Phase 2+ features**
 
-- Privy embedded-wallet / social-login flow.
+- ✅ Privy embedded-wallet / social-login flow — auth + wallet owned by Privy (`Providers.tsx`, `lib/privyAuth.ts`), account linking in `features/account/AccountPage.tsx`. Login methods: email, SMS, Google, Telegram, external Solana wallets.
+- ✅ `/player/[wallet]` public profile route is live (`features/player/`, `hooks/usePlayerProfile.ts`); cNFT badge surface still pending.
 - Web Push notification bus, service worker registration.
-- Fiat on-ramp (MoonPay / Coinbase Pay).
-- `/profile/[wallet]` route + cNFT badge surface.
+- Fiat on-ramp (MoonPay / Coinbase Pay) — Privy `useFundWallet` is wired on `/account`; dedicated on-ramp UI still pending.
 
 **Placeholders**
 

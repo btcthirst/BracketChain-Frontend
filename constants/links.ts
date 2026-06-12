@@ -17,6 +17,8 @@ export const ROUTES = {
     create: "/create",
     dashboard: "/dashboard",
     tournament: (id: string) => `/t/${id}`,
+    player: (wallet: string) => `/player/${wallet}`,
+    account: "/account",
     about: "/about",
 } as const;
 

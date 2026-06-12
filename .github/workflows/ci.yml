@@ -11,6 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NEXT_PUBLIC_USDC_MINT: ${{ secrets.NEXT_PUBLIC_USDC_MINT }}
+      # Baked into the client bundle at build time; PrivyProvider throws on an
+      # empty/invalid id while prerendering /_not-found. Public value, but kept
+      # in secrets to mirror USDC_MINT.
+      NEXT_PUBLIC_PRIVY_APP_ID: ${{ secrets.NEXT_PUBLIC_PRIVY_APP_ID }}
     steps:
       - uses: actions/checkout@v6
 
