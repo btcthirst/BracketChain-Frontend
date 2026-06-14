@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle } from "lucide-react";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
 
 import { useNameCheck } from "@/hooks/useNameCheck";
 
@@ -10,8 +10,8 @@ interface Props {
 }
 
 export function DuplicateNameWarning({ name }: Props) {
-    const { publicKey } = useWallet();
-    const state = useNameCheck(name, publicKey ? publicKey.toBase58() : null);
+    const { address } = useActiveWallet();
+    const state = useNameCheck(name, address);
 
     if (state.status === "checking") {
         return (

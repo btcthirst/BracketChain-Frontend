@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ArrowLeft, RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
 import type { Match } from "@/types/tournament";
 import { useTournamentView } from "@/hooks/useTournamentView";
 import { BracketView, BracketEmpty, BracketSkeleton } from "@/features/tournament/view/BracketView";
@@ -36,7 +36,7 @@ const darkPanel: React.CSSProperties = {
 };
 
 export function ManageView({ tournamentId, onBack }: Props) {
-    const { publicKey } = useWallet();
+    const { address: walletAddress } = useActiveWallet();
     const { state, refresh } = useTournamentView(tournamentId);
     const [reportMatch, setReportMatch] = useState<Match | null>(null);
     const [showCancel, setShowCancel] = useState(false);
@@ -126,7 +126,7 @@ export function ManageView({ tournamentId, onBack }: Props) {
                         : m.status === "disputed",
                 );
 
-                const isOrganizer = t.organizer.address === publicKey?.toBase58();
+                const isOrganizer = t.organizer.address === walletAddress;
                 const canCancel =
                     isOrganizer && (
                         t.status === "registration" ||

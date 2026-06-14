@@ -4,7 +4,7 @@ import { Suspense, useCallback, useState } from "react";
 import Link from "next/link";
 import { RefreshCw, AlertTriangle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ROUTES, SOLANA } from "@/constants/links";
@@ -133,8 +133,7 @@ function CancelledBanner({ txSignature, refundTxs }: { txSignature: string | nul
 
 export function TournamentPage({ id }: { id: string }) {
     const { state, refresh } = useTournamentView(id);
-    const { publicKey } = useWallet();
-    const currentAddress = publicKey?.toBase58() ?? null;
+    const { address: currentAddress } = useActiveWallet();
     const [reportingMatch, setReportingMatch] = useState<Match | null>(null);
     const [showCancel, setShowCancel] = useState(false);
 

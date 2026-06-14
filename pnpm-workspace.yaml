@@ -3,3 +3,17 @@
 # the SDK as a packed tarball (`pnpm pack` in BracketChain-Sdk) so Next/
 # Turbopack sees a normal node_modules copy. Trade-off: SDK changes require
 # re-pack + `pnpm install` in this repo (no live-reload).
+
+allowBuilds:
+  '@reown/appkit': false
+  '@stellar/stellar-sdk': false
+  bigint-buffer: false
+  blake-hash: false
+  bufferutil: false
+  keccak: false
+  protobufjs: false
+  sharp: false
+  tiny-secp256k1: false
+  unrs-resolver: false
+  usb: false
+  utf-8-validate: false

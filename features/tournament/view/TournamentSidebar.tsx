@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { ExternalLink, CheckCircle2, Loader2, ChevronDown, ChevronUp, Clock, Wallet } from "lucide-react";
 import { address } from "@solana/kit";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import {
     joinTournament,
     startTournament,
@@ -13,11 +13,15 @@ import {
     SettlementMode,
     mapError,
 } from "@bracketchain/sdk";
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { usePrivy } from "@privy-io/react-auth";
+import { useSignTransaction } from "@privy-io/react-auth/solana";
+import { useConnection } from "@solana/wallet-adapter-react";
+import { PublicKey, Transaction } from "@solana/web3.js";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
 import { commitRandomness, buildRevealKitInstruction } from "@/lib/switchboardRandomness";
 import { toast } from "sonner";
 import type { TournamentView, Player } from "@/types/tournament";
-import { SOLANA } from "@/constants/links";
+import { ROUTES, SOLANA } from "@/constants/links";
 import { useBracketChainClient } from "@/lib/sdk";
 import { useConfetti } from "@/hooks/useConfetti";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
@@ -79,9 +83,14 @@ function ParticipantList({ participants, currentAddress, maxParticipants }: { pa
                             }}
                         >
                             <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.75rem", color: isYou ? "#22d47e" : "rgba(240,241,245,0.65)" }}>
+                                <Link
+                                    href={ROUTES.player(p.address)}
+                                    style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.75rem", color: isYou ? "#22d47e" : "rgba(240,241,245,0.65)", textDecoration: "none" }}
+                                    onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")}
+                                    onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}
+                                >
                                     {p.display}
-                                </span>
+                                </Link>
                                 {p.isOrganizer && (
                                     <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", fontWeight: 600, color: "#22d47e", background: "rgba(34,212,126,0.08)", border: "1px solid rgba(34,212,126,0.18)", padding: "1px 6px", borderRadius: 999 }}>
                                         ORG
@@ -202,7 +211,14 @@ function OrganizerPanel({ organizer, arbitrator, showArbitrator }: { organizer: 
             <span style={sectionLabel}>Organizer</span>
             <div style={darkRow}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                    <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.75rem", color: "rgba(240,241,245,0.65)" }}>{organizer.display}</span>
+                    <Link
+                        href={ROUTES.player(organizer.address)}
+                        style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.75rem", color: "rgba(240,241,245,0.65)", textDecoration: "none" }}
+                        onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")}
+                        onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}
+                    >
+                        {organizer.display}
+                    </Link>
                     <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", fontWeight: 600, color: "#22d47e", background: "rgba(34,212,126,0.08)", border: "1px solid rgba(34,212,126,0.18)", padding: "1px 6px", borderRadius: 999 }}>ORG</span>
                     {showArbitrator && arbitrator === organizer.address && (
                         <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.6rem", fontWeight: 600, color: "#5eb6ff", background: "rgba(94,182,255,0.08)", border: "1px solid rgba(94,182,255,0.18)", padding: "1px 6px", borderRadius: 999 }} title="Resolves disputed oracle proposals">ARB</span>
@@ -277,8 +293,33 @@ function ActionArea({
 
     const sdk = useBracketChainClient();
     const { connection } = useConnection();
-    const { publicKey, signTransaction } = useWallet();
-    const { setVisible: setWalletModalVisible } = useWalletModal();
+    const { login } = usePrivy();
+    // Privy owns the wallet (not wallet-adapter), so source the address from
+    // `useActiveWallet` and sign through Privy. The VRF ceremony's web3.js lane
+    // (`commitRandomness`) needs a web3.js PublicKey + a legacy-tx signer, so we
+    // adapt Privy's signer to that shape here. Both are null until connected;
+    // handleStart guards on them before use.
+    const { wallet, address: activeAddress } = useActiveWallet();
+    const { signTransaction: privySignTransaction } = useSignTransaction();
+    const solanaChain =
+        process.env.NEXT_PUBLIC_SOLANA_NETWORK === "mainnet-beta"
+            ? "solana:mainnet"
+            : "solana:devnet";
+    const publicKey = activeAddress ? new PublicKey(activeAddress) : null;
+    const signTransaction = wallet
+        ? async (tx: Transaction): Promise<Transaction> => {
+              const serialized = tx.serialize({
+                  requireAllSignatures: false,
+                  verifySignatures: false,
+              });
+              const { signedTransaction } = await privySignTransaction({
+                  transaction: serialized,
+                  wallet,
+                  chain: solanaChain,
+              });
+              return Transaction.from(signedTransaction);
+          }
+        : null;
     const { fire } = useConfetti();
     const { usdc: walletUsdc, refresh: refreshBalance } = useWalletBalance();
 
@@ -608,14 +649,14 @@ function ActionArea({
     if (!currentAddress) {
         return (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <Button variant="primary" size="lg" className="w-full" onClick={() => setWalletModalVisible(true)}>
+                <Button variant="primary" size="lg" className="w-full" onClick={login}>
                     <Wallet />
-                    Connect to Join
+                    Sign in to Join
                 </Button>
                 <p style={{ fontFamily: "'DM Mono', monospace", fontSize: "0.68rem", textAlign: "center", color: "rgba(240,241,245,0.3)" }}>
                     {tournament.entryFee > 0
-                        ? `Entry fee ${tournament.entryFee} ${tournament.token}. Connect a Solana wallet to register.`
-                        : "Free entry. Connect a Solana wallet to register."}
+                        ? `Entry fee ${tournament.entryFee} ${tournament.token}. Sign in to register.`
+                        : "Free entry. Sign in to register."}
                 </p>
             </div>
         );

@@ -4,8 +4,9 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { PlusCircle, RefreshCw, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { usePrivy } from "@privy-io/react-auth";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { shortenAddress } from "@/lib/format";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ROUTES } from "@/constants/links";
@@ -26,7 +27,7 @@ const FILTERS: { key: DashboardFilter; label: string }[] = [
 // ── Wallet gate ───────────────────────────────────────────────────────────────
 
 function WalletGate() {
-    const { setVisible } = useWalletModal();
+    const { login } = usePrivy();
     return (
         <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6 px-6 text-center">
             <div className="w-20 h-20 rounded-2xl bg-[#22d47e]/10 border border-[#22d47e]/20 flex items-center justify-center shadow-[0_0_30px_rgba(34,212,126,0.05)]">
@@ -38,7 +39,7 @@ function WalletGate() {
                     Access your personalized tournament dashboard by connecting your Solana wallet.
                 </p>
             </div>
-            <Button variant="primary" size="lg" onClick={() => setVisible(true)} className="px-10">
+            <Button variant="primary" size="lg" onClick={login} className="px-10">
                 Connect Wallet
             </Button>
         </div>
@@ -133,7 +134,7 @@ function applyFilter(rows: DashboardTournament[], filter: DashboardFilter): Dash
 }
 
 function DashboardContent() {
-    const { publicKey } = useWallet();
+    const { address: walletAddress } = useActiveWallet();
     const [filter, setFilter] = useState<DashboardFilter>("all");
     const [managingId, setManagingId] = useState<string | null>(null);
 
@@ -151,9 +152,7 @@ function DashboardContent() {
         [allTournaments, filter],
     );
 
-    const walletDisplay = publicKey
-        ? `${publicKey.toBase58().slice(0, 4)}…${publicKey.toBase58().slice(-4)}`
-        : "";
+    const walletDisplay = walletAddress ? shortenAddress(walletAddress) : "";
 
     if (managingId) {
         return (
@@ -232,13 +231,13 @@ function DashboardContent() {
 // ── Page wrapper with Navbar / wallet gate ────────────────────────────────────
 
 export function DashboardPage() {
-    const { connected } = useWallet();
+    const { authenticated } = usePrivy();
 
     return (
         <div className="min-h-screen bg-transparent flex flex-col font-sans selection:bg-[#22d47e]/30">
             <Navbar />
             <main className="flex-1 relative z-10">
-                {connected ? <DashboardContent /> : <WalletGate />}
+                {authenticated ? <DashboardContent /> : <WalletGate />}
             </main>
             <Footer />
         </div>
