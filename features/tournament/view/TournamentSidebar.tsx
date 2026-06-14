@@ -4,7 +4,17 @@ import { useRef, useState } from "react";
 import { ExternalLink, CheckCircle2, Loader2, ChevronDown, ChevronUp, Clock, Wallet } from "lucide-react";
 import { address } from "@solana/kit";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { joinTournament, startTournament, mapError } from "@bracketchain/sdk";
+import {
+    joinTournament,
+    startTournament,
+    requestSeed,
+    revealSeed,
+    getTournament,
+    SettlementMode,
+    mapError,
+} from "@bracketchain/sdk";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { commitRandomness, buildRevealKitInstruction } from "@/lib/switchboardRandomness";
 import { toast } from "sonner";
 import type { TournamentView, Player } from "@/types/tournament";
 import { SOLANA } from "@/constants/links";
@@ -260,9 +270,14 @@ function ActionArea({
 }) {
     const [joining, setJoining] = useState(false);
     const [starting, setStarting] = useState(false);
+    // Sub-step label shown on the Start button while the VRF seeding ceremony
+    // runs (non-OrganizerOnly tournaments). Null = idle / plain start.
+    const [startStage, setStartStage] = useState<string | null>(null);
     const [optimisticJoined, setOptimisticJoined] = useState(false);
 
     const sdk = useBracketChainClient();
+    const { connection } = useConnection();
+    const { publicKey, signTransaction } = useWallet();
     const { setVisible: setWalletModalVisible } = useWalletModal();
     const { fire } = useConfetti();
     const { usdc: walletUsdc, refresh: refreshBalance } = useWalletBalance();
@@ -275,6 +290,28 @@ function ActionArea({
     const linkSteamRef = useRef<HTMLDivElement | null>(null);
 
     const isParticipant = optimisticJoined || tournament.participants.some(p => p.address === currentAddress);
+
+    // Dota has no lobby deep link, so the Launch button copies the lobby id
+    // for in-client Custom Lobbies search. The relevant id is the committed
+    // lobby of the viewer's own unfinished match (at most one at a time in
+    // single-elim). Null when none is committed yet — the button still works,
+    // it just launches without copying.
+    const myMatch =
+        tournament.matches.find(
+            (m) =>
+                m.status !== "completed" &&
+                m.oracle.lobbyId !== null &&
+                (m.playerA?.address === currentAddress ||
+                    m.playerB?.address === currentAddress),
+        ) ?? null;
+    const myLobbyId = myMatch?.oracle.lobbyId ?? null;
+    // Player-hosted manual lobby (option C): host = playerA, fixed by on-chain
+    // seating so both clients agree without coordination. undefined when the
+    // viewer isn't seated in the match (e.g. organizer) → symmetric copy.
+    const iAmHost = myMatch
+        ? myMatch.playerA?.address === currentAddress
+        : undefined;
+
     const hasEnough = walletUsdc !== null && walletUsdc >= tournament.entryFee;
     const registrationClosed = useDeadlineReached(tournament.registrationDeadline);
 
@@ -342,18 +379,114 @@ function ActionArea({
         } finally { setJoining(false); }
     }
 
+    // Reveal the VRF seed in the organizer's OWN transaction — no keeper /
+    // indexer / webhook dependency (works locally with no tunnel, and survives a
+    // keeper outage in prod). Switchboard On-Demand only exposes the value in the
+    // slot it's revealed, so the Switchboard reveal is bundled ahead of the
+    // program's `reveal_seed` in ONE tx. We retry the BUILD (no wallet prompt)
+    // until the oracle posts the value (a few slots after commit), then send once
+    // (a single signature). If the permissionless cron beat us to it, `seedRevealed`
+    // is already true and we return early.
+    async function revealSeedAsOrganizer(
+        pda: ReturnType<typeof address>,
+        randomnessAccount: string,
+        payer: string,
+    ) {
+        const buildAttempts = 15;
+        let revealIx: Awaited<
+            ReturnType<typeof buildRevealKitInstruction>
+        > | null = null;
+        for (let i = 1; i <= buildAttempts; i++) {
+            const t = await getTournament(sdk!, pda);
+            if (t.seedRevealed) return; // cron or a prior attempt already revealed
+            try {
+                revealIx = await buildRevealKitInstruction(
+                    connection,
+                    randomnessAccount,
+                    payer,
+                );
+                break;
+            } catch {
+                if (i === buildAttempts) {
+                    throw new Error(
+                        "Switchboard oracle hasn't posted the randomness yet — click Start again in a few seconds.",
+                    );
+                }
+                setStartStage(`Waiting for verifiable randomness… (${i})`);
+                await new Promise((r) => setTimeout(r, 4000));
+            }
+        }
+        if (!revealIx) return;
+        setStartStage("Revealing the seed (sign in wallet)…");
+        await revealSeed(sdk!, {
+            tournamentPda: pda,
+            randomnessAccount: address(randomnessAccount),
+            preInstructions: [revealIx],
+        });
+    }
+
     async function handleStart() {
         if (!sdk) return;
         setStarting(true);
+        setStartStage(null);
         try {
-            await startTournament(sdk, { tournamentPda: address(tournament.id) });
+            const pda = address(tournament.id);
+
+            // Authoritative chain read: non-OrganizerOnly tournaments MUST be
+            // VRF-seeded (the program forbids the slot-hash fallback), and start
+            // is gated on `seed_revealed`. Run the seeding ceremony first if
+            // needed.
+            const chain = await getTournament(sdk, pda);
+            const needsVrf = chain.settlementMode !== SettlementMode.OrganizerOnly;
+
+            if (needsVrf && !chain.seedRevealed) {
+                if (!publicKey || !signTransaction) {
+                    toast.error("Connect a wallet that can sign to seed the bracket.");
+                    return;
+                }
+                const DEFAULT_PUBKEY = "11111111111111111111111111111111";
+                // Bind a committed randomness account if one isn't already.
+                let randomnessAccount = String(chain.vrfRandomnessAccount);
+                if (randomnessAccount === DEFAULT_PUBKEY) {
+                    const created = await commitRandomness({
+                        connection,
+                        walletPublicKey: publicKey,
+                        signTransaction,
+                        onStage: (s) =>
+                            setStartStage(
+                                s === "create-randomness"
+                                    ? "Creating randomness (sign in wallet)…"
+                                    : "Committing randomness (sign in wallet)…",
+                            ),
+                    });
+                    randomnessAccount = created.randomnessAccount;
+                    setStartStage("Binding randomness (sign in wallet)…");
+                    await requestSeed(sdk, {
+                        tournamentPda: pda,
+                        randomnessAccount: address(randomnessAccount),
+                    });
+                }
+                // Reveal in the organizer's own tx — no keeper/indexer dependency.
+                await revealSeedAsOrganizer(pda, randomnessAccount, publicKey.toBase58());
+            }
+
+            setStartStage("Starting tournament…");
+            await startTournament(sdk, { tournamentPda: pda });
             toast.success("Tournament started! Bracket is being initialized.");
             onStartSuccess();
         } catch (err) {
-            const sdkErr = mapError(err);
-            toast.error(sdkErr.message);
+            const error = err as Error;
+            if (error.message?.toLowerCase().includes("rejected")) {
+                toast.info("Request cancelled");
+            } else {
+                const sdkErr = mapError(err);
+                toast.error(sdkErr.message);
+            }
             console.error("Start failed:", err);
-        } finally { setStarting(false); }
+        } finally {
+            setStarting(false);
+            setStartStage(null);
+        }
     }
 
     if (tournament.status === "cancelled") return null;
@@ -382,10 +515,15 @@ function ActionArea({
                         className="w-full"
                     >
                         {starting
-                            ? <><Loader2 className="animate-spin" /> Initializing…</>
+                            ? <><Loader2 className="animate-spin" /> {startStage ?? "Initializing…"}</>
                             : isFull ? "Start Tournament" : "Start Early (Lock Bracket)"
                         }
                     </Button>
+                    {starting && startStage?.includes("verifiable randomness") && (
+                        <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.72rem", color: "rgba(240,241,245,0.5)", lineHeight: 1.5, textAlign: "center" }}>
+                            The bracket is seeded from Switchboard verifiable randomness. Waiting for the oracle to post the value (a few seconds), then one more signature to reveal it. Keep this open.
+                        </p>
+                    )}
                     <CancelDangerZone onCancel={onCancel} />
                 </div>
             );
@@ -437,8 +575,10 @@ function ActionArea({
     if (tournament.status !== "registration") {
         // Active tournament, joined player on a Steam game → one-click jump
         // into the game client (renders nothing for `manual` tournaments).
+        // When their match has a committed lobby, the click also copies the
+        // lobby id for the in-game Custom Lobbies search.
         if (tournament.status === "in_progress" && isParticipant) {
-            return <LaunchGameButton game={tournament.gameKind} />;
+            return <LaunchGameButton game={tournament.gameKind} lobbyId={myLobbyId} iAmHost={iAmHost} />;
         }
         return null;
     }
