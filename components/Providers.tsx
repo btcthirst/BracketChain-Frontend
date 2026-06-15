@@ -64,6 +64,10 @@ const WalletContextProvider: FC<Props> = ({ children }) => {
             config={{
                 appearance: {
                     theme: "dark",
+                    // BracketChain brand green. Sets the accent for buttons and
+                    // interactive elements; fine-grained color overrides live in
+                    // the `body { --privy-color-* }` block in app/globals.css.
+                    accentColor: "#22d47e",
                     landingHeader: "Sign in to BracketChain",
                     loginMessage:
                         "Connect your account to join and create tournaments on Solana.",
