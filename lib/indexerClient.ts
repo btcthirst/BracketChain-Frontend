@@ -164,6 +164,7 @@ export interface IndexerMatch {
   expectedFeedHash: string | null;
   committedAt: string | null;
   switchboardFeed: string | null;
+  dathostServerConnect: string | null;
 }
 
 export interface IndexerClientOptions {
@@ -193,6 +194,24 @@ export interface GetParticipantsOptions {
 
 export interface GetMatchesOptions {
   signal?: AbortSignal;
+}
+
+/** Result of POST /dathost/launch (organizer-triggered CS2 server). */
+export type Cs2LaunchResult =
+  | { status: "launched"; matchId: string; connect: string }
+  | { status: "queued" }
+  | { status: "already_launched"; matchId: string; connect: string | null };
+
+/** Body for POST /dathost/launch. `sig` = base58 wallet signature over
+ * `bracketchain:launch-cs2:<tournament>:<bracket>:<round>:<matchIndex>`. */
+export interface Cs2LaunchBody {
+  tournamentAddress: string;
+  round: number;
+  matchIndex: number;
+  bracket?: number;
+  map?: string;
+  wallet: string;
+  sig: string;
 }
 
 export class BracketChainIndexerClient {
@@ -282,6 +301,15 @@ export class BracketChainIndexerClient {
   async getMatches(address: string, opts: GetMatchesOptions = {}): Promise<IndexerMatch[]> {
     const url = `${this.baseUrl}/tournaments/${address}/matches`;
     return this.requestJson<IndexerMatch[]>(url, { signal: opts.signal });
+  }
+
+  /** Organizer-triggered CS2 server provisioning (Phase 3). */
+  async launchCs2Match(body: Cs2LaunchBody): Promise<Cs2LaunchResult> {
+    return this.requestJson<Cs2LaunchResult>(`${this.baseUrl}/dathost/launch`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
   }
 
   // ── internals ─────────────────────────────────────────────────────────────

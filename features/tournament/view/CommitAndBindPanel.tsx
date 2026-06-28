@@ -3,13 +3,15 @@
 import { useState } from "react";
 import { Check, Copy, KeyRound, Loader2, Radio } from "lucide-react";
 import { address } from "@solana/kit";
-import { commitMatchLobby, computeDotaFeedHash } from "@bracketchain/sdk";
+import { commitMatchLobby } from "@bracketchain/sdk";
 import { toast } from "sonner";
 
 import { useBracketChainClient } from "@/lib/sdk";
 import {
-    dotaFeedParams,
-    fetchDotaIdentityHash,
+    computeFeedHashForGame,
+    feedGameFromKind,
+    feedParamsForGame,
+    fetchIdentityHash,
     switchboardQueue,
 } from "@/lib/switchboardFeed";
 import { handleTxError } from "@/lib/txErrors";
@@ -92,6 +94,8 @@ export function CommitAndBindPanel({ tournament, match, onSuccess }: Props) {
 
     const committed = match.oracle.lobbyId !== null;
     const bound = match.oracle.switchboardFeed !== null;
+    const game = feedGameFromKind(tournament.gameKind);
+    const isCs2 = game === "cs2";
 
     // On-chain rounds are 0-indexed; the UI Match carries the 1-indexed value.
     const onChainRound = match.round - 1;
@@ -122,8 +126,8 @@ export function CommitAndBindPanel({ tournament, match, onSuccess }: Props) {
         let expectedFeedHash: Uint8Array;
         try {
             const [aHash, bHash] = await Promise.all([
-                fetchDotaIdentityHash(match.playerA.address),
-                fetchDotaIdentityHash(match.playerB.address),
+                fetchIdentityHash(match.playerA.address, game),
+                fetchIdentityHash(match.playerB.address, game),
             ]);
             if (!aHash || !bHash) {
                 toast.error(
@@ -132,9 +136,10 @@ export function CommitAndBindPanel({ tournament, match, onSuccess }: Props) {
                 setSubmitting(false);
                 return;
             }
-            expectedFeedHash = computeDotaFeedHash(
+            expectedFeedHash = computeFeedHashForGame(
+                game,
                 switchboardQueue(),
-                dotaFeedParams(lobbyHex, aHash, bHash),
+                feedParamsForGame(game, lobbyHex, aHash, bHash),
             );
         } catch (err) {
             toast.error((err as Error).message || "Could not compute feed hash");
@@ -151,7 +156,11 @@ export function CommitAndBindPanel({ tournament, match, onSuccess }: Props) {
                 lobbyId: lobbyIdBytes,
                 expectedFeedHash,
             });
-            toast.success("Lobby committed. Paste the lobby id into the Dota 2 lobby name, then bind the feed below.");
+            toast.success(
+                isCs2
+                    ? "Match committed. Bind the feed below, then launch the CS2 server."
+                    : "Lobby committed. Paste the lobby id into the Dota 2 lobby name, then bind the feed below.",
+            );
             onSuccess();
         } catch (err) {
             handleTxError(err, "commit_match_lobby");
@@ -167,14 +176,20 @@ export function CommitAndBindPanel({ tournament, match, onSuccess }: Props) {
                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                     <p style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "0.82rem", color: "#22d47e" }}>Oracle commit ceremony</p>
                     <p style={{ ...helperText, color: "rgba(240,241,245,0.65)" }}>
-                        Commit the lobby id, paste it into the Dota 2 lobby name, then bind the Switchboard feed. The relayer will pick up and propose the winner once the feed resolves.
+                        {isCs2
+                            ? "Commit the match, bind the Switchboard feed, then launch the CS2 server below. The relayer proposes the winner once DatHost reports the result."
+                            : "Commit the lobby id, paste it into the Dota 2 lobby name, then bind the Switchboard feed. The relayer will pick up and propose the winner once the feed resolves."}
                     </p>
                 </div>
             </div>
 
             {/* Step 1: lobby id + commit */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <label style={sectionLabel}>Step 1 — Lobby ID (paste into Dota 2 lobby name)</label>
+                <label style={sectionLabel}>
+                    {isCs2
+                        ? "Step 1 — Match commitment (binds both players on-chain)"
+                        : "Step 1 — Lobby ID (paste into Dota 2 lobby name)"}
+                </label>
                 <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
                     <div style={{ ...fieldShell, flex: 1, display: "flex", alignItems: "center" }}>0x{lobbyHex}</div>
                     <button
@@ -202,12 +217,17 @@ export function CommitAndBindPanel({ tournament, match, onSuccess }: Props) {
                 </div>
                 {!committed && (
                     <p style={helperText}>
-                        Click <strong style={{ color: "rgba(240,241,245,0.85)" }}>Commit lobby</strong> below to snapshot the lobby id + both players&apos; identity hashes on-chain. After committing, paste the id into the Dota 2 lobby name when you create the match.
+                        Click <strong style={{ color: "rgba(240,241,245,0.85)" }}>Commit lobby</strong> below to snapshot the lobby id + both players&apos; identity hashes on-chain.{" "}
+                        {isCs2
+                            ? "Then bind the feed and launch the CS2 server below."
+                            : "After committing, paste the id into the Dota 2 lobby name when you create the match."}
                     </p>
                 )}
                 {committed && (
                     <p style={{ ...helperText, color: "#22d47e" }}>
-                        ✓ Lobby committed. Paste the id above into the Dota 2 lobby name so the feed can locate the match.
+                        {isCs2
+                            ? "✓ Match committed. Bind the feed below, then launch the CS2 server."
+                            : "✓ Lobby committed. Paste the id above into the Dota 2 lobby name so the feed can locate the match."}
                     </p>
                 )}
                 {!committed && (

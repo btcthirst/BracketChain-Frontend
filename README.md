@@ -179,7 +179,7 @@ SOLANA_NETWORK=devnet
 NEXT_PUBLIC_USDC_MINT=
 
 # Override the on-chain program ID. Falls back to the SDK default when unset
-# (MVP AuXJKpuZtkegs2ZSgopgckhN7Ev8bUz4zBc238LD2F1; Phase 1 dev = 3YpkUKBh8288XN2dCKSwBnEdyc5UozSJ19A1ZCLpUZsZ).
+# (MVP AuXJKpuZtkegs2ZSgopgckhN7Ev8bUz4zBc238LD2F1; Phase 1 dev = BeTbkzJ5MPiZP9PZ2xnhsjXCyBxVasuZJwuLQEpGiovw).
 # NEXT_PUBLIC_PROGRAM_ID=<program-pubkey>
 
 # Indexer base URL. When unset, the app reads tournament state directly from

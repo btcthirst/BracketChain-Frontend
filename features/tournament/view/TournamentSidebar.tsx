@@ -30,6 +30,7 @@ import { useGameIdentity } from "@/hooks/useGameIdentity";
 import { Button } from "@/components/ui/button";
 import { LinkSteamButton } from "@/features/auth/steam/LinkSteamButton";
 import { LaunchGameButton } from "@/features/tournament/view/LaunchGameButton";
+import { Cs2ServerPanel } from "@/features/tournament/view/Cs2ServerPanel";
 import { steamLaunchUrl, gameLabel } from "@/constants/games";
 
 const sectionLabel: React.CSSProperties = {
@@ -619,6 +620,11 @@ function ActionArea({
         // When their match has a committed lobby, the click also copies the
         // lobby id for the in-game Custom Lobbies search.
         if (tournament.status === "in_progress" && isParticipant) {
+            // CS2 uses a DatHost dedicated server (connect link), not an in-client
+            // lobby — render the server panel instead of the Dota lobby copy.
+            if (tournament.gameKind === "cs2faceit" && myMatch) {
+                return <Cs2ServerPanel tournament={tournament} match={myMatch} />;
+            }
             return <LaunchGameButton game={tournament.gameKind} lobbyId={myLobbyId} iAmHost={iAmHost} />;
         }
         return null;

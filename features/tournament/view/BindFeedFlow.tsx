@@ -6,15 +6,17 @@ import { useConnection } from "@solana/wallet-adapter-react";
 import { useSignTransaction } from "@privy-io/react-auth/solana";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import { address } from "@solana/kit";
-import { bindMatchFeed, computeDotaFeedHash } from "@bracketchain/sdk";
+import { bindMatchFeed } from "@bracketchain/sdk";
 import { toast } from "sonner";
 
 import { useBracketChainClient } from "@/lib/sdk";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
 import {
-    createDotaPullFeed,
-    dotaFeedParams,
-    fetchDotaIdentityHash,
+    computeFeedHashForGame,
+    createPullFeed,
+    feedGameFromKind,
+    feedParamsForGame,
+    fetchIdentityHash,
     switchboardQueue,
     type BindStage,
 } from "@/lib/switchboardFeed";
@@ -98,6 +100,7 @@ export function BindFeedFlow({ tournament, match, lobbyHex, onBound }: Props) {
     const [feedAddress, setFeedAddress] = useState<string | null>(null);
 
     const onChainRound = match.round - 1;
+    const game = feedGameFromKind(tournament.gameKind);
 
     async function run() {
         if (!sdk || !wallet || !walletAddress) {
@@ -117,8 +120,8 @@ export function BindFeedFlow({ tournament, match, lobbyHex, onBound }: Props) {
                 // ① identity hashes — same inputs the commit hashed.
                 setStep(current);
                 const [aHash, bHash] = await Promise.all([
-                    fetchDotaIdentityHash(match.playerA.address),
-                    fetchDotaIdentityHash(match.playerB.address),
+                    fetchIdentityHash(match.playerA.address, game),
+                    fetchIdentityHash(match.playerB.address, game),
                 ]);
                 if (!aHash || !bHash) {
                     throw new Error(
@@ -126,16 +129,18 @@ export function BindFeedFlow({ tournament, match, lobbyHex, onBound }: Props) {
                     );
                 }
 
-                const params = dotaFeedParams(lobbyHex, aHash, bHash);
-                const expectedFeedHash = computeDotaFeedHash(
+                const params = feedParamsForGame(game, lobbyHex, aHash, bHash);
+                const expectedFeedHash = computeFeedHashForGame(
+                    game,
                     switchboardQueue(),
                     params,
                 );
 
                 // ②–③ Crossbar store + feed creation (web3.js v1 lane).
-                const created = await createDotaPullFeed({
+                const created = await createPullFeed({
                     connection,
                     walletPublicKey: new PublicKey(walletAddress),
+                    game,
                     signTransaction: signLegacyTransaction,
                     feedParams: params,
                     expectedFeedHash,
