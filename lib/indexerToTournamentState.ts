@@ -8,7 +8,6 @@ import {
     ProposalSource,
     SettlementMode,
     SupportedGame,
-    TournamentFormat,
     TournamentStatus,
     type MatchNode,
     type MatchNodeWithAddress,
@@ -238,9 +237,6 @@ export async function indexerToTournamentState(
         // reconciliation cron backfills it. Treat missing as organizer (matches
         // on-chain default).
         arbitrator: it.arbitrator ? address(it.arbitrator) : address(it.organizer),
-        // R15 formats schema-prep: the indexer doesn't carry format yet; V1 is
-        // single-elim only, which is also the on-chain zero-fill default.
-        format: TournamentFormat.SingleElim,
     };
 
     const participantsAdapted: ParticipantWithAddress[] = await Promise.all(
@@ -323,11 +319,6 @@ export async function indexerToTournamentState(
                       })
                     : none(),
                 switchboardFeed: addrOrDefault(m.switchboardFeed),
-                // R15 formats schema-prep: per-match scores arrive with formats
-                // Phase A (RR tiebreakers); zero until then — single-elim
-                // ignores them and the indexer doesn't carry them yet.
-                scoreA: 0,
-                scoreB: 0,
             };
             return { address: matchPda, account };
         }),

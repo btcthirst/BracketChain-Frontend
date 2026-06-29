@@ -40,7 +40,7 @@ const SETTLEMENT_OPTIONS: { key: UISettlementChoice; label: string; available: b
 const GAME_OPTIONS: { key: UIGameChoice; label: string; available: boolean }[] = [
     { key: "manual", label: "Manual (no game identity)", available: true },
     { key: "dota2", label: "Dota 2 (Steam-verified)", available: true },
-    { key: "cs2faceit", label: "CS2 / FACEIT — coming soon", available: false },
+    { key: "cs2faceit", label: "CS2 (Steam-verified)", available: true },
     { key: "valorant", label: "Valorant — coming soon", available: false },
     { key: "lol", label: "League of Legends — coming soon", available: false },
 ];
