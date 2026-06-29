@@ -6,7 +6,6 @@ import { ExternalLink, CheckCircle2, Loader2, ChevronDown, ChevronUp, Clock, Wal
 import { address } from "@solana/kit";
 import {
     joinTournament,
-    startTournament,
     requestSeed,
     revealSeed,
     getTournament,
@@ -23,6 +22,7 @@ import { toast } from "sonner";
 import type { TournamentView, Player } from "@/types/tournament";
 import { ROUTES, SOLANA } from "@/constants/links";
 import { useBracketChainClient } from "@/lib/sdk";
+import { useStartTournamentOneClick } from "@/lib/startTournamentOneClick";
 import { useConfetti } from "@/hooks/useConfetti";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import { useDeadlineReached } from "@/hooks/useDeadlineReached";
@@ -293,6 +293,7 @@ function ActionArea({
     const [optimisticJoined, setOptimisticJoined] = useState(false);
 
     const sdk = useBracketChainClient();
+    const startTournamentOneClick = useStartTournamentOneClick();
     const { connection } = useConnection();
     const { login } = usePrivy();
     // Privy owns the wallet (not wallet-adapter), so source the address from
@@ -512,8 +513,8 @@ function ActionArea({
                 await revealSeedAsOrganizer(pda, randomnessAccount, publicKey.toBase58());
             }
 
-            setStartStage("Starting tournament…");
-            await startTournament(sdk, { tournamentPda: pda });
+            setStartStage("Starting tournament (sign in wallet)…");
+            await startTournamentOneClick(sdk, pda);
             toast.success("Tournament started! Bracket is being initialized.");
             onStartSuccess();
         } catch (err) {
