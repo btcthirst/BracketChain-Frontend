@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@bracketchain/sdk':
-        specifier: ^0.7.1
-        version: 0.7.1(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6)
+        specifier: ^0.7.2
+        version: 0.7.2(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6)
       '@privy-io/react-auth':
         specifier: ^3.29.2
         version: 3.29.2(50e24112f7f43a9c029dd1cc5952bb86)
@@ -413,8 +413,8 @@ packages:
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
 
-  '@bracketchain/sdk@0.7.1':
-    resolution: {integrity: sha512-FRKs3DMoRri5xE7Ten6WUX3WCeDgkDTHbRBhrM15IBxye4QnCU5jvgcjhOSrxtD9MQDHuf8OD0gsUShuPnm8Iw==}
+  '@bracketchain/sdk@0.7.2':
+    resolution: {integrity: sha512-ufXDCBX5ycAPBli1KgmAqbTHLZUJtNoW/RXDFs2padfKNMflO7//Zja+dgwKkdIl2ba4ij0OGSYNNFbs+0gAtQ==}
 
   '@coinbase/cdp-sdk@1.51.0':
     resolution: {integrity: sha512-XK8+OXDER1jirYpuiOct4ij65ODQ31LsmyRrZi/J7zF4GB89qxWZ0KPfAdsqJMP7VvE4no+Q++MKkQtAJUBoyg==}
@@ -7845,7 +7845,7 @@ snapshots:
 
   '@bcoe/v8-coverage@0.2.3': {}
 
-  '@bracketchain/sdk@0.7.1(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6)':
+  '@bracketchain/sdk@0.7.2(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6)':
     dependencies:
       '@solana-program/compute-budget': 0.15.0(@solana/kit@6.10.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6))
       '@solana-program/system': 0.12.2(@solana/kit@6.10.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6))
