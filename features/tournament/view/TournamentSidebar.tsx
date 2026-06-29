@@ -6,7 +6,6 @@ import { ExternalLink, CheckCircle2, Loader2, ChevronDown, ChevronUp, Clock, Wal
 import { address } from "@solana/kit";
 import {
     joinTournament,
-    startTournament,
     requestSeed,
     revealSeed,
     getTournament,
@@ -23,6 +22,7 @@ import { toast } from "sonner";
 import type { TournamentView, Player } from "@/types/tournament";
 import { ROUTES, SOLANA } from "@/constants/links";
 import { useBracketChainClient } from "@/lib/sdk";
+import { useStartTournamentOneClick } from "@/lib/startTournamentOneClick";
 import { useConfetti } from "@/hooks/useConfetti";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import { useDeadlineReached } from "@/hooks/useDeadlineReached";
@@ -30,6 +30,7 @@ import { useGameIdentity } from "@/hooks/useGameIdentity";
 import { Button } from "@/components/ui/button";
 import { LinkSteamButton } from "@/features/auth/steam/LinkSteamButton";
 import { LaunchGameButton } from "@/features/tournament/view/LaunchGameButton";
+import { Cs2ServerPanel } from "@/features/tournament/view/Cs2ServerPanel";
 import { steamLaunchUrl, gameLabel } from "@/constants/games";
 
 const sectionLabel: React.CSSProperties = {
@@ -292,6 +293,7 @@ function ActionArea({
     const [optimisticJoined, setOptimisticJoined] = useState(false);
 
     const sdk = useBracketChainClient();
+    const startTournamentOneClick = useStartTournamentOneClick();
     const { connection } = useConnection();
     const { login } = usePrivy();
     // Privy owns the wallet (not wallet-adapter), so source the address from
@@ -511,8 +513,8 @@ function ActionArea({
                 await revealSeedAsOrganizer(pda, randomnessAccount, publicKey.toBase58());
             }
 
-            setStartStage("Starting tournament…");
-            await startTournament(sdk, { tournamentPda: pda });
+            setStartStage("Starting tournament (sign in wallet)…");
+            await startTournamentOneClick(sdk, pda);
             toast.success("Tournament started! Bracket is being initialized.");
             onStartSuccess();
         } catch (err) {
@@ -619,6 +621,11 @@ function ActionArea({
         // When their match has a committed lobby, the click also copies the
         // lobby id for the in-game Custom Lobbies search.
         if (tournament.status === "in_progress" && isParticipant) {
+            // CS2 uses a DatHost dedicated server (connect link), not an in-client
+            // lobby — render the server panel instead of the Dota lobby copy.
+            if (tournament.gameKind === "cs2faceit" && myMatch) {
+                return <Cs2ServerPanel tournament={tournament} match={myMatch} />;
+            }
             return <LaunchGameButton game={tournament.gameKind} lobbyId={myLobbyId} iAmHost={iAmHost} />;
         }
         return null;

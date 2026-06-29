@@ -3,12 +3,12 @@
 // ─── Internal routes ──────────────────────────────────────────────────────────
 
 export const NAV_LINKS = [
-    { label: "HOME", href: "https://bracketchain.xyz/#top" },
-    { label: "PROTOCOL", href: "https://bracketchain.xyz/#protocol" },
-    { label: "LIVE DEMO", href: "https://bracketchain.xyz/#action" },
-    { label: "ECOSYSTEM", href: "https://bracketchain.xyz/#ecosystem" },
-    { label: "MARKET", href: "https://bracketchain.xyz/#market" },
-    { label: "ROADMAP", href: "https://bracketchain.xyz/#roadmap" },
+    { label: "HOME", href: "/#top" },
+    { label: "PROTOCOL", href: "/#protocol" },
+    { label: "LIVE DEMO", href: "/#action" },
+    { label: "ECOSYSTEM", href: "/#ecosystem" },
+    { label: "MARKET", href: "/#market" },
+    { label: "ROADMAP", href: "/#roadmap" },
 ];
 
 export const ROUTES = {

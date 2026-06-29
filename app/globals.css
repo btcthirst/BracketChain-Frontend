@@ -63,6 +63,106 @@
   --radius-xl: 20px;
 }
 
+/*
+ * Privy login modal overrides. Privy reads these CSS variables off `body` and
+ * uses them in place of its auto-generated palette, so the auth/wallet modal
+ * matches the BracketChain dark theme above. `accentColor` is also set in the
+ * PrivyProvider config (components/Providers.tsx); these variables tune the
+ * surrounding surfaces, text, radii, and state colors that the prop can't reach.
+ */
+body {
+  --privy-border-radius-sm: 6px;
+  --privy-border-radius-md: 8px;   /* --radius */
+  --privy-border-radius-lg: 14px;  /* --radius-lg */
+  --privy-border-radius-full: 9999px;
+
+  --privy-color-background: #0d0f18;   /* --bg-1, modal surface */
+  --privy-color-background-2: #12141f; /* --bg-2, inputs/rows */
+  --privy-color-background-3: #1a1c2a; /* --bg-3, hover/raised */
+
+  --privy-color-foreground: #f0f1f5;   /* --text */
+  --privy-color-foreground-2: #7b7e96; /* --text-muted */
+  --privy-color-foreground-3: #4a4d63; /* --text-dim */
+  --privy-color-foreground-4: #34374a;
+  --privy-color-foreground-accent: #06070b; /* dark text on green buttons */
+
+  --privy-color-accent: #22d47e;       /* --accent */
+  --privy-color-accent-light: #4ade80; /* --accent-2 */
+  --privy-color-accent-lightest: rgba(34, 212, 126, 0.12); /* --accent-dim */
+  --privy-color-accent-dark: #1bb86c;
+  --privy-color-accent-darkest: #149456;
+
+  --privy-color-success: #22d47e;
+  --privy-color-error: #f04e66;        /* --red */
+  --privy-color-error-light: rgba(240, 78, 102, 0.15);
+}
+
+/*
+ * Privy renders the phone-number country selector as a native <select> and does
+ * NOT set `appearance: none`. On Linux, Chrome paints the GTK combobox chrome
+ * (border + oversized arrow + focus ring) which doesn't fit the fixed width/24px
+ * height Privy reserves, so "UA +380" renders as an oversized, white-outlined
+ * box that overflows below the phone field. (macOS/Windows native selects are
+ * compact, so it only breaks on Linux.) Strip all native chrome, pin the height,
+ * vertically center it inside the input row, and supply our own caret. We keep
+ * Privy's horizontal margin (margin-inline) untouched so the label still aligns
+ * with the padding the input reserves for it.
+ */
+/*
+ * Privy sizes the country control and the input's left padding from the calling
+ * code's DIGIT COUNT: width = 54 + 12·N, number-offset = 12 + 3·N. With a wider
+ * font that under-sizes the box (clipping the last digit) AND makes the phone
+ * number start at a different x for +1 vs +380. Pin both to constants on the
+ * wrapper (the element that directly contains the <select>) so every country
+ * lays out identically: code fully visible, number always at the same position.
+ */
+#privy-dialog :has(> select) {
+  --country-code-dropdown-width: 80px !important;
+  --phone-input-extra-padding-left: 12px !important;
+}
+
+#privy-dialog select {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+  height: 24px;
+  top: 0;
+  bottom: 0;
+  width: var(--country-code-dropdown-width);
+  /*
+   * Caret on the LEFT. A native <select> always sizes to its WIDEST option
+   * (`width: fit-content` resolved to ~92px, the longest country in the list),
+   * never the selected one — so a right-aligned caret always floats a variable
+   * gap away from the shorter selected code. Putting the caret on the left pins
+   * it directly beside the code regardless of which country is selected: no
+   * trailing gap, code stays fully visible, and the phone number still starts at
+   * the fixed position set by --country-code-dropdown-width.
+   */
+  margin: auto 12px;             /* vertical center + small left inset */
+  background-color: transparent; /* don't paint a box over the input */
+  color: var(--privy-color-foreground);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237b7e96' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: left 0 center;
+  background-size: 12px 12px;
+  /*
+   * !important is required: Privy ships a `select { padding-right: 32px
+   * !important }` reset that otherwise wins over a normal declaration and eats
+   * 32px of the 80px box — clipping "UA +380" down to "UA +3". Our left-only
+   * padding (caret + code) keeps the full content width.
+   */
+  padding: 0 0 0 18px !important;
+}
+
+#privy-dialog select:focus,
+#privy-dialog select:focus-visible {
+  outline: 0;
+  box-shadow: none;
+  border: 0;
+}
+
 @layer base {
 
   *,

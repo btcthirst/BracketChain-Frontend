@@ -14,8 +14,11 @@ export interface GameMeta {
 export const GAMES: Record<string, GameMeta> = {
     manual: { label: "Manual", steamAppId: null },
     dota2: { label: "Dota 2", steamAppId: 570 },
-    // V1.3+: cs2 (730), valorant (Riot client — no Steam id), lol (Riot).
+    // CS2 (appid 730). Keyed under both `cs2` and `cs2faceit` — the create
+    // wizard's UIGameChoice uses `cs2faceit`, while other call sites use `cs2`.
     cs2: { label: "CS2", steamAppId: 730 },
+    cs2faceit: { label: "CS2", steamAppId: 730 },
+    // V1.3+: valorant (Riot client — no Steam id), lol (Riot).
 };
 
 /**
