@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function proxy(request: NextRequest) {
-    return NextResponse.rewrite(new URL("/landing/index.html", request.url));
+    return NextResponse.rewrite(new URL("/landing", request.url));
 }
 
 export const config = {
