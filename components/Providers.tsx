@@ -76,6 +76,7 @@ const WalletContextProvider: FC<Props> = ({ children }) => {
                 },
                 loginMethods: LOGIN_METHODS,
                 embeddedWallets: {
+                    showWalletUIs: false,
                     solana: { createOnLogin: "users-without-wallets" },
                 },
                 externalWallets: {
